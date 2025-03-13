@@ -66,7 +66,11 @@ public class Camera {
         return yaw;
     }
 
-    public double getFov() {
+    public void setFOV(double fov) {
+        this.fov = fov;
+    }
+
+    public double getFOV() {
         return fov;
     }
 

@@ -10,7 +10,7 @@ public abstract class Block {
         this.state = state;
     }
 
-    public Block() {
+    protected Block() {
         this.state = null;
     }
 

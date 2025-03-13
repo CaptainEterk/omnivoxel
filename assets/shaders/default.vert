@@ -14,6 +14,7 @@ layout(location = 1) in uint data2;
 out vec2 TexCoord;
 out float shadow;
 out vec3 position;
+out vec3 lighting;
 
 uniform bool useChunkPosition;
 uniform bool useExactPosition;
@@ -61,6 +62,7 @@ void main() {
     }
 
     position = xyz;
+    lighting = vec3(r, g, b);
 
     // Calculate position and set vertex position
     gl_Position = projection * view * vec4(xyz, 1.0);

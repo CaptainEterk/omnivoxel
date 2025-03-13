@@ -61,15 +61,13 @@ public class WindowFactory {
         }
 
         // Add a favicon
-        Image img = ImageLoader.load("assets/textures/texture_atlas.png");
+        Image img = ImageLoader.load("assets/icons/favicon.png");
 
         GLFWImage image = GLFWImage.malloc();
         GLFWImage.Buffer imagebf = GLFWImage.malloc(1);
-        image.set(img.width()/32, img.height()/32, img.image());
+        image.set(img.width(), img.height(), img.image());
         imagebf.put(0, image);
         GLFW.glfwSetWindowIcon(window, imagebf);
-
-//        GLFW.glfwSetWindowIcon(window, ImageLoader.load("assets/texture/texture_atlas.png").image());
 
         return new Window(window);
     }

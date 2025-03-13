@@ -292,7 +292,7 @@ public final class GameLoop implements Runnable {
     public Matrix4f getProjectionMatrix(Window window) {
         return new Matrix4f()
                 .setPerspective(
-                        (float) Math.toRadians(camera.getFov()),
+                        (float) Math.toRadians(camera.getFOV()),
                         window.aspectRatio(),
                         camera.getNear(),
                         camera.getFar()

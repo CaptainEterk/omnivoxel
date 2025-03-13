@@ -1,6 +1,5 @@
-package omnivoxel.client.launcher;
+package omnivoxel.client.game.thread.mesh.block;
 
-import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 import omnivoxel.client.game.thread.mesh.vertex.Vertex;

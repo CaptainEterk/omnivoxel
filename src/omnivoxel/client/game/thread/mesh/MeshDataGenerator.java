@@ -34,7 +34,10 @@ public final class MeshDataGenerator {
             Vertex position,
             int tx,
             int ty,
-            BlockFace normal
+            BlockFace normal,
+            float r,
+            float g,
+            float b
     ) {
         UniqueVertex vertex = new UniqueVertex(
                 position,
@@ -43,7 +46,7 @@ public final class MeshDataGenerator {
         );
 
         if (!vertexIndexMap.containsKey(vertex)) {
-            int[] vertexData = ShapeHelper.packVertexData(position, 0, 0, 0, normal, tx, ty);
+            int[] vertexData = ShapeHelper.packVertexData(position, r, g, b, normal, tx, ty);
             vertexIndexMap.put(vertex, vertices.size());
             for (int data : vertexData) {
                 vertices.add(data);
@@ -89,13 +92,13 @@ public final class MeshDataGenerator {
             Vertex v4,
             BlockFace normal
     ) {
-        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal);
-        addPoint(vertices, indices, vertexIndexMap, v2, 0, 0, normal);
-        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal);
+        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
+        addPoint(vertices, indices, vertexIndexMap, v2, 0, 0, normal, 0, 0, 0);
+        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
 
-        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal);
-        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal);
-        addPoint(vertices, indices, vertexIndexMap, v4, 0, 0, normal);
+        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
+        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
+        addPoint(vertices, indices, vertexIndexMap, v4, 0, 0, normal, 0, 0, 0);
     }
 
     public MeshData generateEntityMeshData(Entity entity) {
@@ -117,7 +120,7 @@ public final class MeshDataGenerator {
         return new GeneralMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer);
     }
 
-    public MeshData generateChunkMeshData(Block[] blocks, List<Block> palette) {
+    public MeshData generateChunkMeshData(Block[] blocks) {
         List<Integer> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         List<Integer> transparentVertices = new ArrayList<>();
@@ -170,31 +173,6 @@ public final class MeshDataGenerator {
         ByteBuffer transparentIndexBuffer = createBuffer(transparentIndices);
 
         return new GeneralMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer);
-    }
-
-    private int addVertex(List<Integer> vertices, Map<UniqueVertex, Integer> vertexMap, UniqueVertex vertex) {
-        if (!vertexMap.containsKey(vertex)) {
-            int index = vertices.size() / 3; // Assuming three coordinates per vertex.
-            vertexMap.put(vertex, index);
-            // Append the vertex data (here, simply the position; extend as needed).
-            vertices.add((int) vertex.vertex().px());
-            vertices.add((int) vertex.vertex().py());
-            vertices.add((int) vertex.vertex().pz());
-            return index;
-        }
-        return vertexMap.get(vertex);
-    }
-
-    private int getAdjacentBlock(int x, int y, int z, BlockFace blockFace) {
-        return switch (blockFace) {
-            case TOP -> calculateBlockIndex(x, y + 1, z);
-            case BOTTOM -> calculateBlockIndex(x, y - 1, z);
-            case NORTH -> calculateBlockIndex(x, y, z + 1);
-            case SOUTH -> calculateBlockIndex(x, y, z - 1);
-            case EAST -> calculateBlockIndex(x + 1, y, z);
-            case WEST -> calculateBlockIndex(x - 1, y, z);
-            default -> throw new IllegalStateException("Unexpected value: " + blockFace);
-        };
     }
 
     private int calculateBlockIndex(int x, int y, int z) {
@@ -274,6 +252,19 @@ public final class MeshDataGenerator {
         Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
         int[] faceIndices = shape.getIndicesOnFace(blockFace);
 
+
+        float temp_r, temp_g, temp_b;
+
+        if (block.getState() == null) {
+            temp_r = 0;
+            temp_g = 0;
+            temp_b = 0;
+        } else {
+            temp_r = block.getState()[0] / 32f + 0.5f;
+            temp_g = block.getState()[1] / 32f + 0.5f;
+            temp_b = block.getState()[2] / 32f + 0.5f;
+        }
+
         for (int index : faceIndices) {
             Vertex pointPosition = faceVertices[index];
             Vertex blockInChunkPosition = pointPosition.add(x, y, z);
@@ -283,7 +274,10 @@ public final class MeshDataGenerator {
                     blockInChunkPosition,
                     uvCoordinates[index * 2],
                     uvCoordinates[index * 2 + 1],
-                    blockFace
+                    blockFace,
+                    temp_r,
+                    temp_g,
+                    temp_b
             );
         }
     }

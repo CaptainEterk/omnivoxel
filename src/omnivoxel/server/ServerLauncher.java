@@ -34,9 +34,9 @@ public class ServerLauncher {
 
         ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(
                 new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 0, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 5, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.5, 2, 0.001)
+                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
+                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
+                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.0001)
         ));
 
         try {
@@ -50,7 +50,7 @@ public class ServerLauncher {
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(
                                     new LengthFieldBasedFrameDecoder(
-                                            2048,
+                                            1048576,
                                             0,
                                             4,
                                             0,

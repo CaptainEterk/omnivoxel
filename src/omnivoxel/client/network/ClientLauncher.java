@@ -74,7 +74,7 @@ public class ClientLauncher implements Runnable {
 
             future.channel().closeFuture().sync();
 
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
             group.shutdownGracefully();

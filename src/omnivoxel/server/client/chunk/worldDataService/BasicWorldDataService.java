@@ -11,19 +11,19 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final FractionalBrownianNoise worldNoise;
     private final FractionalBrownianNoise temperatureNoise;
     private final FractionalBrownianNoise humidityNoise;
-    private final FractionalBrownianNoise erosionNoise;
+    private final FractionalBrownianNoise continentalnessNoise;
 
     // TODO: Make this not take in any inputs
-    public BasicWorldDataService(FractionalBrownianNoise worldNoise, FractionalBrownianNoise temperatureNoise, FractionalBrownianNoise humidityNoise, FractionalBrownianNoise erosionNoise) {
+    public BasicWorldDataService(FractionalBrownianNoise worldNoise, FractionalBrownianNoise temperatureNoise, FractionalBrownianNoise humidityNoise, FractionalBrownianNoise continentalnessNoise) {
         this.worldNoise = worldNoise;
         this.temperatureNoise = temperatureNoise;
         this.humidityNoise = humidityNoise;
-        this.erosionNoise = erosionNoise;
+        this.continentalnessNoise = continentalnessNoise;
     }
 
     @Override
     public ServerBlock getBlockAt(ChunkPosition chunkPosition, int x, int y, int z) {
-        double erosion = erosionNoise.generate(
+        double continentalness = continentalnessNoise.generate(
                 chunkPosition.x() * ConstantGameSettings.CHUNK_WIDTH + x,
                 chunkPosition.z() * ConstantGameSettings.CHUNK_LENGTH + z
         );
@@ -31,7 +31,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
                 worldNoise.generate(
                         chunkPosition.x() * ConstantGameSettings.CHUNK_WIDTH + x,
                         chunkPosition.z() * ConstantGameSettings.CHUNK_LENGTH + z
-                ) * 32 * 16 * Math.pow(erosion * 8, 1.2)
+                ) * 32 * 8
         );
         double temperature = temperatureNoise.generate(
                 chunkPosition.x() * ConstantGameSettings.CHUNK_WIDTH + x,
@@ -61,8 +61,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
 //            block = "core:water_source_block";
 //        }
 //        return new ServerBlock(block);
-        if (yPosition == height) {
-            return new ServerBlock("core:debug_climate", (int) (temperature * 100), (int) (humidity * 100));
+        if (yPosition <= height) {
+            return new ServerBlock("core:debug_climate", (int) (temperature * 16), (int) (continentalness * 16), (int) (humidity * 16));
         } else {
             return new ServerBlock("air");
         }

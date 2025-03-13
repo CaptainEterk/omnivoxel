@@ -1,6 +1,7 @@
 package omnivoxel.client.game.thread.tick;
 
 import omnivoxel.client.game.player.PlayerController;
+import omnivoxel.client.game.thread.mesh.util.PriorityUtils;
 import omnivoxel.client.game.util.input.OVKeyInput;
 import omnivoxel.client.game.util.input.OVMouseButtonInput;
 import omnivoxel.client.game.util.input.OVMouseInput;
@@ -42,6 +43,7 @@ public class TickLoop implements Runnable {
                 // TODO: Tick all entities here
                 playerController.tick(1 / 60f);
                 client.getPlayers().values().forEach(playerEntity -> playerEntity.tick(1 / 60f));
+                PriorityUtils.setCamera(playerController.getCamera());
                 try {
                     Thread.sleep(1000 / 60);
                 } catch (InterruptedException e) {

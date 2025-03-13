@@ -11,6 +11,7 @@ import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.thread.mesh.MeshDataGenerator;
 import omnivoxel.client.game.thread.mesh.block.Block;
+import omnivoxel.client.game.thread.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 import omnivoxel.client.network.block.ClientBlock;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
@@ -136,7 +137,10 @@ public class Client {
             j += 2;
             int[] blockState = new int[blockStateCount];
             for (int k = 0; k < blockStateCount; k++) {
-                blockState[k] = byteBuf.getInt(index + j);
+//                byte[] bytes = new byte[4];
+//                byteBuf.getBytes(index + j, bytes);
+//                System.out.println(Arrays.toString(bytes));
+                blockState[k] = (int) byteBuf.getUnsignedInt(index + j);
                 j += 4;
             }
             palette[i] = new ClientBlock(blockID.toString(), blockState);
@@ -153,12 +157,15 @@ public class Client {
                 int oi = i;
                 for (; i < blockCount + oi && i < ConstantGameSettings.BLOCKS_IN_CHUNK; i++) {
                     blocks[i] = worldDataService.getBlock(palette[blockID - 1].id());
+                    if (palette[blockID - 1].blockState().length > 0) {
+                        blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID - 1].blockState());
+                    }
                 }
             }
             index += 8;
         }
 
-        MeshData meshData = meshDataGenerator.generateChunkMeshData(blocks, Arrays.stream(palette).map(ClientBlock::id).map(worldDataService::getBlock).toList());
+        MeshData meshData = meshDataGenerator.generateChunkMeshData(blocks);
         loadChunk.accept(chunkPosition, meshData);
     }
 

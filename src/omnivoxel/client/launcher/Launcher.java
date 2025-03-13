@@ -1,6 +1,7 @@
 package omnivoxel.client.launcher;
 
 import core.*;
+import omnivoxel.client.game.thread.mesh.block.AirBlock;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.player.camera.Camera;

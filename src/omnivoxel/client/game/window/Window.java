@@ -1,5 +1,6 @@
 package omnivoxel.client.game.window;
 
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWWindowSizeCallback;
 
 import java.util.ArrayList;
@@ -41,8 +42,8 @@ public final class Window {
         updateMatrices();
     }
 
-    public void addMatrixUser(Consumer<Window> user) {
-        matrixUsers.add(user);
+    public void fullscreen() {
+        GLFW.glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     }
 
     public void updateMatrices() {

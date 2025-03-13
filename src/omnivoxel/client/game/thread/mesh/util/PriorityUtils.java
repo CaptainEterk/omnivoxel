@@ -16,14 +16,10 @@ public final class PriorityUtils {
             worldPosition = (WorldPosition) position;
         }
         // The closer a chunk is the higher the priority
-        long distanceX = Math.round(camera.getX()) - worldPosition.x();
-        long distanceY = Math.round(camera.getY()) - worldPosition.y();
-        long distanceZ = Math.round(camera.getZ()) - worldPosition.z();
-        return Math.sqrt(
-                distanceX * distanceX +
-                        distanceY * distanceY +
-                        distanceZ * distanceZ
-        );
+        int distanceX = worldPosition.x() - Math.round(camera.getX());
+        int distanceY = worldPosition.y() - Math.round(camera.getY());
+        int distanceZ = worldPosition.z() - Math.round(camera.getZ());
+        return (distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ) / 1000.0;
     }
 
     public static void setCamera(Camera camera) {

@@ -9,25 +9,31 @@ import omnivoxel.client.game.util.input.OVKeyInput;
 import omnivoxel.client.game.util.input.OVMouseButtonInput;
 import omnivoxel.client.game.util.input.OVMouseInput;
 import omnivoxel.client.network.Client;
-import omnivoxel.client.network.request.MovedRequest;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.system.MemoryUtil;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
 public class PlayerController extends PlayerEntity {
-    private final float speed = 0.5f;
-
     private final Client client;
-
     private final Camera camera;
     private final Settings settings;
     private final BlockingQueue<Consumer<Long>> contextTasks;
     private final GameState gameState;
-
+    private float speed = 1f;
     private OVKeyInput keyInput;
     private OVMouseButtonInput mouseButtonInput;
     private OVMouseInput mouseInput;
+
+    private boolean togglingWireframe;
+    private boolean togglingFullscreen;
+
+    private int oldWindowWidth;
+    private int oldWindowHeight;
+    private int oldWindowX;
+    private int oldWindowY;
 
     public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Long>> contextTasks, GameState gameState) {
         super("Test Player", new byte[0]);
@@ -78,7 +84,54 @@ public class PlayerController extends PlayerEntity {
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F1)) {
                 gameState.setItem("shouldRenderWireframe", !gameState.getItem("shouldRenderWireframe", Boolean.class));
             }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_KP_ADD)) {
+                camera.setFOV(camera.getFOV() - 1);
+            }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_KP_SUBTRACT)) {
+                camera.setFOV(camera.getFOV() + 1);
+            }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_PAGE_UP)) {
+                speed += 0.01f;
+            }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_PAGE_DOWN)) {
+                speed -= 0.01f;
+            }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F11)) {
+                if (!togglingFullscreen) {
+                    togglingFullscreen = true;
+                    contextTasks.add(window -> {
+                        long currentWindow = GLFW.glfwGetCurrentContext();
+                        long monitor = GLFW.glfwGetPrimaryMonitor();
+                        GLFWVidMode vidMode = GLFW.glfwGetVideoMode(monitor);
 
+                        // Check the current window monitor state and toggle fullscreen
+                        boolean isFullscreen = GLFW.glfwGetWindowMonitor(currentWindow) != MemoryUtil.NULL;
+
+                        if (isFullscreen) {
+                            // Switch to windowed mode (Restore original window size and position)
+                            GLFW.glfwSetWindowMonitor(currentWindow, MemoryUtil.NULL, oldWindowX, oldWindowY, oldWindowWidth, oldWindowHeight, GLFW.GLFW_DONT_CARE);
+                        } else {
+                            // Save the current window size before switching to fullscreen
+                            int[] width = new int[1];
+                            int[] height = new int[1];
+                            GLFW.glfwGetWindowSize(currentWindow, width, height);
+                            oldWindowWidth = width[0];
+                            oldWindowHeight = height[0];
+
+                            int[] x = new int[1];
+                            int[] y = new int[1];
+                            GLFW.glfwGetWindowPos(window, x, y);
+                            oldWindowX = x[0];
+                            oldWindowY = y[0];
+
+                            // Switch to fullscreen mode (use the monitor's resolution)
+                            GLFW.glfwSetWindowMonitor(currentWindow, monitor, 0, 0, vidMode.width(), vidMode.height(), vidMode.refreshRate());
+                        }
+                    });
+                }
+            } else {
+                togglingFullscreen = false;
+            }
             // Handle cursor escaping
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
                 contextTasks.add(mouseButtonInput::unlockMouse);

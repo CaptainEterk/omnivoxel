@@ -14,8 +14,10 @@ public record ServerBlock(String id, int... blockState) {
         byte[] stateBytes = new byte[blockState.length * Integer.BYTES];
         for (int i = 0; i < blockState.length; i++) {
             int index = i * Integer.BYTES;
-            stateBytes[index] = (byte) ((blockState[i] >> 8) & 0xFF);
-            stateBytes[index + 1] = (byte) (blockState[i] & 0xFF);
+            stateBytes[index] = (byte) ((blockState[i] >> 24) & 0xFF);
+            stateBytes[index + 1] = (byte) ((blockState[i] >> 16) & 0xFF);
+            stateBytes[index + 2] = (byte) ((blockState[i] >> 8) & 0xFF);
+            stateBytes[index + 3] = (byte) (blockState[i] & 0xFF);
         }
 
         byte[] bytes = new byte[2 + idBytes.length + 2 + stateBytes.length];
