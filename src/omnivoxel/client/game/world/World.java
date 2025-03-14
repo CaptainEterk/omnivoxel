@@ -67,7 +67,7 @@ public class World {
             chunks.put(entry.getKey(), chunkMesh);
             queuedChunks.remove(entry.getKey());
 //            if (System.nanoTime() * 2 - startTime < endTime) {
-                bufferizeChunk(meshGenerator, endTime);
+            bufferizeChunk(meshGenerator, endTime);
 //            }
         }
     }
