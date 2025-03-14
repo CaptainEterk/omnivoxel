@@ -31,7 +31,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
                 worldNoise.generate(
                         chunkPosition.x() * ConstantGameSettings.CHUNK_WIDTH + x,
                         chunkPosition.z() * ConstantGameSettings.CHUNK_LENGTH + z
-                ) * 32 * 8
+                ) * 32 * 16
         );
         double temperature = temperatureNoise.generate(
                 chunkPosition.x() * ConstantGameSettings.CHUNK_WIDTH + x,
@@ -42,29 +42,25 @@ public class BasicWorldDataService implements ServerWorldDataService {
                 chunkPosition.z() * ConstantGameSettings.CHUNK_LENGTH + z
         );
         int yPosition = chunkPosition.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
-//        String block = null;
-//        if (yPosition <= height) {
-//            if (yPosition > height - 2 && (Math.abs(erosion) < 0.1 || yPosition < 250)) {
-//                if (height - yPosition == 0) {
-//                    block = "core:grass_block";
-//                } else {
-//                    block = "core:dirt_block";
-//                }
-//            } else {
-//                if (Math.random() > 0.5) {
-//                    block = "core:stone_block";
-//                } else {
-//                    block = "core:iron_block";
-//                }
-//            }
-//        } else if (yPosition < WATER_LEVEL) {
-//            block = "core:water_source_block";
-//        }
-//        return new ServerBlock(block);
+        String block = null;
         if (yPosition <= height) {
-            return new ServerBlock("core:debug_climate", (int) (temperature * 16), (int) (continentalness * 16), (int) (humidity * 16));
-        } else {
-            return new ServerBlock("air");
+            if (yPosition > height - 2) {
+                if (height - yPosition == 0) {
+                    block = "core:grass_block";
+                } else {
+                    block = "core:dirt_block";
+                }
+            } else {
+                block = "core:stone_block";
+            }
+        } else if (yPosition < WATER_LEVEL) {
+            block = "core:water_source_block";
         }
+        return new ServerBlock(block);
+//        if (yPosition <= height) {
+//            return new ServerBlock("core:debug_climate", (int) (temperature * 16), (int) (continentalness * 16), (int) (humidity * 16));
+//        } else {
+//            return new ServerBlock("air");
+//        }
     }
 }

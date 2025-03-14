@@ -27,12 +27,12 @@ void main() {
     float fogFactor = (fogFar - distance) / (fogFar - fogNear);
     fogFactor = clamp(fogFactor, 0.0, 1.0);
 
-    FragColor = mix(vec4(lighting, 1.0), FragColor, 0.1);
+//    FragColor = mix(vec4(lighting, 1.0), FragColor, 0.1);
 
     // Apply shadow effect
     FragColor = vec4(FragColor.rgb * shadow, FragColor.a);
 
     // Apply fog effect
-//    FragColor = mix(fogColor, FragColor, fogFactor);
+    FragColor = mix(fogColor, FragColor, fogFactor);
     // TODO: Mix with filter color too.
 }
