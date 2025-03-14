@@ -50,6 +50,9 @@ public class ShallowBlockShape implements Shape {
                 , new Vertex(0, 1 - ShapeHelper.PIXEL * lowered, 1)
                 , new Vertex(0, 1 - ShapeHelper.PIXEL * lowered, 0)
         };
+//        this.indices = new int[]{
+//                0, 1, 2, 3
+//        };
         this.indices = new int[]{
                 0, 1, 2,
                 0, 2, 3

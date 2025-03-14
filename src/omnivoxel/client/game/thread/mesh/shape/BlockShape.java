@@ -49,6 +49,9 @@ public class BlockShape implements Shape {
                 , new Vertex(0, 1, 1)
                 , new Vertex(0, 1, 0)
         };
+//        this.indices = new int[]{
+//                0, 1, 3, 2
+//        };
         this.indices = new int[]{
                 0, 1, 2,
                 0, 2, 3

@@ -7,30 +7,24 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30C;
 import org.lwjgl.stb.STBTTBakedChar;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TextRenderer {
     private int vaoID;
     private int vboID;
 
     public void init() {
-        // Define vertex positions and texture coordinates for a quad
-        float[] vertices = {
-                // Positions  // Texture Coords
-                -0.5f, 0.5f, 0.0f, 1.0f,  // Top-left
-                0.5f, 0.5f, 1.0f, 1.0f,  // Top-right
-                0.5f, -0.5f, 1.0f, 0.0f,  // Bottom-right
-                -0.5f, 0.5f, 0.0f, 1.0f,  // Top-left
-                0.5f, -0.5f, 1.0f, 0.0f,  // Bottom-right
-                -0.5f, -0.5f, 0.0f, 0.0f   // Bottom-left
-        };
-
         // Create and bind a VAO
         vaoID = GL30C.glGenVertexArrays();
         GL30C.glBindVertexArray(vaoID);
 
-        // Create and bind a VBO
+        // Create a VBO for the vertices
         vboID = GL15C.glGenBuffers();
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
-        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, vertices, GL15C.GL_STATIC_DRAW);
+
+        // Define the vertex positions and texture coordinates for the characters (initially empty)
+        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, 0, GL15C.GL_DYNAMIC_DRAW);
 
         // Define vertex position attribute (location = 0)
         GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 4 * 4, 0);
@@ -49,20 +43,33 @@ public class TextRenderer {
         // Bind the font texture
         GL30C.glBindTexture(GL30C.GL_TEXTURE_2D, font.textureID());
 
-        // Render the text
-        GL30C.glBindVertexArray(vaoID);
+        // Prepare to accumulate the vertices and texture coordinates for all characters
+        List<Float> verticesList = new ArrayList<>();
 
         String[] lines = text.split("[\r\n]");
         for (int i = 0; i < lines.length; i++) {
-            // Render a line of text
-            renderLine(font, lines[i], x, y + 32 * (i + 2) * scale, scale, alignment);
+            // Render a line of text and accumulate the vertex data
+            accumulateLine(font, lines[i], x, y + 32 * (i + 2) * scale, scale, alignment, verticesList);
         }
 
+        // Convert accumulated vertices to array
+        float[] verticesArray = new float[verticesList.size()];
+        for (int i = 0; i < verticesArray.length; i++) {
+            verticesArray[i] = verticesList.get(i);
+        }
+
+        // Update VBO with the accumulated vertices data
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
+        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, verticesArray, GL15C.GL_DYNAMIC_DRAW);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
+
+        // Render the accumulated text
+        GL30C.glBindVertexArray(vaoID);
+        GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, verticesArray.length / 4); // Each vertex has 4 components (position + tex coords)
         GL30C.glBindVertexArray(0);
-        GL11.glDisable(GL30C.GL_BLEND);
     }
 
-    private void renderLine(Font font, String text, float x, float y, float scale, Alignment alignment) {
+    private void accumulateLine(Font font, String text, float x, float y, float scale, Alignment alignment, List<Float> verticesList) {
         float startX = x;
 
         // Calculate total width of the text
@@ -80,7 +87,7 @@ public class TextRenderer {
             startX -= totalWidth;
         }
 
-        // Now render each character
+        // Now accumulate the vertices for each character
         for (char c : text.toCharArray()) {
             if (c < 32 || c > 126) {
                 continue; // Skip non-printable characters
@@ -97,36 +104,51 @@ public class TextRenderer {
             float w = (charInfo.x1() - charInfo.x0()) * scale;
             float h = (charInfo.y1() - charInfo.y0()) * scale;
 
-            // Draw the quad for the character
-            drawQuad(xPos, yPos, w, h, font, charInfo);
+            // Add the character quad to the vertex list
+            addQuadVertices(verticesList, xPos, yPos, w, h, font, charInfo);
 
             // Move startX to the right for the next character
             startX += charInfo.xadvance() * scale;
         }
     }
 
-    private void drawQuad(float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
+    private void addQuadVertices(List<Float> verticesList, float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
         // Adjust texture coordinates to account for OpenGL's origin being at the bottom-left
         float sMin = (float) charInfo.x0() / font.bitmapWidth();
         float tMax = (float) charInfo.y0() / font.bitmapHeight(); // Bottom of the texture
         float sMax = (float) charInfo.x1() / font.bitmapWidth();
         float tMin = (float) charInfo.y1() / font.bitmapHeight(); // Top of the texture
 
-        // Adjust vertex positions for quad
-        float[] vertices = {
-                x, y, sMin, tMax,  // Top-left
-                x + w, y, sMax, tMax,  // Top-right
-                x + w, y + h, sMax, tMin,  // Bottom-right
-                x, y, sMin, tMax,  // Top-left
-                x + w, y + h, sMax, tMin,  // Bottom-right
-                x, y + h, sMin, tMin   // Bottom-left
-        };
+        // Add vertices for the quad
+        verticesList.add(x);
+        verticesList.add(y);
+        verticesList.add(sMin);
+        verticesList.add(tMax);  // Top-left
 
-        GL30C.glBindBuffer(GL30C.GL_ARRAY_BUFFER, vboID);
-        GL30C.glBufferSubData(GL30C.GL_ARRAY_BUFFER, 0, vertices);
-        GL30C.glBindBuffer(GL30C.GL_ARRAY_BUFFER, 0);
+        verticesList.add(x + w);
+        verticesList.add(y);
+        verticesList.add(sMax);
+        verticesList.add(tMax);  // Top-right
 
-        GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, 6);
+        verticesList.add(x + w);
+        verticesList.add(y + h);
+        verticesList.add(sMax);
+        verticesList.add(tMin);  // Bottom-right
+
+        verticesList.add(x);
+        verticesList.add(y);
+        verticesList.add(sMin);
+        verticesList.add(tMax);  // Top-left
+
+        verticesList.add(x + w);
+        verticesList.add(y + h);
+        verticesList.add(sMax);
+        verticesList.add(tMin);  // Bottom-right
+
+        verticesList.add(x);
+        verticesList.add(y + h);
+        verticesList.add(sMin);
+        verticesList.add(tMin);  // Bottom-left
     }
 
     public void cleanup() {

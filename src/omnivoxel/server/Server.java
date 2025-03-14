@@ -3,6 +3,7 @@ package omnivoxel.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.client.ServerPlayer;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkGeneratorThread;
@@ -27,9 +28,10 @@ public class Server {
         this.clients = new HashMap<>();
         chunkTasks = ConcurrentHashMap.newKeySet();
 
+        Map<ChunkPosition, byte[]> generatedChunks = new ConcurrentHashMap<>();
         ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
         for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {
-            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator);
+            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, generatedChunks);
             executorService.execute(thread);
             chunkTasks.add(thread.getChunkTasks());
         }
@@ -88,6 +90,10 @@ public class Server {
             if (smallestQueue != null) {
                 smallestQueue.put(chunkTask);
             }
+//            // TODO: Actually generate entities
+//            byte[] entityID = new byte[32];
+//            new SecureRandom().nextBytes(entityID);
+//            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, new ServerEntity(entityID, chunkTask.x() * ConstantGameSettings.CHUNK_WIDTH, chunkTask.y() * ConstantGameSettings.CHUNK_HEIGHT, chunkTask.z() * ConstantGameSettings.CHUNK_LENGTH, 0, 0, 0).getBytes());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -102,7 +108,7 @@ public class Server {
         float yaw = byteBuf.getFloat(52);
         serverPlayer.set(x, y, z, pitch, yaw);
 
-        byte[] encodedServerPlayer = serverPlayer.encode();
+        byte[] encodedServerPlayer = serverPlayer.getBytes();
 
         // Send the client all the player information
         clients.values().forEach(player -> {
@@ -126,7 +132,7 @@ public class Server {
         if (Arrays.equals(versionID, String.format("%-8s", VERSION_ID).getBytes())) {
             String clientID = bytesToHex(byteBuf, 12, 32);
             ServerPlayer serverPlayer = new ServerPlayer(clientID, ctx);
-            byte[] encodedServerPlayer = serverPlayer.encode();
+            byte[] encodedServerPlayer = serverPlayer.getBytes();
 
             byte[] playerList = new byte[32 * clients.size()];
 
@@ -135,7 +141,7 @@ public class Server {
             // Send the client all the player information
             clients.values().forEach(player -> {
                 sendBytes(player.getCTX(), PackageID.NEW_PLAYER, encodedServerPlayer);
-                byte[] playerBytes = player.encode();
+                byte[] playerBytes = player.getBytes();
                 System.arraycopy(playerBytes, 0, playerList, i[0] * 32, 32);
                 i[0]++;
             });

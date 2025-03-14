@@ -1,14 +1,18 @@
 package omnivoxel.server.client.block;
 
+import omnivoxel.server.client.ServerItem;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Arrays;
 import java.util.Objects;
 
-public record ServerBlock(String id, int... blockState) {
+public record ServerBlock(String id, int... blockState) implements ServerItem {
     public ServerBlock(String id) {
         this(id, new int[0]);
     }
 
-    public byte[] getBytes() {
+    @Override
+    public byte @NotNull [] getBytes() {
         byte[] idBytes = id == null ? new byte[0] : id.getBytes();
 
         byte[] stateBytes = new byte[blockState.length * Integer.BYTES];

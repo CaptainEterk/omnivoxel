@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public final class GameLoop implements Runnable {
+    private static final int FPS_SAMPLES = 100;
     private final Camera camera;
     private final World world;
     private final AtomicBoolean gameRunning;
@@ -43,7 +44,9 @@ public final class GameLoop implements Runnable {
     private final GameState gameState;
     private final Settings settings;
     private final TextRenderer textRenderer;
+    private final float[] fpsHistory = new float[FPS_SAMPLES];
     private ShaderProgram shaderProgram;
+    private int fpsIndex = 0;
 
     public GameLoop(Camera camera, World world, AtomicBoolean gameRunning, BlockingQueue<Consumer<Long>> contextTasks, Client client, GameState gameState, Settings settings, TextRenderer textRenderer) {
         this.camera = camera;
@@ -126,12 +129,19 @@ public final class GameLoop implements Runnable {
             int texture = TextureLoader.loadTexture("texture_atlas.png");
 
             // Enable depth testing for solid chunks
-            GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+            GL11C.glDepthFunc(GL11C.GL_BACK);
 
             List<ChunkPosition> renderedChunks = new ArrayList<>();
+            int totalChunks = 0;
+            int totalRenderedChunks = 0;
 
             window.init(500, 500);
             window.show();
+
+            double time = GLFW.glfwGetTime();
+
+            String rightDebugText = "";
+            double secondTime = time;
 
             // Renders everything
             while (!window.shouldClose()) {
@@ -163,12 +173,34 @@ public final class GameLoop implements Runnable {
 
                     if (gameState.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
                         renderedChunks.clear();
-                        calculateRenderedChunks(renderedChunks, settings.getIntSetting("render_distance", 100));
+                        totalChunks = calculateRenderedChunks(renderedChunks, settings.getIntSetting("render_distance", 100));
 
                         gameState.setItem("shouldUpdateVisibleMeshes", false);
                     }
+
+                    GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+
+                    totalRenderedChunks = renderedChunks.size();
+
+                    List<ChunkPosition> newRenderedChunks = renderedChunks.stream().filter(
+                            chunkPosition -> world.getChunk(chunkPosition) != null
+                    ).toList();
+
+                    renderedChunks.clear();
+                    renderedChunks.addAll(newRenderedChunks);
+
+                    // Solid chunk meshes
                     renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), false));
 
+                    // Render entities
+//                    shaderProgram.setUniform("useChunkPosition", false);
+//                    shaderProgram.setUniform("useExactPosition", true);
+//                    Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
+//                    for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
+//                        renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
+//                    }
+
+                    // Transparent Chunk Meshes
                     GL11C.glDepthMask(false);
                     GL11C.glEnable(GL11C.GL_BLEND);
                     GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
@@ -176,14 +208,6 @@ public final class GameLoop implements Runnable {
                     renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), true));
                     GL11C.glDisable(GL11C.GL_BLEND);
                     GL11C.glDepthMask(true);
-
-                    // Render entities
-                    shaderProgram.setUniform("useChunkPosition", false);
-                    shaderProgram.setUniform("useExactPosition", true);
-                    Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
-                    for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
-                        renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
-                    }
 
                     // Bufferize chunks
                     world.bufferizeChunk(meshGenerator, System.nanoTime());
@@ -219,19 +243,57 @@ public final class GameLoop implements Runnable {
                     }
                 }
 
+                double currentTime = GLFW.glfwGetTime();
+                double deltaTime = currentTime - time;
+                time = currentTime;
+
+                if (time - secondTime > 0.5) {
+                    secondTime = time;
+
+                    Runtime runtime = Runtime.getRuntime();
+                    long totalMemory = runtime.totalMemory();
+                    long freeMemory = runtime.freeMemory();
+                    long usedMemory = totalMemory - freeMemory;
+
+                    rightDebugText = String.format("Java Version: %s\n", System.getProperty("java.version"));
+                    rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
+                }
+
+                float currentFPS = (float) (1.0 / deltaTime);
+                fpsHistory[fpsIndex % FPS_SAMPLES] = currentFPS;
+                fpsIndex++;
+
+                // Compute the average FPS
+                float averageFPS = 0;
+                for (float fpsSample : fpsHistory) {
+                    averageFPS += fpsSample;
+                }
+                averageFPS /= Math.min(fpsIndex, FPS_SAMPLES);
+
+                int fps = (int) averageFPS; // Use the smoothed FPS
+
                 if (gameState.getItem("seeDebug", Boolean.class)) {
-                    StringBuilder debugText = new StringBuilder(ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n");
-                    debugText.append(String.format("%.2f ", -camera.getX()));
-                    debugText.append(String.format("%.2f ", -camera.getY()));
-                    debugText.append(String.format("%.2f ", -camera.getZ()));
-                    debugText.append("\n");
+                    StringBuilder leftDebugText = new StringBuilder();
+                    leftDebugText.append(ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n");
+                    leftDebugText.append(String.format("FPS: %d\n", fps));
+                    leftDebugText.append(String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()));
+                    leftDebugText.append(String.format("Chunks: %d/%d/%d\n", renderedChunks.size(), totalRenderedChunks, totalChunks));
 
                     textShaderProgram.bind();
+
                     GL11.glEnable(GL11.GL_BLEND);
                     GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
-                    textRenderer.renderText(font, debugText.toString(), 4, 4, 0.75f, Alignment.LEFT);
+
+                    textRenderer.renderText(font, leftDebugText.toString(), 4, 4, 0.75f, Alignment.LEFT);
+                    textRenderer.renderText(font, rightDebugText, window.getWidth() - 4, 4, 0.75f, Alignment.RIGHT);
+
+                    GL30C.glBindVertexArray(0);
+
                     GL11.glEnable(GL11.GL_DEPTH_TEST);
+
+                    GL11.glDisable(GL30C.GL_BLEND);
                 }
 
                 if (!contextTasks.isEmpty()) {
@@ -264,7 +326,7 @@ public final class GameLoop implements Runnable {
         }
     }
 
-    private void calculateRenderedChunks(List<ChunkPosition> renderedChunks, int renderDistance) {
+    private int calculateRenderedChunks(List<ChunkPosition> renderedChunks, int renderDistance) {
         List<ChunkPosition> chunks = new ArrayList<>();
         int chunkX = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_WIDTH);
         int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT);
@@ -292,6 +354,8 @@ public final class GameLoop implements Runnable {
                 renderedChunks.add(chunkPosition);
             }
         });
+        world.freeAllChunksNotIn(chunks);
+        return chunks.size();
     }
 
     private void renderMesh(Position position, Mesh mesh, boolean transparent) {

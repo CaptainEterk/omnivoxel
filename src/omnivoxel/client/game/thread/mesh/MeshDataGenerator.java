@@ -252,7 +252,6 @@ public final class MeshDataGenerator {
         Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
         int[] faceIndices = shape.getIndicesOnFace(blockFace);
 
-
         float temp_r, temp_g, temp_b;
 
         if (block.getState() == null) {

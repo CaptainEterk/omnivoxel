@@ -11,6 +11,8 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.server.ConstantServerSettings;
 import org.lwjgl.opengl.GL30C;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,6 +102,18 @@ public class World {
         nonBufferizedEntities.put(id, entity.getMeshData());
     }
 
+    public Map<String, Entity> getEntities() {
+        return entities;
+    }
+
+    public Map<String, EntityMesh> getEntityMeshes() {
+        return entityMeshes;
+    }
+
+    public Entity getEntity(String id) {
+        return entities.get(id);
+    }
+
     public void freeAll() {
         for (ChunkMesh chunkMesh : chunks.values()) {
             GL30C.glDeleteVertexArrays(chunkMesh.solidVAO());
@@ -124,15 +138,29 @@ public class World {
         entityMeshes.clear();
     }
 
-    public Map<String, Entity> getEntities() {
-        return entities;
-    }
+    public void freeAllChunksNotIn(List<ChunkPosition> chunks) {
+        // Iterate over all chunks in your current chunk map
+        Iterator<Map.Entry<ChunkPosition, ChunkMesh>> iterator = this.chunks.entrySet().iterator();
 
-    public Map<String, EntityMesh> getEntityMeshes() {
-        return entityMeshes;
-    }
+        while (iterator.hasNext()) {
+            Map.Entry<ChunkPosition, ChunkMesh> entry = iterator.next();
+            ChunkPosition chunkPosition = entry.getKey();
 
-    public Entity getEntity(String id) {
-        return entities.get(id);
+            // Check if the chunk position is NOT in the provided list
+            if (!chunks.contains(chunkPosition)) {
+                // Free the chunk (this could mean removing it from a map, deallocating memory, etc.)
+                ChunkMesh chunkMesh = entry.getValue();
+                GL30C.glDeleteVertexArrays(chunkMesh.solidVAO());
+                GL30C.glDeleteBuffers(chunkMesh.solidVBO());
+                GL30C.glDeleteBuffers(chunkMesh.solidEBO());
+
+                GL30C.glDeleteVertexArrays(chunkMesh.transparentVAO());
+                GL30C.glDeleteBuffers(chunkMesh.transparentVBO());
+                GL30C.glDeleteBuffers(chunkMesh.transparentEBO());
+
+                // Optionally remove the chunk from the map
+                iterator.remove();
+            }
+        }
     }
 }

@@ -13,5 +13,5 @@ public enum PackageID {
     NEW_PLAYER,
     REGISTER_PLAYERS,
     CHUNK_RESPONSE,
-    UPDATE_PLAYER,
+    UPDATE_PLAYER, NEW_ENTITY,
 }

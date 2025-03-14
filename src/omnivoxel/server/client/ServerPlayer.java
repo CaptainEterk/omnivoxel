@@ -2,10 +2,11 @@ package omnivoxel.server.client;
 
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.position.ChangingPosition;
+import org.jetbrains.annotations.NotNull;
 
 import java.security.SecureRandom;
 
-public class ServerPlayer {
+public class ServerPlayer implements ServerItem {
     private final String clientID;
     private final ChannelHandlerContext ctx;
     private final byte[] playerID;
@@ -29,7 +30,8 @@ public class ServerPlayer {
         this.yaw = yaw;
     }
 
-    public byte[] encode() {
+    @Override
+    public byte[] getBytes() {
         byte[] out = new byte[playerID.length + 20];
         System.arraycopy(playerID, 0, out, 0, playerID.length);
         addFloat(out, position.x(), playerID.length);
@@ -40,7 +42,7 @@ public class ServerPlayer {
         return out;
     }
 
-    private void addFloat(byte[] bytes, float f, int index) {
+    private void addFloat(byte @NotNull [] bytes, float f, int index) {
         int i = Float.floatToIntBits(f);
         bytes[index] = (byte) (i >> 24);
         bytes[index + 1] = (byte) (i >> 16);
