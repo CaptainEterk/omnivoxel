@@ -12,9 +12,7 @@ import org.lwjgl.system.MemoryUtil;
 public class WindowFactory {
     public static Window createWindow(int width, int height, String title, Logger logger) throws RuntimeException {
         // Set up an error callback. The default implementation will print the error message in System.err.
-        GLFW.glfwSetErrorCallback(((error, description) -> {
-            logger.error(error + ": " + description);
-        }));
+        GLFW.glfwSetErrorCallback(((error, description) -> logger.error(error + ": " + description)));
 
         // Initialize GLFW. Most GLFW functions will not work before doing this.
         if (!GLFW.glfwInit()) {

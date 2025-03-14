@@ -24,10 +24,6 @@ public class AirBlock extends Block {
             return false;
         }
     };
-    ;
-
-    public AirBlock() {
-    }
 
     @Override
     public String getID() {

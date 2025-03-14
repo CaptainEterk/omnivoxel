@@ -96,6 +96,9 @@ public class PlayerController extends PlayerEntity {
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_PAGE_DOWN)) {
                 speed -= 0.01f;
             }
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F5)) {
+                gameState.setItem("seeDebug", !gameState.getItem("seeDebug", Boolean.class));
+            }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F11)) {
                 if (!togglingFullscreen) {
                     togglingFullscreen = true;

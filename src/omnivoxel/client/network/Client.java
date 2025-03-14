@@ -21,7 +21,6 @@ import omnivoxel.client.network.request.Request;
 import omnivoxel.debug.Logger;
 import omnivoxel.server.PackageID;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -137,9 +136,6 @@ public class Client {
             j += 2;
             int[] blockState = new int[blockStateCount];
             for (int k = 0; k < blockStateCount; k++) {
-//                byte[] bytes = new byte[4];
-//                byteBuf.getBytes(index + j, bytes);
-//                System.out.println(Arrays.toString(bytes));
                 blockState[k] = (int) byteBuf.getUnsignedInt(index + j);
                 j += 4;
             }

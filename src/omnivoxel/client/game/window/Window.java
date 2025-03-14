@@ -46,6 +46,10 @@ public final class Window {
         GLFW.glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     }
 
+    public void addMatrixListener(Consumer<Window> matrixUser) {
+        matrixUsers.add(matrixUser);
+    }
+
     public void updateMatrices() {
         for (Consumer<Window> matrixUser : matrixUsers) {
             matrixUser.accept(this);

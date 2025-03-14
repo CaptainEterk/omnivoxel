@@ -1,13 +1,14 @@
 package omnivoxel.client.launcher;
 
 import core.*;
-import omnivoxel.client.game.thread.mesh.block.AirBlock;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.player.camera.Camera;
 import omnivoxel.client.game.player.camera.Frustum;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
+import omnivoxel.client.game.text.TextRenderer;
+import omnivoxel.client.game.thread.mesh.block.AirBlock;
 import omnivoxel.client.game.thread.mesh.shape.BlockShape;
 import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
 import omnivoxel.client.game.thread.tick.TickLoop;
@@ -75,7 +76,7 @@ public class Launcher {
             World world = new World(client);
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
-            Thread gameLoopThread = new Thread(new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings), "Game Loop");
+            Thread gameLoopThread = new Thread(new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer()), "Game Loop");
             gameLoopThread.start();
 
             Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");

@@ -1,7 +1,5 @@
 package omnivoxel.client.game.util.input;
 
-import org.lwjgl.glfw.GLFWMouseButtonCallback;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,10 +15,8 @@ public class OVMouseButtonInput {
         mouseLocked = new AtomicBoolean();
     }
 
-    public OVMouseButtonInput init(long window) {
-        try (GLFWMouseButtonCallback glfwMouseButtonCallback = glfwSetMouseButtonCallback(window, this::mouseButtonCallback)) {
-        }
-        return this;
+    public void init(long window) {
+        glfwSetMouseButtonCallback(window, this::mouseButtonCallback);
     }
 
     public void mouseButtonCallback(long window, int button, int action, int mods) {

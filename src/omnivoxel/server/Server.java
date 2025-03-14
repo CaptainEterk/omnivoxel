@@ -19,19 +19,15 @@ import java.util.concurrent.Executors;
 
 public class Server {
     private static final int VERSION_ID = 0;
-    private final ChunkGenerator chunkGenerator;
-
-    private final ExecutorService executorService;
 
     private final Map<String, ServerPlayer> clients;
     private final Set<BlockingQueue<ChunkTask>> chunkTasks;
 
     public Server(ChunkGenerator chunkGenerator) {
-        this.chunkGenerator = chunkGenerator;
         this.clients = new HashMap<>();
         chunkTasks = ConcurrentHashMap.newKeySet();
 
-        executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
+        ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
         for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {
             ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator);
             executorService.execute(thread);

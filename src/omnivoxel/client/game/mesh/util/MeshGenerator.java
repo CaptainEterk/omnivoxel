@@ -6,9 +6,6 @@ import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 
 import java.nio.ByteBuffer;
 
-import static org.lwjgl.opengl.GL11C.GL_UNSIGNED_INT;
-import static org.lwjgl.opengl.GL15C.*;
-import static org.lwjgl.opengl.GL20C.glEnableVertexAttribArray;
 import static org.lwjgl.opengl.GL30C.*;
 
 public class MeshGenerator {

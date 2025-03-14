@@ -1,7 +1,5 @@
 package omnivoxel.client.game.util.input;
 
-import org.lwjgl.glfw.GLFWCursorPosCallback;
-
 import static org.lwjgl.glfw.GLFW.glfwSetCursorPosCallback;
 
 public class OVMouseInput {
@@ -11,11 +9,8 @@ public class OVMouseInput {
     private double deltaX;
     private double deltaY;
 
-    public OVMouseInput init(long window) {
-        try (GLFWCursorPosCallback glfwCursorPosCallback = glfwSetCursorPosCallback(window, this::mouseCallback)) {
-
-        }
-        return this;
+    public void init(long window) {
+        glfwSetCursorPosCallback(window, this::mouseCallback);
     }
 
     private void mouseCallback(long window, double x, double y) {

@@ -1,9 +1,8 @@
 package omnivoxel.client.game.world;
 
 import omnivoxel.client.game.entity.Entity;
-import omnivoxel.client.game.mesh.chunk.ChunkMesh;
-import omnivoxel.client.game.mesh.chunk.GeneralChunkMesh;
 import omnivoxel.client.game.mesh.EntityMesh;
+import omnivoxel.client.game.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
 import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;

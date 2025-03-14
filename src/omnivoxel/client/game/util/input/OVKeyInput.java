@@ -1,7 +1,6 @@
 package omnivoxel.client.game.util.input;
 
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWKeyCallback;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +23,8 @@ public class OVKeyInput {
         keyListeners.add(listener);
     }
 
-    public OVKeyInput init(long window) {
-        try (GLFWKeyCallback glfwKeyCallback = GLFW.glfwSetKeyCallback(window, this::keyCallback)) {
-
-        }
-        return this;
+    public void init(long window) {
+        GLFW.glfwSetKeyCallback(window, this::keyCallback);
     }
 
     private void keyCallback(long window, int key, int scancode, int action, int mods) {
