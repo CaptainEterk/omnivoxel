@@ -22,7 +22,7 @@ public class ConstantGameSettings {
     public static final int TICKS_PER_SECOND = 1;
     public static final float TICK_TIME = 1f / TICKS_PER_SECOND;
     public static final int CHUNK_PRIORITY_REFRESH_LIMIT = 10;
-    public static final String SETTING_LOCATION = "run/settings";
+    public static final String SETTING_LOCATION = "run";
     public static final String DEFAULT_SETTING_CONTENTS = """
             width=750
             height=750

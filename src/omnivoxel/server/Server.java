@@ -30,21 +30,21 @@ public class Server {
         this.clients = new HashMap<>();
         chunkTasks = ConcurrentHashMap.newKeySet();
 
-        Path worldPath = Paths.get("run/.worlds");
-
-        try (Stream<Path> pathStream = Files.walk(worldPath)) {
-            pathStream.sorted(Comparator.reverseOrder()) // Delete files before the directory itself
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-
-            // Recreate the directory
-            Files.createDirectories(worldPath);
-        }
+//        Path worldPath = Paths.get("run/.worlds");
+//
+//        try (Stream<Path> pathStream = Files.walk(worldPath)) {
+//            pathStream.sorted(Comparator.reverseOrder()) // Delete files before the directory itself
+//                    .forEach(path -> {
+//                        try {
+//                            Files.delete(path);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    });
+//
+//            // Recreate the directory
+//            Files.createDirectories(worldPath);
+//        }
 
         ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
         for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {

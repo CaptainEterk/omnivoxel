@@ -1,6 +1,8 @@
 package omnivoxel.client.game.settings;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -13,13 +15,14 @@ public class Settings {
     }
 
     public void load() throws IOException {
-        boolean newSettings = new File(ConstantGameSettings.SETTING_LOCATION).createNewFile();
+        Files.createDirectories(Path.of(ConstantGameSettings.SETTING_LOCATION));
+        boolean newSettings = new File(ConstantGameSettings.SETTING_LOCATION + "/settings").createNewFile();
         if (newSettings) {
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(ConstantGameSettings.SETTING_LOCATION));
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(ConstantGameSettings.SETTING_LOCATION + "/settings"));
             bufferedOutputStream.write(ConstantGameSettings.DEFAULT_SETTING_CONTENTS.getBytes());
             bufferedOutputStream.flush();
         }
-        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(ConstantGameSettings.SETTING_LOCATION));
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(ConstantGameSettings.SETTING_LOCATION + "/settings"));
         byte[] settingBytes = bufferedInputStream.readAllBytes();
         StringBuilder settingFileContents = new StringBuilder();
         for (byte b : settingBytes) {
