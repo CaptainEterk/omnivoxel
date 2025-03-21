@@ -27,6 +27,34 @@ public final class MeshDataGenerator {
         this.logger = logger;
     }
 
+//    private void addPoint(
+//            List<Integer> vertices,
+//            List<Integer> indices,
+//            Map<UniqueVertex, Integer> vertexIndexMap,
+//            Vertex position,
+//            int tx,
+//            int ty,
+//            BlockFace normal,
+//            float r,
+//            float g,
+//            float b
+//    ) {
+//        UniqueVertex vertex = new UniqueVertex(
+//                position,
+//                new TextureVertex(tx, ty),
+//                normal
+//        );
+//
+//        if (!vertexIndexMap.containsKey(vertex)) {
+//            int[] vertexData = ShapeHelper.packVertexData(position, ao, r, g, b, normal, tx, ty);
+//            vertexIndexMap.put(vertex, vertices.size());
+//            for (int data : vertexData) {
+//                vertices.add(data);
+//            }
+//        }
+//        indices.add(vertexIndexMap.get(vertex) / 2);
+//    }
+
     private void addPoint(
             List<Integer> vertices,
             List<Integer> indices,
@@ -37,8 +65,12 @@ public final class MeshDataGenerator {
             BlockFace normal,
             float r,
             float g,
-            float b
+            float b,
+            Block[] blocks,
+            int x, int y, int z
     ) {
+        int ao = calculateAO(blocks, x, y, z, normal);
+
         UniqueVertex vertex = new UniqueVertex(
                 position,
                 new TextureVertex(tx, ty),
@@ -46,13 +78,35 @@ public final class MeshDataGenerator {
         );
 
         if (!vertexIndexMap.containsKey(vertex)) {
-            int[] vertexData = ShapeHelper.packVertexData(position, r, g, b, normal, tx, ty);
+            int[] vertexData = ShapeHelper.packVertexData(position, ao, r, g, b, normal, tx, ty);
             vertexIndexMap.put(vertex, vertices.size());
             for (int data : vertexData) {
                 vertices.add(data);
             }
         }
         indices.add(vertexIndexMap.get(vertex) / 2);
+    }
+
+    private int calculateAO(Block[] blocks, int x, int y, int z, BlockFace face) {
+        int occlusion = switch (face) {
+            case TOP -> isSolid(blocks, x, y + 1, z) ? 3 : 0;
+            case BOTTOM -> isSolid(blocks, x, y - 1, z) ? 3 : 0;
+            case NORTH -> isSolid(blocks, x, y, z - 1) ? 3 : 0;
+            case SOUTH -> isSolid(blocks, x, y, z + 1) ? 3 : 0;
+            case EAST -> isSolid(blocks, x + 1, y, z) ? 3 : 0;
+            case WEST -> isSolid(blocks, x - 1, y, z) ? 3 : 0;
+            default -> 0;
+        };
+
+        return occlusion;
+    }
+
+    private boolean isSolid(Block[] blocks, int x, int y, int z) {
+        int index = calculateBlockIndex(x, y, z);
+        if (index < 0 || index >= blocks.length) {
+            return false;
+        }
+        return blocks[index] != null && !blocks[index].isTransparent();
     }
 
     private void addCube(
@@ -92,13 +146,13 @@ public final class MeshDataGenerator {
             Vertex v4,
             BlockFace normal
     ) {
-        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
-        addPoint(vertices, indices, vertexIndexMap, v2, 0, 0, normal, 0, 0, 0);
-        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
-
-        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
-        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
-        addPoint(vertices, indices, vertexIndexMap, v4, 0, 0, normal, 0, 0, 0);
+//        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
+//        addPoint(vertices, indices, vertexIndexMap, v2, 0, 0, normal, 0, 0, 0);
+//        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
+//
+//        addPoint(vertices, indices, vertexIndexMap, v1, 0, 0, normal, 0, 0, 0);
+//        addPoint(vertices, indices, vertexIndexMap, v3, 0, 0, normal, 0, 0, 0);
+//        addPoint(vertices, indices, vertexIndexMap, v4, 0, 0, normal, 0, 0, 0);
     }
 
     public MeshData generateEntityMeshData(Entity entity) {
@@ -145,7 +199,7 @@ public final class MeshDataGenerator {
                                     blocks[calculateBlockIndex(x - 1, y, z)],
                                     transparentVertices,
                                     transparentIndices,
-                                    transparentVertexIndexMap
+                                    transparentVertexIndexMap, blocks
                             );
                         } else {
                             generateBlockMeshData(
@@ -159,7 +213,7 @@ public final class MeshDataGenerator {
                                     blocks[calculateBlockIndex(x - 1, y, z)],
                                     vertices,
                                     indices,
-                                    vertexIndexMap
+                                    vertexIndexMap, blocks
                             );
                         }
                     }
@@ -190,25 +244,26 @@ public final class MeshDataGenerator {
             Block west,
             List<Integer> vertices,
             List<Integer> indices,
-            Map<UniqueVertex, Integer> vertexIndexMap
+            Map<UniqueVertex, Integer> vertexIndexMap,
+            Block[] blocks
     ) {
         if (shouldRenderFace(block, top, BlockFace.TOP, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.TOP, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.TOP, vertices, indices, vertexIndexMap, blocks);
         }
         if (shouldRenderFace(block, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.BOTTOM, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.BOTTOM, vertices, indices, vertexIndexMap, blocks);
         }
         if (shouldRenderFace(block, north, BlockFace.NORTH, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.NORTH, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.NORTH, vertices, indices, vertexIndexMap, blocks);
         }
         if (shouldRenderFace(block, south, BlockFace.SOUTH, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.SOUTH, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.SOUTH, vertices, indices, vertexIndexMap, blocks);
         }
         if (shouldRenderFace(block, east, BlockFace.EAST, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.EAST, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.EAST, vertices, indices, vertexIndexMap, blocks);
         }
         if (shouldRenderFace(block, west, BlockFace.WEST, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.WEST, vertices, indices, vertexIndexMap);
+            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.WEST, vertices, indices, vertexIndexMap, blocks);
         }
     }
 
@@ -245,7 +300,8 @@ public final class MeshDataGenerator {
             BlockFace blockFace,
             List<Integer> vertices,
             List<Integer> indices,
-            Map<UniqueVertex, Integer> vertexIndexMap
+            Map<UniqueVertex, Integer> vertexIndexMap,
+            Block[] blocks
     ) {
         Shape shape = block.getShape(top, bottom, north, south, east, west);
         int[] uvCoordinates = block.getUVCoordinates(blockFace);
@@ -276,7 +332,9 @@ public final class MeshDataGenerator {
                     blockFace,
                     temp_r,
                     temp_g,
-                    temp_b
+                    temp_b,
+                    blocks,
+                    x, y, z
             );
         }
     }

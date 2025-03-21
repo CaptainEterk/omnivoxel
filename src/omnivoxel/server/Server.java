@@ -3,20 +3,22 @@ package omnivoxel.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.client.ServerPlayer;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkGeneratorThread;
 import omnivoxel.server.client.chunk.ChunkTask;
+import omnivoxel.server.world.World;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 public class Server {
     private static final int VERSION_ID = 0;
@@ -24,14 +26,29 @@ public class Server {
     private final Map<String, ServerPlayer> clients;
     private final Set<BlockingQueue<ChunkTask>> chunkTasks;
 
-    public Server(ChunkGenerator chunkGenerator) {
+    public Server(ChunkGenerator chunkGenerator, World world) throws IOException {
         this.clients = new HashMap<>();
         chunkTasks = ConcurrentHashMap.newKeySet();
 
-        Map<ChunkPosition, byte[]> generatedChunks = new ConcurrentHashMap<>();
+        Path worldPath = Paths.get("run/.worlds");
+
+        try (Stream<Path> pathStream = Files.walk(worldPath)) {
+            pathStream.sorted(Comparator.reverseOrder()) // Delete files before the directory itself
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+
+            // Recreate the directory
+            Files.createDirectories(worldPath);
+        }
+
         ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
         for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {
-            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, generatedChunks);
+            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, world);
             executorService.execute(thread);
             chunkTasks.add(thread.getChunkTasks());
         }
@@ -61,9 +78,6 @@ public class Server {
                 break;
             case REGISTER_CLIENT:
                 registerClient(ctx, byteBuf);
-                break;
-            case SET_PLAYER:
-                setPlayer(byteBuf);
                 break;
             case CLOSE:
                 clients.remove(bytesToHex(byteBuf, 4, 32));
@@ -97,25 +111,6 @@ public class Server {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void setPlayer(ByteBuf byteBuf) {
-        ServerPlayer serverPlayer = getServerPlayer(byteBuf);
-        int x = byteBuf.getInt(36);
-        int y = byteBuf.getInt(40);
-        int z = byteBuf.getInt(44);
-        float pitch = byteBuf.getFloat(48);
-        float yaw = byteBuf.getFloat(52);
-        serverPlayer.set(x, y, z, pitch, yaw);
-
-        byte[] encodedServerPlayer = serverPlayer.getBytes();
-
-        // Send the client all the player information
-        clients.values().forEach(player -> {
-            if (player.getPlayerID() != serverPlayer.getPlayerID()) {
-                sendBytes(player.getCTX(), PackageID.UPDATE_PLAYER, encodedServerPlayer);
-            }
-        });
     }
 
     private ServerPlayer getServerPlayer(ByteBuf byteBuf) {

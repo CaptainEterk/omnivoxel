@@ -1,12 +1,11 @@
 package omnivoxel.server.client.block;
 
-import omnivoxel.server.client.ServerItem;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-public record ServerBlock(String id, int... blockState) implements ServerItem {
+public record ServerBlock(String id, int... blockState) implements Block {
     public ServerBlock(String id) {
         this(id, new int[0]);
     }

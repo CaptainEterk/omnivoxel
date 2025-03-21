@@ -1,28 +1,30 @@
-package core;
+package core.blocks;
 
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
 import omnivoxel.client.game.thread.mesh.shape.BlockShape;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 
+import java.util.Objects;
+
 // TODO: Make this a mod
-public class ClimateBlock extends Block {
+public class YellowBlock extends Block {
     private final Shape shape;
     private final int[] uvCoords;
 
-    public ClimateBlock(BlockShape shape) {
+    public YellowBlock(BlockShape shape) {
         this.shape = shape;
         this.uvCoords = new int[]{
-                2, 0,
-                3, 0,
-                3, 1,
-                2, 1
+                15, 1,
+                16, 1,
+                16, 2,
+                15, 2
         };
     }
 
     @Override
     public String getID() {
-        return "debug_climate";
+        return "yellow_block";
     }
 
     @Override
@@ -38,5 +40,10 @@ public class ClimateBlock extends Block {
     @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
         return uvCoords;
+    }
+
+    @Override
+    public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
+        return !Objects.equals(adjacentBlock.getModID(), getModID());
     }
 }

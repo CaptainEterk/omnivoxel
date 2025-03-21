@@ -9,15 +9,16 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import omnivoxel.client.game.thread.mesh.util.noise.FractionalBrownianNoise;
-import omnivoxel.client.game.thread.mesh.util.noise.PerlinNoise;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
+import omnivoxel.server.world.BasicWorld;
+import omnivoxel.server.world.World;
 
+import java.io.IOException;
 import java.util.Random;
 
 public class ServerLauncher {
-    private static final int PORT = 8080;
+    private static final int PORT = 5000;
 
     public ServerLauncher() {
     }
@@ -32,15 +33,12 @@ public class ServerLauncher {
 
         Random random = new Random(seed);
 
-        ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001),
-                new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.0001)
-        ));
+        World world = new BasicWorld();
+
+        ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(random, world));
 
         try {
-            ServerHandler serverHandler = new ServerHandler(new Server(chunkGenerator));
+            ServerHandler serverHandler = new ServerHandler(new Server(chunkGenerator, world));
 
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)
@@ -66,7 +64,7 @@ public class ServerLauncher {
             System.out.println("Server started on port " + PORT);
 
             future.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         } finally {
             bossGroup.shutdownGracefully();

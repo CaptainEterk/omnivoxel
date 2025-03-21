@@ -1,6 +1,6 @@
 package omnivoxel.client.launcher;
 
-import core.*;
+import core.blocks.*;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.player.camera.Camera;
@@ -43,11 +43,14 @@ public class Launcher {
         // Air
         clientWorldDataService.addBlock("omnivoxel", new AirBlock());
 
+        // TODO: Add these with a mod loader
         // Regular blocks
         clientWorldDataService.addBlock("core", new StoneBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new DirtBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new GrassBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new WaterSourceBlock(new ShallowBlockShape(8), new BlockShape()));
+        clientWorldDataService.addBlock("core", new SandBlock(new BlockShape()));
+        clientWorldDataService.addBlock("core", new SnowBlock(new BlockShape()));
 
         // ORES
         clientWorldDataService.addBlock("core", new IronBlock(new BlockShape()));
@@ -73,7 +76,7 @@ public class Launcher {
 
             GameState gameState = new GameState();
 
-            World world = new World(client);
+            World world = new World(client, gameState);
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
             Thread gameLoopThread = new Thread(new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer()), "Game Loop");

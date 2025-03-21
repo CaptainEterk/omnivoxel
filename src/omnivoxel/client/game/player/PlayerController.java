@@ -128,6 +128,7 @@ public class PlayerController extends PlayerEntity {
                             oldWindowY = y[0];
 
                             // Switch to fullscreen mode (use the monitor's resolution)
+                            assert vidMode != null;
                             GLFW.glfwSetWindowMonitor(currentWindow, monitor, 0, 0, vidMode.width(), vidMode.height(), vidMode.refreshRate());
                         }
                     });

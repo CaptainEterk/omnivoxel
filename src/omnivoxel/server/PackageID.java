@@ -1,10 +1,11 @@
 package omnivoxel.server;
 
 public enum PackageID {
+    // TCP
+
     // CLIENT -> SERVER
 
     REGISTER_CLIENT,
-    SET_PLAYER,
     CHUNK_REQUEST,
     CLOSE,
 
@@ -12,6 +13,14 @@ public enum PackageID {
 
     NEW_PLAYER,
     REGISTER_PLAYERS,
-    CHUNK_RESPONSE,
-    UPDATE_PLAYER, NEW_ENTITY,
+    CHUNK,
+    NEW_ENTITY,
+
+
+    // UDP
+
+    // Client -> Server
+    PLAYER_UPDATE,
+
+
 }

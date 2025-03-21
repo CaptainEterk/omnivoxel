@@ -1,4 +1,4 @@
-package core;
+package core.blocks;
 
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;

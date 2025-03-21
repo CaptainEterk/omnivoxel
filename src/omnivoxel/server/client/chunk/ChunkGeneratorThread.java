@@ -5,33 +5,35 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.PackageID;
+import omnivoxel.server.Position3D;
+import omnivoxel.server.world.World;
+import omnivoxel.server.world.chunk.ByteChunk;
 
-import java.util.Map;
+import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ChunkGeneratorThread implements Runnable {
     private final ChunkGenerator chunkGenerator;
     private final BlockingQueue<ChunkTask> chunkTasks;
-    private final Map<ChunkPosition, byte[]> generatedChunks;
+    private final World world;
 
-    public ChunkGeneratorThread(ChunkGenerator chunkGenerator, Map<ChunkPosition, byte[]> generatedChunks) {
+    public ChunkGeneratorThread(ChunkGenerator chunkGenerator, World world) {
         this.chunkGenerator = chunkGenerator;
-        this.generatedChunks = generatedChunks;
+        this.world = world;
         this.chunkTasks = new LinkedBlockingQueue<>();
     }
 
-    private byte[] sendChunkBytes(ChannelHandlerContext ctx, PackageID id, int x, int y, int z, byte[] chunk) {
+    private void sendChunkBytes(ChannelHandlerContext ctx, int x, int y, int z, byte[] chunk) {
         ByteBuf buffer = Unpooled.buffer();
         int length = 16 + chunk.length;
         buffer.writeInt(length);
-        buffer.writeInt(id.ordinal());
+        buffer.writeInt(PackageID.CHUNK.ordinal());
         buffer.writeInt(x);
         buffer.writeInt(y);
         buffer.writeInt(z);
         buffer.writeBytes(chunk);
         ctx.channel().writeAndFlush(buffer);
-        return chunk;
     }
 
     @Override
@@ -39,22 +41,19 @@ public class ChunkGeneratorThread implements Runnable {
         try {
             while (!Thread.currentThread().isInterrupted()) {
                 ChunkTask c = chunkTasks.take();
-                ChunkPosition chunkPosition = new ChunkPosition(c.x(), c.y(), c.z());
-                byte[] chunk = generatedChunks.get(chunkPosition);
+                Position3D position3D = new Position3D(c.x(), c.y(), c.z());
+                ByteChunk chunk = world.getChunk(position3D);
                 if (chunk == null) {
-                    generatedChunks.put(chunkPosition, generateChunk(c));
+                    ByteChunk byteChunk = chunkGenerator.generateChunk(new ChunkPosition(c.x(), c.y(), c.z()));
+                    sendChunkBytes(c.ctx(), c.x(), c.y(), c.z(), byteChunk.bytes());
+                    world.addChunk(position3D, byteChunk);
                 } else {
-                    sendChunkBytes(c.ctx(), PackageID.CHUNK_RESPONSE, c.x(), c.y(), c.z(), chunk);
+                    sendChunkBytes(c.ctx(), c.x(), c.y(), c.z(), chunk.bytes());
                 }
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private byte[] generateChunk(ChunkTask chunkTask) {
-        byte[] chunk = chunkGenerator.generateChunk(new ChunkPosition(chunkTask.x(), chunkTask.y(), chunkTask.z()));
-        return sendChunkBytes(chunkTask.ctx(), PackageID.CHUNK_RESPONSE, chunkTask.x(), chunkTask.y(), chunkTask.z(), chunk);
     }
 
     public BlockingQueue<ChunkTask> getChunkTasks() {

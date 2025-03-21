@@ -5,6 +5,7 @@ import omnivoxel.client.game.mesh.EntityMesh;
 import omnivoxel.client.game.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
 import omnivoxel.client.game.position.ChunkPosition;
+import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.ChunkRequest;
@@ -30,8 +31,11 @@ public class World {
     private final Map<String, MeshData> nonBufferizedEntities;
     private final Map<String, EntityMesh> entityMeshes;
 
-    public World(Client client) {
+    private final GameState gameState;
+
+    public World(Client client, GameState gameState) {
         this.client = client;
+        this.gameState = gameState;
         client.setChunkListener(this::loadMeshData);
         client.setEntityListener(this::loadEntity);
         queuedChunks = ConcurrentHashMap.newKeySet();
@@ -77,6 +81,7 @@ public class World {
     public void loadMeshData(ChunkPosition chunkPosition, MeshData meshData) {
         nonBufferizedChunks.put(chunkPosition, meshData);
         chunkRequestsSent.decrementAndGet();
+        gameState.setItem("shouldUpdateVisibleMeshes", true);
     }
 
     public void bufferizeEntity(MeshGenerator meshGenerator) {

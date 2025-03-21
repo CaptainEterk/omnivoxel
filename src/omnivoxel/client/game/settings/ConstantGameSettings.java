@@ -5,6 +5,9 @@ public class ConstantGameSettings {
     public static final int CHUNK_HEIGHT = 32; // Y
     public static final int CHUNK_LENGTH = 32; // Z
     public static final int BLOCKS_IN_CHUNK = (
+            (ConstantGameSettings.CHUNK_WIDTH) * (ConstantGameSettings.CHUNK_LENGTH) * (ConstantGameSettings.CHUNK_HEIGHT)
+    );
+    public static final int BLOCKS_IN_CHUNK_PADDED = (
             (ConstantGameSettings.CHUNK_WIDTH + 2) * (ConstantGameSettings.CHUNK_LENGTH + 2) * (ConstantGameSettings.CHUNK_HEIGHT + 2)
     );
     // TODO: Move this to settings

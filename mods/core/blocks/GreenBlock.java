@@ -1,32 +1,30 @@
-package core;
+package core.blocks;
 
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
+import omnivoxel.client.game.thread.mesh.shape.BlockShape;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 
 import java.util.Objects;
 
 // TODO: Make this a mod
-public class WaterSourceBlock extends Block {
-    private final Shape shallowBlockShape;
-    private final Shape blockShape;
+public class GreenBlock extends Block {
+    private final Shape shape;
     private final int[] uvCoords;
 
-    public WaterSourceBlock(ShallowBlockShape shallowBlockShape, Shape blockShape) {
-        this.shallowBlockShape = shallowBlockShape;
-        this.blockShape = blockShape;
+    public GreenBlock(BlockShape shape) {
+        this.shape = shape;
         this.uvCoords = new int[]{
-                2, 2,
-                3, 2,
-                3, 3,
-                2, 3
+                15, 0,
+                16, 0,
+                16, 1,
+                15, 1
         };
     }
 
     @Override
     public String getID() {
-        return "water_source_block";
+        return "green_block";
     }
 
     @Override
@@ -36,12 +34,7 @@ public class WaterSourceBlock extends Block {
 
     @Override
     public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
-        return top == null ? shallowBlockShape : blockShape;
-    }
-
-    @Override
-    public boolean isTransparent() {
-        return true;
+        return shape;
     }
 
     @Override
@@ -51,6 +44,6 @@ public class WaterSourceBlock extends Block {
 
     @Override
     public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
-        return !Objects.equals(adjacentBlock.getModID(), getModID()) && adjacentBlock.isTransparent();
+        return !Objects.equals(adjacentBlock.getModID(), getModID());
     }
 }

@@ -13,7 +13,7 @@ public class ShapeHelper {
     private static final int BITMASK_3 = 0x7;  // 3-bit mask
     private static final int BITMASK_8 = 0xFF; // 8-bit mask
 
-    public static int[] packVertexData(Vertex vertex, float r, float g, float b, BlockFace blockFace, int u, int v) {
+    public static int[] packVertexData(Vertex vertex, int ao, float r, float g, float b, BlockFace blockFace, int u, int v) {
         // Position calculations
         float x = vertex.px() * PIXEL;
         float y = vertex.py() * PIXEL;
@@ -24,7 +24,7 @@ public class ShapeHelper {
         int iz = Math.round(z * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_LENGTH);
 
         // Pack the position data into a 32-bit integer
-        int packedPosition = (ix << 22) | (iy << 12) | (iz << 2);
+        int packedPosition = (ix << 22) | (iy << 12) | (iz << 2) | ao;
 
         // Normalize and pack color (4 bits each)
         int rPacked = ((int) (r * BITMASK_4)) & BITMASK_4;

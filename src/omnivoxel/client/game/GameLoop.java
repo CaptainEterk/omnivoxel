@@ -175,30 +175,30 @@ public final class GameLoop implements Runnable {
                         renderedChunks.clear();
                         totalChunks = calculateRenderedChunks(renderedChunks, settings.getIntSetting("render_distance", 100));
 
+                        totalRenderedChunks = renderedChunks.size();
+
+                        List<ChunkPosition> newRenderedChunks = renderedChunks.stream().filter(
+                                chunkPosition -> world.getChunk(chunkPosition) != null
+                        ).toList();
+
+                        renderedChunks.clear();
+                        renderedChunks.addAll(newRenderedChunks);
+
                         gameState.setItem("shouldUpdateVisibleMeshes", false);
                     }
 
                     GL11C.glEnable(GL11C.GL_DEPTH_TEST);
 
-                    totalRenderedChunks = renderedChunks.size();
-
-                    List<ChunkPosition> newRenderedChunks = renderedChunks.stream().filter(
-                            chunkPosition -> world.getChunk(chunkPosition) != null
-                    ).toList();
-
-                    renderedChunks.clear();
-                    renderedChunks.addAll(newRenderedChunks);
-
                     // Solid chunk meshes
                     renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), false));
 
                     // Render entities
-//                    shaderProgram.setUniform("useChunkPosition", false);
-//                    shaderProgram.setUniform("useExactPosition", true);
-//                    Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
-//                    for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
-//                        renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
-//                    }
+                    shaderProgram.setUniform("useChunkPosition", false);
+                    shaderProgram.setUniform("useExactPosition", true);
+                    Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
+                    for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
+                        renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
+                    }
 
                     // Transparent Chunk Meshes
                     GL11C.glDepthMask(false);

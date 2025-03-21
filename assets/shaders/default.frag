@@ -6,6 +6,7 @@ in vec2 TexCoord;
 in float shadow;
 in vec3 position;
 in vec3 lighting;
+in float ao;
 
 out vec4 FragColor;
 
@@ -27,10 +28,10 @@ void main() {
     float fogFactor = (fogFar - distance) / (fogFar - fogNear);
     fogFactor = clamp(fogFactor, 0.0, 1.0);
 
-    //    FragColor = mix(vec4(lighting, 1.0), FragColor, 0.1);
+    FragColor = mix(vec4(lighting, 1.0), FragColor, 1);
 
     // Apply shadow effect
-    FragColor = vec4(FragColor.rgb * shadow, FragColor.a);
+    FragColor = vec4(FragColor.rgb * (shadow-ao), FragColor.a);
 
     // Apply fog effect
     FragColor = mix(fogColor, FragColor, fogFactor);

@@ -24,10 +24,8 @@ public abstract class Entity {
         float cosYaw = org.joml.Math.cos(yaw);
 
         // Calculate movement from yaw
-        float moveX = velocityZ * sinYaw +
-                velocityX * cosYaw;
-        float moveZ = velocityZ * cosYaw +
-                velocityX * -sinYaw;
+        float moveX = velocityZ * sinYaw + velocityX * cosYaw;
+        float moveZ = velocityZ * cosYaw - velocityX * sinYaw;
 
         // Apply movement to position
         // TODO: Implement gravity

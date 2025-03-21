@@ -89,10 +89,10 @@ public class Client {
             case NEW_PLAYER:
                 newPlayer(byteBuf);
                 break;
-            case CHUNK_RESPONSE:
+            case CHUNK:
                 receiveChunk(byteBuf);
                 break;
-            case UPDATE_PLAYER:
+            case PLAYER_UPDATE:
                 updatePlayer(byteBuf);
                 break;
             default:
@@ -143,15 +143,15 @@ public class Client {
             index += j;
         }
 
-        Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK];
-        for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK && index < byteBuf.readableBytes(); ) {
+        Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
+        for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED && index < byteBuf.readableBytes(); ) {
             int blockID = byteBuf.getInt(index);
             int blockCount = byteBuf.getInt(index + 4);
             if (blockID == 0) {
                 i += blockCount;
             } else {
                 int oi = i;
-                for (; i < blockCount + oi && i < ConstantGameSettings.BLOCKS_IN_CHUNK; i++) {
+                for (; i < blockCount + oi && i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED; i++) {
                     blocks[i] = worldDataService.getBlock(palette[blockID - 1].id());
                     if (palette[blockID - 1].blockState().length > 0) {
                         blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID - 1].blockState());
