@@ -79,8 +79,8 @@ public class Launcher {
             World world = new World(client, gameState);
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
-            Thread gameLoopThread = new Thread(new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer()), "Game Loop");
-            gameLoopThread.start();
+            GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer());
+            gameLoop.run();
 
             Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");
             tickLoopThread.start();

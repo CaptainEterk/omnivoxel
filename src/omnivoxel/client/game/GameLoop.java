@@ -34,7 +34,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-public final class GameLoop implements Runnable {
+public final class GameLoop {
     private static final int FPS_SAMPLES = 100;
     private final Camera camera;
     private final World world;
@@ -59,7 +59,6 @@ public final class GameLoop implements Runnable {
         this.textRenderer = textRenderer;
     }
 
-    @Override
     public void run() {
         try {
             Window window = WindowFactory.createWindow(500, 500, ConstantGameSettings.DEFAULT_WINDOW_TITLE, new Logger());
