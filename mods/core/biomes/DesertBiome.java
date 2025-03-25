@@ -10,7 +10,7 @@ public class DesertBiome extends Biome {
     }
 
     @Override
-    public Block getBlock(int yOffset, BlockService blockService) {
+    public Block getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
         return blockService.getBlock("core:sand_block", null);
     }
 }

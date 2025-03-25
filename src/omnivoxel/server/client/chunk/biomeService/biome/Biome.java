@@ -8,5 +8,5 @@ public abstract class Biome {
 
     }
 
-    public abstract Block getBlock(int yOffset, BlockService blockService);
+    public abstract Block getBlock(int x, int y, int z, int yOffset, BlockService blockService);
 }

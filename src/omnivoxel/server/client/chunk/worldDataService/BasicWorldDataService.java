@@ -20,7 +20,7 @@ import java.util.Random;
 
 // TODO: Make this a mod
 public class BasicWorldDataService implements ServerWorldDataService {
-    public static final int WATER_LEVEL = 4;
+    public static final int WATER_LEVEL = 0;
     private final Noise2D continentalnessNoise;
     private final Noise2D temperatureNoise;
     private final Noise2D humidityNoise;
@@ -28,16 +28,16 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final Noise2D worldNoise;
     private final World world;
     private final BiomeService biomeService;
-    private final ServerBlock air = new ServerBlock("air");
-    private final ServerBlock water = new ServerBlock("core:water_source_block");
+    private final ServerBlock air;
+    private final ServerBlock water;
     private final BlockService blockService = new BlockService();
 
     public BasicWorldDataService(Random random, World world) {
-        this.continentalnessNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
+        this.continentalnessNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
         this.temperatureNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
         this.humidityNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
         this.erosionNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
-        this.worldNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 3, 0.25, 2.5, 0.001);
+        this.worldNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 5, 0.4, 2.5, 0.0025);
         this.world = world;
         this.biomeService = new BiomeService(
                 Map.of(
@@ -53,6 +53,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
                         new PlainsBiome(blockService)
                 )
         );
+        this.air = blockService.getBlock("air", null);
+        this.water = blockService.getBlock("core:water_source_block", null);
     }
 
     @Override
@@ -68,12 +70,12 @@ public class BasicWorldDataService implements ServerWorldDataService {
         Biome biome = biomeService.generateBiome(climateVector2D);
 
         int height = (int) (
-                (worldNoise.generate(x, z) - 0.5) * 1024
+                (1 - Math.abs(3 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
         );
 
         Block block = null;
         if (y <= height) {
-            block = biome.getBlock(height - y, blockService);
+            block = biome.getBlock(x, y, z, height - y, blockService);
         }
         if (block == null) {
             if (y <= WATER_LEVEL) {

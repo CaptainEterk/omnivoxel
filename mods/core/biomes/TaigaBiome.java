@@ -15,7 +15,7 @@ public class TaigaBiome extends Biome {
     }
 
     @Override
-    public Block getBlock(int yOffset, BlockService blockService) {
+    public Block getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
         return Math.random() > 0.5 ? dirtBlock : snowBlock;
     }
 }
