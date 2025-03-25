@@ -17,10 +17,10 @@ public class WaterSourceBlock extends Block {
         this.shallowBlockShape = shallowBlockShape;
         this.blockShape = blockShape;
         this.uvCoords = new int[]{
-                2, 2,
                 3, 2,
                 3, 3,
-                2, 3
+                2, 3,
+                2, 2,
         };
     }
 
