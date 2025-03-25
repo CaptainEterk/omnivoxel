@@ -42,11 +42,10 @@ public final class GameLoop {
     private final GameState gameState;
     private final Settings settings;
     private final TextRenderer textRenderer;
-    private final float[] fpsHistory = new float[FPS_SAMPLES];
+    private final double[] fpsHistory = new double[FPS_SAMPLES];
     private final float alpha = 0.1f; // Smoothing factor (can be adjusted)
     private ShaderProgram shaderProgram;
     private int fpsIndex = 0;
-    private float emaFPS = 0.0f; // Exponential Moving Average for FPS
 
     public GameLoop(Camera camera, World world, AtomicBoolean gameRunning, BlockingQueue<Consumer<Long>> contextTasks, Client client, GameState gameState, Settings settings, TextRenderer textRenderer) {
         this.camera = camera;
@@ -202,15 +201,8 @@ public final class GameLoop {
                 // Solid chunk meshes
                 renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), false));
 
-                // Render entities
-                shaderProgram.setUniform("useChunkPosition", false);
-                shaderProgram.setUniform("useExactPosition", true);
-                Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
-                for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
-                    renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
-                }
-
                 // Transparent Chunk Meshes
+                GL11C.glDisable(GL11C.GL_CULL_FACE);
                 GL11C.glDepthMask(false);
                 GL11C.glEnable(GL11C.GL_BLEND);
                 GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
@@ -219,7 +211,16 @@ public final class GameLoop {
                 GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glDepthMask(true);
 
+                // Render entities
+//                shaderProgram.setUniform("useChunkPosition", false);
+//                shaderProgram.setUniform("useExactPosition", true);
+//                Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
+//                for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
+//                    renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
+//                }
+
                 // Bufferize chunks
+                // TODO: Make the bufferizer actually use the endTime
                 int bufferizedChunkCount = world.bufferizeChunks(meshGenerator, System.nanoTime());
                 world.bufferizeEntity(meshGenerator);
 
@@ -257,14 +258,16 @@ public final class GameLoop {
                 time = currentTime;
 
                 if (deltaTime > 0) {
-                    float currentFPS = (float) (1.0 / deltaTime);
+                    double currentFPS = (float) (1.0 / deltaTime);
 
-                    // Apply EMA calculation
-                    emaFPS = alpha * currentFPS + (1 - alpha) * emaFPS;
+                    fpsHistory[fpsIndex++ % FPS_SAMPLES] = currentFPS;
                 }
 
-                // For debug output, you may use emaFPS instead of averageFPS
-                int fps = (int) emaFPS; // Use the EMA-based FPS
+                double fps = 0;
+                for (int i = 0; i < FPS_SAMPLES; i++) {
+                    fps += fpsHistory[i];
+                }
+                fps /= FPS_SAMPLES;
 
                 if (time - secondTime > 0.5) {
                     secondTime = time;
@@ -278,14 +281,11 @@ public final class GameLoop {
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
                 }
 
-                float currentFPS = (float) (1.0 / deltaTime);
-                fpsHistory[fpsIndex % FPS_SAMPLES] = currentFPS;
-                fpsIndex++;
-
+                System.out.println(gameState.getItem("seeDebug", Boolean.class));
                 if (gameState.getItem("seeDebug", Boolean.class)) {
                     StringBuilder leftDebugText = new StringBuilder();
                     leftDebugText.append(ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n");
-                    leftDebugText.append(String.format("FPS: %d/%.2f\n", fps, emaFPS));
+                    leftDebugText.append(String.format("FPS: %d\n", (int) fps));
                     leftDebugText.append(String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()));
                     leftDebugText.append(String.format("Chunks: %d/%d/%d\n", renderedChunks.size(), totalRenderedChunks, totalChunks));
                     leftDebugText.append(String.format("Bufferized Chunks: %d\n", bufferizedChunkCount));
