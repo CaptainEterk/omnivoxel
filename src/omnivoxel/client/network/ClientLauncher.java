@@ -73,7 +73,6 @@ public class ClientLauncher implements Runnable {
             sendBytes(future, PackageID.REGISTER_CLIENT, String.format("%-8s", VERSION_ID).getBytes(), clientID);
 
             future.channel().closeFuture().sync();
-
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {

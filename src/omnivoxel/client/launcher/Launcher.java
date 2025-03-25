@@ -51,7 +51,7 @@ public class Launcher {
         clientWorldDataService.addBlock("core", new WaterSourceBlock(new ShallowBlockShape(2), new BlockShape()));
         clientWorldDataService.addBlock("core", new SandBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new SnowBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new GlassBlock(new ShallowBlockShape(1)));
+        clientWorldDataService.addBlock("core", new GlassBlock(new ShallowBlockShape(2)));
 
         // ORES
         clientWorldDataService.addBlock("core", new IronBlock(new BlockShape()));

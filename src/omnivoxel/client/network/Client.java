@@ -28,6 +28,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 public class Client {
@@ -36,6 +37,7 @@ public class Client {
     private final ClientWorldDataService worldDataService;
     private final Logger logger;
     private final Set<BlockingQueue<MeshDataTask>> meshDataTaskQueues;
+    private final AtomicBoolean clientRunning = new AtomicBoolean(true);
     private ExecutorService meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
@@ -271,9 +273,10 @@ public class Client {
             e.printStackTrace();
         } finally {
             if (group != null) {
-                meshDataGenerators.shutdownNow();
                 group.shutdownGracefully();
             }
+            clientRunning.set(false);
+            meshDataGenerators.close();
         }
         System.out.println("Client shutdown");
     }
@@ -282,7 +285,7 @@ public class Client {
         this.loadChunk = loadChunk;
         meshDataGenerators = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
-            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk);
+            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk, clientRunning);
             Thread meshDataGeneratorThread = new Thread(meshDataGenerator);
             meshDataGenerators.execute(meshDataGeneratorThread);
             meshDataTaskQueues.add(meshDataGenerator.getMeshDataTasks());

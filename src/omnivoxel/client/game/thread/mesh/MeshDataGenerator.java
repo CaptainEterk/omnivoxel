@@ -21,15 +21,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 public final class MeshDataGenerator implements Runnable {
     private final Logger logger;
     private final BlockingQueue<MeshDataTask> meshDataTasks;
     private final BiConsumer<ChunkPosition, MeshData> loadChunk;
+    private final AtomicBoolean clientRunning;
 
-    public MeshDataGenerator(Logger logger, BiConsumer<ChunkPosition, MeshData> loadChunk) {
+    public MeshDataGenerator(Logger logger, BiConsumer<ChunkPosition, MeshData> loadChunk, AtomicBoolean clientRunning) {
         this.logger = logger;
+        this.clientRunning = clientRunning;
         this.meshDataTasks = new LinkedBlockingQueue<>();
         this.loadChunk = loadChunk;
     }
@@ -210,7 +213,8 @@ public final class MeshDataGenerator implements Runnable {
                                     blocks[calculateBlockIndex(x - 1, y, z)],
                                     transparentVertices,
                                     transparentIndices,
-                                    transparentVertexIndexMap, blocks
+                                    transparentVertexIndexMap,
+                                    blocks
                             );
                         } else {
                             generateBlockMeshData(
@@ -224,7 +228,8 @@ public final class MeshDataGenerator implements Runnable {
                                     blocks[calculateBlockIndex(x - 1, y, z)],
                                     vertices,
                                     indices,
-                                    vertexIndexMap, blocks
+                                    vertexIndexMap,
+                                    blocks
                             );
                         }
                     }
@@ -368,7 +373,7 @@ public final class MeshDataGenerator implements Runnable {
     public void run() {
         try {
             List<MeshDataTask> batch = new ArrayList<>();
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted() && clientRunning.get()) {
                 if (meshDataTasks.drainTo(batch) == 0) {
                     Thread.sleep(1);
                     continue;
@@ -382,6 +387,8 @@ public final class MeshDataGenerator implements Runnable {
         } catch (Exception e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("MeshDataGenerator interrupted", e);
+        } finally {
+            System.out.println("MeshDataGenerator worker thread stopped");
         }
     }
 }
