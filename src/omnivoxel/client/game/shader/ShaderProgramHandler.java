@@ -1,5 +1,7 @@
 package omnivoxel.client.game.shader;
 
+import org.lwjgl.opengl.GL30C;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +58,9 @@ public class ShaderProgramHandler {
             throw new IOException("Program linking failed.");
         }
 
+        int vaoID = GL30C.glGenVertexArrays();
+        GL30C.glBindVertexArray(vaoID); // Bind a VAO before validating
+
         glValidateProgram(programID);
 
         if (glGetProgrami(programID, GL_VALIDATE_STATUS) == GL_FALSE) {
@@ -63,6 +68,9 @@ public class ShaderProgramHandler {
                     "Error validating shader program: " + glGetProgramInfoLog(programID, 1024));
             throw new IOException("Program validation failed.");
         }
+
+        GL30C.glBindVertexArray(0); // Unbind after validation
+        GL30C.glDeleteVertexArrays(vaoID); // Cleanup
 
         shaderPrograms.put(name, new ShaderProgram(programID));
     }
