@@ -1,11 +1,11 @@
-package omnivoxel.server.world.chunk.padded;
+package omnivoxel.server.world.chunk.result;
 
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.server.BlockIDCount;
 import omnivoxel.server.client.block.Block;
-import omnivoxel.server.world.chunk.ByteChunk;
 import omnivoxel.server.world.chunk.Chunk;
-import omnivoxel.server.world.chunk.EmptyChunk;
+import omnivoxel.server.world.chunk.GeneralChunk;
+import omnivoxel.server.world.chunk.SingleBlockChunk;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,20 +17,7 @@ public final class GeneratedChunk {
         blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
     }
 
-    public static Chunk getChunk(GeneratedChunk generatedChunk) {
-        Chunk chunk = new EmptyChunk();
-        for (int x = 0; x < ConstantGameSettings.CHUNK_WIDTH; x++) {
-            for (int z = 0; z < ConstantGameSettings.CHUNK_LENGTH; z++) {
-                for (int y = 0; y < ConstantGameSettings.CHUNK_HEIGHT; y++) {
-                    Block block = generatedChunk.getBlock(x, y, z);
-                    chunk = chunk.setBlock(x, y, z, block);
-                }
-            }
-        }
-        return chunk;
-    }
-
-    public static byte[] getBytes(GeneratedChunk generatedChunk) {
+    public static ChunkResult getResult(GeneratedChunk generatedChunk) {
         List<Block> palette = new ArrayList<>();
         int[] chunk = new int[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
         int chunkByteOffset = 0;
@@ -43,6 +30,22 @@ public final class GeneratedChunk {
                     }
                     chunk[chunkByteOffset] = palette.indexOf(block) + 1;
                     chunkByteOffset++;
+                }
+            }
+        }
+
+        // Generate chunk here
+        Chunk chunkOut;
+        if (palette.size() == 1) {
+            chunkOut = new SingleBlockChunk(palette.getFirst());
+        } else {
+            chunkOut = new GeneralChunk();
+            for (int x = 0; x < ConstantGameSettings.CHUNK_WIDTH; x++) {
+                for (int z = 0; z < ConstantGameSettings.CHUNK_LENGTH; z++) {
+                    for (int y = 0; y < ConstantGameSettings.CHUNK_HEIGHT; y++) {
+                        Block block = generatedChunk.getBlock(x, y, z);
+                        chunkOut = chunkOut.setBlock(x, y, z, block);
+                    }
                 }
             }
         }
@@ -75,7 +78,6 @@ public final class GeneratedChunk {
             chunkBytes[i * 8 + 7] = (byte) (blockIDCount.count());
         }
 
-        // TODO: Compress this into one loop if possible
         List<byte[]> paletteBytesList = new ArrayList<>();
         int paletteLength = 0;
         for (Block block : palette) {
@@ -99,15 +101,11 @@ public final class GeneratedChunk {
         System.arraycopy(paletteBytes, 0, out, 0, paletteBytes.length);
         System.arraycopy(chunkBytes, 0, out, paletteBytes.length, chunkBytes.length);
 
-        return out;
+        return new ChunkResult(out, chunkOut);
     }
 
     private static int calculateIndex(int x, int y, int z) {
         return (x + 1) * (ConstantGameSettings.CHUNK_WIDTH + 2) * (ConstantGameSettings.CHUNK_LENGTH + 2) + (z + 1) * (ConstantGameSettings.CHUNK_LENGTH + 2) + (y + 1);
-    }
-
-    public ByteChunk getByteChunk() {
-        return new ByteChunk(getBytes(this), this);
     }
 
     private Block getBlock(int x, int y, int z) {

@@ -3,6 +3,7 @@ package omnivoxel.server.world;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.client.block.Block;
 import omnivoxel.server.world.chunk.ByteChunk;
+import omnivoxel.server.world.chunk.Chunk;
 
 public interface World {
     boolean isBlockQueued(Position3D position3D);
@@ -11,7 +12,7 @@ public interface World {
 
     void setBlock(Position3D add, Block block);
 
-    void addChunk(Position3D position3D, ByteChunk chunk);
+    void addChunk(Position3D position3D, Chunk chunk);
 
-    ByteChunk getChunk(Position3D position3D);
+    Chunk getChunk(Position3D position3D);
 }

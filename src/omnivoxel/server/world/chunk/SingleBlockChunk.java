@@ -1,14 +1,17 @@
 package omnivoxel.server.world.chunk;
 
 import omnivoxel.server.client.block.Block;
-import omnivoxel.server.client.block.ServerBlock;
 
-public class EmptyChunk implements Chunk {
-    private final static Block air = new ServerBlock("air");
+public class SingleBlockChunk implements Chunk {
+    private final Block block;
+
+    public SingleBlockChunk(Block block) {
+        this.block = block;
+    }
 
     @Override
     public Block getBlock(int x, int y, int z) {
-        return air;
+        return block;
     }
 
     @Override

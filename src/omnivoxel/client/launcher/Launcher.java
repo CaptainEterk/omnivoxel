@@ -48,9 +48,10 @@ public class Launcher {
         clientWorldDataService.addBlock("core", new StoneBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new DirtBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new GrassBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new WaterSourceBlock(new ShallowBlockShape(8), new BlockShape()));
+        clientWorldDataService.addBlock("core", new WaterSourceBlock(new ShallowBlockShape(2), new BlockShape()));
         clientWorldDataService.addBlock("core", new SandBlock(new BlockShape()));
         clientWorldDataService.addBlock("core", new SnowBlock(new BlockShape()));
+        clientWorldDataService.addBlock("core", new GlassBlock(new ShallowBlockShape(1)));
 
         // ORES
         clientWorldDataService.addBlock("core", new IronBlock(new BlockShape()));
@@ -80,10 +81,11 @@ public class Launcher {
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
             GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer());
-            gameLoop.run();
 
             Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");
             tickLoopThread.start();
+
+            gameLoop.run();
         }
     }
 }

@@ -1,7 +1,12 @@
 package omnivoxel.server.client.chunk.biomeService.biome;
 
 import omnivoxel.server.client.block.Block;
+import omnivoxel.server.client.chunk.blockService.BlockService;
 
-public interface Biome {
-    Block getBlock(int yOffset);
+public abstract class Biome {
+    public Biome(BlockService blockService) {
+
+    }
+
+    public abstract Block getBlock(int yOffset, BlockService blockService);
 }

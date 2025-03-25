@@ -6,8 +6,12 @@ import omnivoxel.server.client.block.Block;
 public class GeneralChunk implements Chunk {
     private final Block[] blocks;
 
-    public GeneralChunk(Block[] blocks) {
-        this.blocks = blocks;
+    public GeneralChunk() {
+        this.blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK];
+    }
+
+    public GeneralChunk(Chunk chunk) {
+        this.blocks = GeneralChunk.extractBlocks(chunk);
     }
 
     public static Block[] extractBlocks(Chunk chunk) {

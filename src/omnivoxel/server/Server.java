@@ -3,6 +3,7 @@ package omnivoxel.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import omnivoxel.server.client.ServerEntity;
 import omnivoxel.server.client.ServerPlayer;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkGeneratorThread;
@@ -10,15 +11,15 @@ import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.world.World;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Stream;
 
 public class Server {
     private static final int VERSION_ID = 0;
@@ -105,6 +106,8 @@ public class Server {
                 smallestQueue.put(chunkTask);
             }
 //            // TODO: Actually generate entities
+//            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, ServerEntity.create(ServerEntity.));
+//            ServerEntity.create()
 //            byte[] entityID = new byte[32];
 //            new SecureRandom().nextBytes(entityID);
 //            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, new ServerEntity(entityID, chunkTask.x() * ConstantGameSettings.CHUNK_WIDTH, chunkTask.y() * ConstantGameSettings.CHUNK_HEIGHT, chunkTask.z() * ConstantGameSettings.CHUNK_LENGTH, 0, 0, 0).getBytes());

@@ -1,7 +1,6 @@
 package omnivoxel.server.client.chunk.biomeService.climate;
 
 import java.util.Arrays;
-import java.util.stream.IntStream;
 
 public class ClimateVector {
     protected final double[] pos;
@@ -18,13 +17,20 @@ public class ClimateVector {
         return pos.length;
     }
 
-    public double getDistance(ClimateVector pos) {
-        if (pos.size() != size()) {
-            throw new IllegalArgumentException("The climate vectors must have equal sizes to calculate the distance");
+    public double getDistance(ClimateVector other) {
+        if (other.pos.length != this.pos.length) {
+            throw new IllegalArgumentException("Climate vectors must have equal sizes to calculate the distance");
         }
-        return IntStream.range(0, pos.size())
-                .mapToDouble(i -> Math.pow(this.pos[i] - pos.get(i), 2))
-                .sum();
+
+        double sum = 0;
+        double[] otherPos = other.pos; // Local reference for fast access
+
+        for (int i = 0; i < pos.length; i++) {
+            double diff = this.pos[i] - otherPos[i];
+            sum += diff * diff;
+        }
+
+        return sum;
     }
 
     @Override

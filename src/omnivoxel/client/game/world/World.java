@@ -5,6 +5,7 @@ import omnivoxel.client.game.mesh.EntityMesh;
 import omnivoxel.client.game.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
 import omnivoxel.client.game.position.ChunkPosition;
+import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 import omnivoxel.client.network.Client;
@@ -31,6 +32,8 @@ public class World {
     private final Map<String, MeshData> nonBufferizedEntities;
     private final Map<String, EntityMesh> entityMeshes;
 
+    private final Set<ChunkPosition> newChunks;
+
     private final GameState gameState;
 
     public World(Client client, GameState gameState) {
@@ -46,6 +49,7 @@ public class World {
         entityMeshes = new ConcurrentHashMap<>();
         nonBufferizedEntities = new ConcurrentHashMap<>();
         chunkRequestsSent = new AtomicInteger();
+        newChunks = ConcurrentHashMap.newKeySet();
     }
 
     public ChunkMesh getChunk(ChunkPosition chunkPosition) {
@@ -64,24 +68,37 @@ public class World {
         }
     }
 
-    public void bufferizeChunk(MeshGenerator meshGenerator, long endTime) {
-        long startTime = System.nanoTime();
+    public int bufferizeChunks(MeshGenerator meshGenerator, long endTime) {
+        int count = 0;
+        boolean bufferizing;
+        do {
+            bufferizing = bufferizeChunk(meshGenerator);
+            if (bufferizing) {
+                count++;
+            }
+        }
+        while (bufferizing && count < ConstantGameSettings.BUFFERIZE_CHUNKS_PER_FRAME);
+//        while (endTime > System.nanoTime() && bufferizing);
+        return count;
+    }
+
+    public boolean bufferizeChunk(MeshGenerator meshGenerator) {
         if (!nonBufferizedChunks.isEmpty()) {
             Map.Entry<ChunkPosition, MeshData> entry = nonBufferizedChunks.entrySet().iterator().next();
             nonBufferizedChunks.remove(entry.getKey());
             ChunkMesh chunkMesh = meshGenerator.bufferizeChunkMesh(entry.getValue());
             chunks.put(entry.getKey(), chunkMesh);
             queuedChunks.remove(entry.getKey());
-//            if (System.nanoTime() * 2 - startTime < endTime) {
-            bufferizeChunk(meshGenerator, endTime);
-//            }
+            return true;
         }
+        return false;
     }
 
     public void loadMeshData(ChunkPosition chunkPosition, MeshData meshData) {
         nonBufferizedChunks.put(chunkPosition, meshData);
         chunkRequestsSent.decrementAndGet();
-        gameState.setItem("shouldUpdateVisibleMeshes", true);
+        newChunks.add(chunkPosition);
+        gameState.setItem("shouldCheckNewChunks", true);
     }
 
     public void bufferizeEntity(MeshGenerator meshGenerator) {
@@ -167,5 +184,13 @@ public class World {
                 iterator.remove();
             }
         }
+    }
+
+    public Set<ChunkPosition> getNewChunks() {
+        return newChunks;
+    }
+
+    public int totalQueuedChunks() {
+        return queuedChunks.size();
     }
 }

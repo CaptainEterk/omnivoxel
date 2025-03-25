@@ -35,7 +35,7 @@ public class ModifiedChunk implements Chunk {
     @Override
     public Chunk setBlock(int x, int y, int z, Block block) {
         if (modificationCount > ConstantServerSettings.CHUNK_MODIFICATION_GENERALIZATION_LIMIT) {
-            return new GeneralChunk(GeneralChunk.extractBlocks(this));
+            return new GeneralChunk(this);
         }
         return new ModifiedChunk(x, y, z, block, this, modificationCount + 1);
     }

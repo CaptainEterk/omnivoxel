@@ -31,7 +31,7 @@ void main() {
     FragColor = mix(vec4(lighting, 1.0), FragColor, 1);
 
     // Apply shadow effect
-    FragColor = vec4(FragColor.rgb * (shadow-ao), FragColor.a);
+    FragColor = vec4(FragColor.rgb * (shadow), FragColor.a);
 
     // Apply fog effect
     FragColor = mix(fogColor, FragColor, fogFactor);

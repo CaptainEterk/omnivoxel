@@ -20,12 +20,14 @@ public class ShaderProgram {
         this.locationMap = new HashMap<>();
     }
 
-    public void addUniformLocation(String name) {
-        locationMap.put(name, glGetUniformLocation(program, name));
+    public int addUniformLocation(String name) {
+        int loc = glGetUniformLocation(program, name);
+        locationMap.put(name, loc);
+        return loc;
     }
 
     public Integer getLocation(String location) {
-        return locationMap.get(location);
+        return locationMap.getOrDefault(location, addUniformLocation(location));
     }
 
     public void setUniform(String name, int x, int y, int z) {

@@ -13,7 +13,6 @@ public class BiomeService {
     }
 
     public Biome generateBiome(ClimateVector climateVector) {
-//        System.out.println(climateVector);
         final Biome[] closestBiome = new Biome[1];
         final double[] distance = {Double.MAX_VALUE};
 

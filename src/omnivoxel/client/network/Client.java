@@ -10,6 +10,7 @@ import omnivoxel.client.game.entity.mob.player.PlayerEntity;
 import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.thread.mesh.MeshDataGenerator;
+import omnivoxel.client.game.thread.mesh.MeshDataTask;
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
@@ -22,7 +23,11 @@ import omnivoxel.debug.Logger;
 import omnivoxel.server.PackageID;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
 public class Client {
@@ -30,7 +35,8 @@ public class Client {
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final Logger logger;
-    private final MeshDataGenerator meshDataGenerator;
+    private final Set<BlockingQueue<MeshDataTask>> meshDataTaskQueues;
+    private ExecutorService meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
     private BiConsumer<ChunkPosition, MeshData> loadChunk;
@@ -41,7 +47,7 @@ public class Client {
         this.worldDataService = worldDataService;
         this.logger = logger;
         players = new ConcurrentHashMap<>();
-        meshDataGenerator = new MeshDataGenerator(logger);
+        meshDataTaskQueues = ConcurrentHashMap.newKeySet();
     }
 
     private void sendBytes(Channel channel, PackageID id, byte[]... bytes) {
@@ -81,7 +87,7 @@ public class Client {
         });
     }
 
-    void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) {
+    void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
         switch (packageID) {
             case REGISTER_PLAYERS:
                 registerPlayers(byteBuf);
@@ -116,7 +122,7 @@ public class Client {
         playerEntity.setYaw(yaw);
     }
 
-    private void receiveChunk(ByteBuf byteBuf) {
+    private void receiveChunk(ByteBuf byteBuf) throws InterruptedException {
         int x = byteBuf.getInt(8);
         int y = byteBuf.getInt(12);
         int z = byteBuf.getInt(16);
@@ -161,19 +167,37 @@ public class Client {
             index += 8;
         }
 
-        MeshData meshData = meshDataGenerator.generateChunkMeshData(blocks);
-        loadChunk.accept(chunkPosition, meshData);
+        BlockingQueue<MeshDataTask> smallestQueue = null;
+        int smallestSize = Integer.MAX_VALUE;
+        for (BlockingQueue<MeshDataTask> queue : meshDataTaskQueues) {
+            int size = queue.size();
+            if (size < smallestSize) {
+                smallestQueue = queue;
+                smallestSize = size;
+            }
+            if (smallestSize == 0) {
+                break;
+            }
+        }
+        if (smallestQueue != null) {
+            smallestQueue.put(new MeshDataTask(blocks, chunkPosition));
+        }
+
+//        meshDataGenerators.submit(() -> {
+//            MeshData meshData = new MeshDataGenerator(logger).generateChunkMeshData(blocks);
+//            loadChunk.accept(chunkPosition, meshData);
+//        });
     }
 
     private void loadPlayer(byte[] playerID, String name) {
-        PlayerEntity playerEntity = new PlayerEntity(name, playerID);
-        String id = bytesToHex(playerID);
-        players.put(id, playerEntity);
+//        PlayerEntity playerEntity = new PlayerEntity(name, playerID);
+//        String id = bytesToHex(playerID);
+//        players.put(id, playerEntity);
         // Generate mesh data
-        MeshData meshData = meshDataGenerator.generateEntityMeshData(playerEntity);
-        playerEntity.setMeshData(meshData);
+//        MeshData meshData = meshDataGenerator.generateEntityMeshData(playerEntity);
+//        playerEntity.setMeshData(meshData);
         //
-        loadEntity.accept(id, playerEntity);
+//        loadEntity.accept(id, playerEntity);
     }
 
     private void newPlayer(ByteBuf byteBuf) {
@@ -247,6 +271,7 @@ public class Client {
             e.printStackTrace();
         } finally {
             if (group != null) {
+                meshDataGenerators.shutdownNow();
                 group.shutdownGracefully();
             }
         }
@@ -255,6 +280,13 @@ public class Client {
 
     public void setChunkListener(BiConsumer<ChunkPosition, MeshData> loadChunk) {
         this.loadChunk = loadChunk;
+        meshDataGenerators = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk);
+            Thread meshDataGeneratorThread = new Thread(meshDataGenerator);
+            meshDataGenerators.execute(meshDataGeneratorThread);
+            meshDataTaskQueues.add(meshDataGenerator.getMeshDataTasks());
+        }
     }
 
     public void setEntityListener(BiConsumer<String, Entity> loadEntity) {

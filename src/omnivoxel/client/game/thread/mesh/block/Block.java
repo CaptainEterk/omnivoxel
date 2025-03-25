@@ -26,6 +26,10 @@ public abstract class Block {
         return false;
     }
 
+    public boolean shouldRenderTransparentMesh() {
+        return false;
+    }
+
     public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
         return adjacentBlock.isTransparent();
     }

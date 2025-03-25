@@ -10,7 +10,7 @@ public class StoneObeliskStructure implements Structure {
     @Override
     public void initBlocks() {
         for (int y = 0; y < 10; y++) {
-            blocks[0][y][0] = new ServerBlock("core:stone_block");
+            blocks[0][y][0] = new ServerBlock("core:glass_block");
         }
     }
 

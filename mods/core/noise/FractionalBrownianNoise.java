@@ -3,7 +3,7 @@ package core.noise;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise2D;
 
 public class FractionalBrownianNoise implements Noise2D {
-    private final PerlinNoise noise;
+    private final Noise2D noise;
     private final int octaves;
     private final double persistence;
     private final double lacunarity;
@@ -11,7 +11,7 @@ public class FractionalBrownianNoise implements Noise2D {
 
     // Constructor to set up noise parameters
     public FractionalBrownianNoise(
-            PerlinNoise noise,
+            Noise2D noise,
             int octaves,
             double persistence,
             double lacunarity,
@@ -24,42 +24,25 @@ public class FractionalBrownianNoise implements Noise2D {
         this.frequency = frequency;
     }
 
-    public static void main(String[] args) {
-        double target = 0.0;
-        FractionalBrownianNoise fractionalBrownianNoise = new FractionalBrownianNoise(new PerlinNoise(106), 3, 0.25, 2.5, 0.001);
-        for (int x = 0; true; x++) {
-            double noiseValue = fractionalBrownianNoise.generate(x, 0);
-            if (noiseValue > target) {
-                System.out.println(x + ": " + noiseValue);
-                if (target == 0.9) {
-                    break;
-                } else {
-                    target += 0.1;
-                }
-            }
-            if (x % 1000000 == 0) {
-                System.out.println(x + ": " + noiseValue);
-            }
-        }
-    }
-
-    // Generate fBm noise at a given point (x, z)
     @Override
     public double generate(double x, double z) {
         double total = 0;
-        double amplitude = 1;
-        double maxValue = 0;
-        double currentFrequency = frequency;
+        double currentX = x * frequency;
+        double currentZ = z * frequency;
+
+        double amplitudeSum = 0; // Precompute normalization factor
+        double currentAmplitude = 1;
 
         for (int i = 0; i < octaves; i++) {
-            total += noise.generate(x * currentFrequency, z * currentFrequency) * amplitude;
+            total += noise.generate(currentX, currentZ) * currentAmplitude;
+            amplitudeSum += currentAmplitude;
 
-            maxValue += amplitude;
-            amplitude *= persistence;   // Reduce amplitude for each octave
-            currentFrequency *= lacunarity; // Increase frequency for each octave
+            currentX *= lacunarity;
+            currentZ *= lacunarity;
+            currentAmplitude *= persistence;
         }
 
-        // Normalize to 0 - 1
-        return (total / maxValue + 1) / 2;
+        // Normalize the output to [0,1] range
+        return (total / amplitudeSum + 1) / 2;
     }
 }

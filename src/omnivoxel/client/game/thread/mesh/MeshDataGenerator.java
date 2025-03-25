@@ -1,6 +1,6 @@
 package omnivoxel.client.game.thread.mesh;
 
-import omnivoxel.client.game.entity.Entity;
+import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
@@ -19,12 +19,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.BiConsumer;
 
-public final class MeshDataGenerator {
+public final class MeshDataGenerator implements Runnable {
     private final Logger logger;
+    private final BlockingQueue<MeshDataTask> meshDataTasks;
+    private final BiConsumer<ChunkPosition, MeshData> loadChunk;
 
-    public MeshDataGenerator(Logger logger) {
+    public MeshDataGenerator(Logger logger, BiConsumer<ChunkPosition, MeshData> loadChunk) {
         this.logger = logger;
+        this.meshDataTasks = new LinkedBlockingQueue<>();
+        this.loadChunk = loadChunk;
+    }
+
+    public BlockingQueue<MeshDataTask> getMeshDataTasks() {
+        return meshDataTasks;
     }
 
 //    private void addPoint(
@@ -155,24 +166,24 @@ public final class MeshDataGenerator {
 //        addPoint(vertices, indices, vertexIndexMap, v4, 0, 0, normal, 0, 0, 0);
     }
 
-    public MeshData generateEntityMeshData(Entity entity) {
-        List<Integer> vertices = new ArrayList<>();
-        List<Integer> indices = new ArrayList<>();
-        List<Integer> transparentVertices = new ArrayList<>();
-        List<Integer> transparentIndices = new ArrayList<>();
-        Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
-        Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
-
-        int x = 16;
-        addCube(vertices, indices, vertexIndexMap, new Vertex(0, 0, 0), new Vertex(ShapeHelper.PIXEL * x, ShapeHelper.PIXEL * x, ShapeHelper.PIXEL * x));
-
-        ByteBuffer vertexBuffer = createBuffer(vertices);
-        ByteBuffer indexBuffer = createBuffer(indices);
-        ByteBuffer transparentVertexBuffer = createBuffer(transparentVertices);
-        ByteBuffer transparentIndexBuffer = createBuffer(transparentIndices);
-
-        return new GeneralMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer);
-    }
+//    public MeshData generateEntityMeshData(Entity entity) {
+//        List<Integer> vertices = new ArrayList<>();
+//        List<Integer> indices = new ArrayList<>();
+//        List<Integer> transparentVertices = new ArrayList<>();
+//        List<Integer> transparentIndices = new ArrayList<>();
+//        Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
+//        Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
+//
+//        int x = 16;
+//        addCube(vertices, indices, vertexIndexMap, new Vertex(0, 0, 0), new Vertex(ShapeHelper.PIXEL * x, ShapeHelper.PIXEL * x, ShapeHelper.PIXEL * x));
+//
+//        ByteBuffer vertexBuffer = createBuffer(vertices);
+//        ByteBuffer indexBuffer = createBuffer(indices);
+//        ByteBuffer transparentVertexBuffer = createBuffer(transparentVertices);
+//        ByteBuffer transparentIndexBuffer = createBuffer(transparentIndices);
+//
+//        return new GeneralMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer);
+//    }
 
     public MeshData generateChunkMeshData(Block[] blocks) {
         List<Integer> vertices = new ArrayList<>();
@@ -187,7 +198,7 @@ public final class MeshDataGenerator {
                 for (int y = 0; y < ConstantGameSettings.CHUNK_HEIGHT; y++) {
                     Block block = blocks[calculateBlockIndex(x, y, z)];
                     if (block != null) {
-                        if (block.isTransparent()) {
+                        if (block.shouldRenderTransparentMesh()) {
                             generateBlockMeshData(
                                     x, y, z,
                                     block,
@@ -350,6 +361,27 @@ public final class MeshDataGenerator {
         } catch (Exception e) {
             MemoryUtil.memFree(buffer);
             throw new RuntimeException("Error creating buffer", e);
+        }
+    }
+
+    @Override
+    public void run() {
+        try {
+            List<MeshDataTask> batch = new ArrayList<>();
+            while (!Thread.currentThread().isInterrupted()) {
+                if (meshDataTasks.drainTo(batch) == 0) {
+                    Thread.sleep(1);
+                    continue;
+                }
+                for (MeshDataTask meshDataTask : batch) {
+                    MeshData meshData = generateChunkMeshData(meshDataTask.blocks());
+                    loadChunk.accept(meshDataTask.chunkPosition(), meshData);
+                }
+                batch.clear();
+            }
+        } catch (Exception e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("MeshDataGenerator interrupted", e);
         }
     }
 }

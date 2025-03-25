@@ -13,7 +13,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws InterruptedException {
         if (msg instanceof ByteBuf byteBuf) {
             int bPackageID = byteBuf.getInt(4);
             PackageID packageID = PackageID.values()[bPackageID];

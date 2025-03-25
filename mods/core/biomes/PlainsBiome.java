@@ -1,12 +1,16 @@
 package core.biomes;
 
 import omnivoxel.server.client.block.Block;
-import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
+import omnivoxel.server.client.chunk.blockService.BlockService;
 
-public class PlainsBiome implements Biome {
+public class PlainsBiome extends Biome {
+    public PlainsBiome(BlockService blockService) {
+        super(blockService);
+    }
+
     @Override
-    public Block getBlock(int yOffset) {
-        return new ServerBlock("core:grass_block");
+    public Block getBlock(int yOffset, BlockService blockService) {
+        return blockService.getBlock("core:grass_block", null);
     }
 }

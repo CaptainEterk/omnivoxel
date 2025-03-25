@@ -7,9 +7,11 @@ import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.world.World;
-import omnivoxel.server.world.chunk.ByteChunk;
+import omnivoxel.server.world.chunk.result.ChunkResult;
+import omnivoxel.server.world.chunk.result.GeneratedChunk;
 
-import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -17,11 +19,13 @@ public class ChunkGeneratorThread implements Runnable {
     private final ChunkGenerator chunkGenerator;
     private final BlockingQueue<ChunkTask> chunkTasks;
     private final World world;
+    private final Queue<ChunkTask> localQueue; // Reusable queue
 
     public ChunkGeneratorThread(ChunkGenerator chunkGenerator, World world) {
         this.chunkGenerator = chunkGenerator;
         this.world = world;
         this.chunkTasks = new LinkedBlockingQueue<>();
+        this.localQueue = new ArrayDeque<>();
     }
 
     private void sendChunkBytes(ChannelHandlerContext ctx, int x, int y, int z, byte[] chunk) {
@@ -40,19 +44,27 @@ public class ChunkGeneratorThread implements Runnable {
     public void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                ChunkTask c = chunkTasks.take();
-                Position3D position3D = new Position3D(c.x(), c.y(), c.z());
-                ByteChunk chunk = world.getChunk(position3D);
-                if (chunk == null) {
-                    ByteChunk byteChunk = chunkGenerator.generateChunk(new ChunkPosition(c.x(), c.y(), c.z()));
-                    sendChunkBytes(c.ctx(), c.x(), c.y(), c.z(), byteChunk.bytes());
-                    world.addChunk(position3D, byteChunk);
-                } else {
-                    sendChunkBytes(c.ctx(), c.x(), c.y(), c.z(), chunk.bytes());
+                int count = chunkTasks.drainTo(localQueue);
+                if (count == 0) {
+                    // Sleep briefly to avoid busy waiting
+                    Thread.sleep(1);
+                    continue;
                 }
+
+                for (ChunkTask task : localQueue) {
+                    Position3D position3D = new Position3D(task.x(), task.y(), task.z());
+                    GeneratedChunk generatedChunk = chunkGenerator.generateChunk(new ChunkPosition(task.x(), task.y(), task.z()));
+                    ChunkResult chunkResult = GeneratedChunk.getResult(generatedChunk);
+                    sendChunkBytes(task.ctx(), task.x(), task.y(), task.z(), chunkResult.bytes());
+                    world.addChunk(position3D, chunkResult.chunk());
+                }
+
+                // Clear queue to reuse it
+                localQueue.clear();
             }
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            // Exit gracefully on interruption
+            Thread.currentThread().interrupt();
         }
     }
 
