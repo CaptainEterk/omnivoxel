@@ -23,10 +23,9 @@ public class ClimateVector {
         }
 
         double sum = 0;
-        double[] otherPos = other.pos; // Local reference for fast access
 
         for (int i = 0; i < pos.length; i++) {
-            double diff = this.pos[i] - otherPos[i];
+            double diff = this.pos[i] - other.pos[i];
             sum += diff * diff;
         }
 

@@ -16,7 +16,7 @@ public class ClientWorldDataService {
         return blocks.get(blockModID);
     }
 
-    public void addBlock(String modID, Block block) {
-        blocks.put(modID + ":" + block.getID(), block);
+    public void addBlock(Block block) {
+        blocks.put(block.getModID(), block);
     }
 }

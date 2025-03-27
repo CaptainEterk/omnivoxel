@@ -169,9 +169,7 @@ public final class GameLoop {
                     totalRenderedChunks = renderedChunks.size();
 
                     List<ChunkPosition> newRenderedChunks = renderedChunks.stream().filter(
-                            chunkPosition -> {
-                                return world.getChunk(chunkPosition) != null;
-                            }
+                            chunkPosition -> world.getChunk(chunkPosition) != null
                     ).toList();
 
                     completeRenderDistance = newRenderedChunks.size() == renderedChunks.size();
@@ -281,14 +279,12 @@ public final class GameLoop {
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
                 }
 
-                System.out.println(gameState.getItem("seeDebug", Boolean.class));
                 if (gameState.getItem("seeDebug", Boolean.class)) {
-                    StringBuilder leftDebugText = new StringBuilder();
-                    leftDebugText.append(ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n");
-                    leftDebugText.append(String.format("FPS: %d\n", (int) fps));
-                    leftDebugText.append(String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()));
-                    leftDebugText.append(String.format("Chunks: %d/%d/%d\n", renderedChunks.size(), totalRenderedChunks, totalChunks));
-                    leftDebugText.append(String.format("Bufferized Chunks: %d\n", bufferizedChunkCount));
+                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" +
+                            String.format("FPS: %d\n", (int) fps) +
+                            String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()) +
+                            String.format("Chunks: %d/%d/%d\n", renderedChunks.size(), totalRenderedChunks, totalChunks) +
+                            String.format("Bufferized Chunks: %d\n", bufferizedChunkCount);
 
                     textShaderProgram.bind();
 
@@ -297,7 +293,7 @@ public final class GameLoop {
 
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
 
-                    textRenderer.renderText(font, leftDebugText.toString(), 4, 4, 0.75f, Alignment.LEFT);
+                    textRenderer.renderText(font, leftDebugText, 4, 4, 0.75f, Alignment.LEFT);
                     textRenderer.renderText(font, rightDebugText, window.getWidth() - 4, 4, 0.75f, Alignment.RIGHT);
 
                     GL30C.glBindVertexArray(0);

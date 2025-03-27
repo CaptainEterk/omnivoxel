@@ -2,8 +2,6 @@ package core.blocks;
 
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.BlockShape;
-import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 
 import java.util.Objects;

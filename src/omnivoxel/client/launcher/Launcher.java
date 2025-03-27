@@ -41,27 +41,27 @@ public class Launcher {
         ClientWorldDataService clientWorldDataService = new ClientWorldDataService();
 
         // Air
-        clientWorldDataService.addBlock("omnivoxel", new AirBlock());
+        clientWorldDataService.addBlock(new AirBlock());
 
         // TODO: Add these with a mod loader
         // Regular blocks
-        clientWorldDataService.addBlock("core", new StoneBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new DirtBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new GrassBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new WaterSourceBlock(new ShallowBlockShape(2), new BlockShape()));
-        clientWorldDataService.addBlock("core", new SandBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new SnowBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new GlassBlock(new ShallowBlockShape(2)));
+        clientWorldDataService.addBlock(new StoneBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new DirtBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new GrassBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new WaterSourceBlock(new ShallowBlockShape(2), new BlockShape()));
+        clientWorldDataService.addBlock(new SandBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new SnowBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new GlassBlock(new BlockShape()));
 
         // ORES
-        clientWorldDataService.addBlock("core", new IronBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new IronBlock(new BlockShape()));
 
         // DEBUG
-        clientWorldDataService.addBlock("core", new RedBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new YellowBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new GreenBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new BlueBlock(new BlockShape()));
-        clientWorldDataService.addBlock("core", new ClimateBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new RedBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new YellowBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new GreenBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new BlueBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new ClimateBlock(new BlockShape()));
 
         Client client = new Client(clientID, clientWorldDataService, new Logger());
         ClientLauncher clientLauncher = new ClientLauncher(connected, client);

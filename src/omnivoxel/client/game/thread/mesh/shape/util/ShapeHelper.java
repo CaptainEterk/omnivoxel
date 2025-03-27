@@ -6,7 +6,7 @@ import omnivoxel.client.game.thread.mesh.vertex.Vertex;
 
 public class ShapeHelper {
     public static final float PIXEL = 0.0625f;         // Precision of 0.0625 (1/16)
-    private static final int MAX_PACKED_VALUE = 1023;      // Maximum value for 10-bit (2^10 - 1)
+    private static final int MAX_PACKED_VALUE = 512;      // Maximum value for 10-bit (2^10 - 1)
 
     private static final int BITMASK_5 = 0x1F;  // 5-bit mask
     private static final int BITMASK_4 = 0xF;  // 4-bit mask
@@ -15,9 +15,9 @@ public class ShapeHelper {
 
     public static int[] packVertexData(Vertex vertex, int ao, float r, float g, float b, BlockFace blockFace, int u, int v) {
         // Position calculations
-        float x = vertex.px() * PIXEL;
-        float y = vertex.py() * PIXEL;
-        float z = vertex.pz() * PIXEL;
+        float x = vertex.px();
+        float y = vertex.py();
+        float z = vertex.pz();
 
         int ix = Math.round(x * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_WIDTH);
         int iy = Math.round(y * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_HEIGHT);

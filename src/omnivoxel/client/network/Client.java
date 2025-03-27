@@ -22,6 +22,7 @@ import omnivoxel.client.network.request.Request;
 import omnivoxel.debug.Logger;
 import omnivoxel.server.PackageID;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -135,7 +136,7 @@ public class Client {
         for (int i = 0; i < palette.length; i++) {
             StringBuilder blockID = new StringBuilder();
             short paletteLength = byteBuf.getShort(index);
-            short j;
+            int j;
             for (j = 2; j < paletteLength + 2; j++) {
                 byte b = byteBuf.getByte(index + j);
                 blockID.append((char) b);
@@ -144,7 +145,7 @@ public class Client {
             j += 2;
             int[] blockState = new int[blockStateCount];
             for (int k = 0; k < blockStateCount; k++) {
-                blockState[k] = (int) byteBuf.getUnsignedInt(index + j);
+                blockState[k] = byteBuf.getInt(index + j);
                 j += 4;
             }
             palette[i] = new ClientBlock(blockID.toString(), blockState);
@@ -155,15 +156,11 @@ public class Client {
         for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED && index < byteBuf.readableBytes(); ) {
             int blockID = byteBuf.getInt(index);
             int blockCount = byteBuf.getInt(index + 4);
-            if (blockID == 0) {
-                i += blockCount;
-            } else {
-                int oi = i;
-                for (; i < blockCount + oi && i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED; i++) {
-                    blocks[i] = worldDataService.getBlock(palette[blockID - 1].id());
-                    if (palette[blockID - 1].blockState().length > 0) {
-                        blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID - 1].blockState());
-                    }
+            int oi = i;
+            for (; i < blockCount + oi; i++) {
+                blocks[i] = worldDataService.getBlock(palette[blockID].id());
+                if (palette[blockID].blockState().length > 0) {
+                    blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID].blockState());
                 }
             }
             index += 8;
@@ -176,9 +173,9 @@ public class Client {
             if (size < smallestSize) {
                 smallestQueue = queue;
                 smallestSize = size;
-            }
-            if (smallestSize == 0) {
-                break;
+                if (size == 0) {
+                    break;
+                }
             }
         }
         if (smallestQueue != null) {

@@ -28,7 +28,7 @@ public final class GeneratedChunk {
                     if (!palette.contains(block)) {
                         palette.add(block);
                     }
-                    chunk[chunkByteOffset] = palette.indexOf(block) + 1;
+                    chunk[chunkByteOffset] = palette.indexOf(block);
                     chunkByteOffset++;
                 }
             }
@@ -53,17 +53,16 @@ public final class GeneratedChunk {
         List<BlockIDCount> chunkData = new ArrayList<>();
         int count = 0;
         int currentID = 0;
-        for (int i = 0; i < chunk.length; i++) {
-            int id = chunk[i];
-            if (i == 0 || currentID != id) {
-                if (i > 0) {
-                    chunkData.add(new BlockIDCount(currentID, count));
-                }
+        for (int id : chunk) {
+            if (currentID != id) {
+                chunkData.add(new BlockIDCount(currentID, count));
                 currentID = id;
-                count = 0;
+                count = 1;
+            } else {
+                count++;
             }
-            count++;
         }
+        chunkData.add(new BlockIDCount(currentID, count));
 
         byte[] chunkBytes = new byte[chunkData.size() * 8];
         for (int i = 0; i < chunkData.size(); i++) {

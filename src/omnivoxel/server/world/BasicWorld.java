@@ -3,7 +3,6 @@ package omnivoxel.server.world;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.client.block.Block;
-import omnivoxel.server.world.chunk.ByteChunk;
 import omnivoxel.server.world.chunk.Chunk;
 
 import java.util.Map;

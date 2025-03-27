@@ -3,7 +3,6 @@ package omnivoxel.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.server.client.ServerEntity;
 import omnivoxel.server.client.ServerPlayer;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkGeneratorThread;
@@ -11,7 +10,6 @@ import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.world.World;
 
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;

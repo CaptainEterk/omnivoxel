@@ -5,7 +5,7 @@
 #define BITMASK_3 7u
 #define BITMASK_10 1023u
 #define BITMASK_2 3u
-#define CHUNK_SIZE vec3(32, 32, 32)
+#define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
 #define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)// Array of shadow levels
 
 layout(location = 0) in uint data1;
@@ -13,9 +13,10 @@ layout(location = 1) in uint data2;
 
 out vec2 TexCoord;
 out float shadow;
-out vec3 position;
+out highp vec3 position;
 out vec3 lighting;
 out float ao;
+out float fresnel;
 
 uniform bool useChunkPosition;
 uniform bool useExactPosition;
@@ -30,10 +31,10 @@ uniform mat4 projection;
 
 void main() {
     // Unpack data1
-    float x = float((data1 >> 22) & BITMASK_10);
-    float y = float((data1 >> 12) & BITMASK_10);
-    float z = float((data1 >> 2) & BITMASK_10);
-    ao = float(data1 & BITMASK_2)/8.0;
+    highp float x = float((data1 >> 22) & BITMASK_10);
+    highp float y = float((data1 >> 12) & BITMASK_10);
+    highp float z = float((data1 >> 2) & BITMASK_10);
+    ao = float(data1 & BITMASK_2);
 
     // Unpack data2
     float r = float((data2 >> 28) & BITMASK_4) / float(BITMASK_4);
@@ -46,10 +47,11 @@ void main() {
     float v = float((data2 >> 1) & BITMASK_8);
     TexCoord = vec2(u, v);
 
-    vec3 xyz = vec3(x, y, z);
+    highp vec3 xyz = vec3(x, y, z);
 
     if (useChunkPosition) {
-        xyz = round(xyz / 2 * CHUNK_SIZE) / CHUNK_SIZE;
+        //xyz = round(xyz * CHUNK_SIZE) / CHUNK_SIZE/32.0;
+        xyz /= 16.0;
         xyz += chunkPosition*CHUNK_SIZE;
 
         // Shadow calculation
@@ -64,6 +66,11 @@ void main() {
 
     position = xyz;
     lighting = vec3(r, g, b);
+
+    vec3 toCameraVector = cameraPosition - xyz;
+    vec3 viewVector = normalize(toCameraVector);
+    vec3 faceNormal = vec3(0.0,1.0,0.0);
+    fresnel = abs(dot(viewVector, faceNormal));
 
     // Calculate position and set vertex position
     gl_Position = projection * view * vec4(xyz, 1.0);

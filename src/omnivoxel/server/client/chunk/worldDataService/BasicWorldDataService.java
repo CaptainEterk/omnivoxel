@@ -53,7 +53,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
                         new PlainsBiome(blockService)
                 )
         );
-        this.air = blockService.getBlock("air", null);
+        this.air = blockService.getBlock("omnivoxel:air", null);
         this.water = blockService.getBlock("core:water_source_block", null);
     }
 
@@ -70,7 +70,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
         Biome biome = biomeService.generateBiome(climateVector2D);
 
         int height = (int) (
-                (1 - Math.abs(3 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
+                (1 - Math.abs(2 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
         );
 
         Block block = null;
