@@ -70,7 +70,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
         Biome biome = biomeService.generateBiome(climateVector2D);
 
         int height = (int) (
-                (1 - Math.abs(2 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
+                (1 - Math.abs(3 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
+//                        + continentalnessNoise.generate(x, z) * 128
         );
 
         Block block = null;

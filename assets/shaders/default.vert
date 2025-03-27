@@ -69,7 +69,7 @@ void main() {
 
     vec3 toCameraVector = cameraPosition - xyz;
     vec3 viewVector = normalize(toCameraVector);
-    vec3 faceNormal = vec3(0.0,1.0,0.0);
+    vec3 faceNormal = vec3(0.0, 1.0, 0.0);
     fresnel = abs(dot(viewVector, faceNormal));
 
     // Calculate position and set vertex position

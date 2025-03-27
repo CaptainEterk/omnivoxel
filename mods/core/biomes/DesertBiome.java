@@ -5,7 +5,7 @@ import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 
 public class DesertBiome extends Biome {
-    public DesertBiome (BlockService blockService) {
+    public DesertBiome(BlockService blockService) {
         super(blockService);
     }
 

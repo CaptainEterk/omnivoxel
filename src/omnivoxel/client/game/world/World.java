@@ -161,6 +161,10 @@ public class World {
     }
 
     public void freeAllChunksNotIn(List<ChunkPosition> chunks) {
+        if (this.chunks.keySet().containsAll(chunks) && this.chunks.size() == chunks.size()) {
+            return;
+        }
+
         // Iterate over all chunks in your current chunk map
         Iterator<Map.Entry<ChunkPosition, ChunkMesh>> iterator = this.chunks.entrySet().iterator();
 

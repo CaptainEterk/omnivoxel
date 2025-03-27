@@ -116,6 +116,8 @@ public final class GameLoop {
 
             // Enable depth testing for solid chunks
             GL11C.glDepthFunc(GL11C.GL_BACK);
+            GL11C.glEnable(GL11C.GL_CULL_FACE);
+            GL11C.glCullFace(GL11C.GL_BACK);
 
             List<ChunkPosition> renderedChunks = new ArrayList<>();
             int totalChunks = 0;
@@ -138,9 +140,6 @@ public final class GameLoop {
 
                 // Bind the shader program
                 shaderProgram.bind();
-
-                GL11C.glEnable(GL11C.GL_CULL_FACE);
-                GL11C.glCullFace(GL11C.GL_BACK);
 
                 // Bind the texture atlas
                 GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
@@ -195,6 +194,7 @@ public final class GameLoop {
                 }
 
                 GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+                GL11C.glEnable(GL11C.GL_CULL_FACE);
 
                 // Solid chunk meshes
                 renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), false));
@@ -204,7 +204,6 @@ public final class GameLoop {
                 GL11C.glDepthMask(false);
                 GL11C.glEnable(GL11C.GL_BLEND);
                 GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
-                GL11C.glDisable(GL11C.GL_CULL_FACE);
                 renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), true));
                 GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glDepthMask(true);
