@@ -1,4 +1,4 @@
-package core.noise;
+package core.noise._2D;
 
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise2D;
 

@@ -1,5 +1,6 @@
 package omnivoxel.server.world;
 
+import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.client.block.Block;
@@ -9,7 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BasicWorld implements World {
-    private final Map<Position3D, Block> queuedBlocks;
+    private final Map<ChunkPosition, Map<Position3D, Block>> queuedBlocks;
     private final Map<Position3D, Chunk> chunks;
 
     public BasicWorld() {
@@ -18,27 +19,30 @@ public class BasicWorld implements World {
     }
 
     @Override
-    public boolean isBlockQueued(Position3D position3D) {
-        return queuedBlocks.containsKey(position3D);
-    }
-
-    @Override
-    public Block takeQueuedBlock(Position3D position3D) {
-        return queuedBlocks.remove(position3D);
+    public Block takeQueuedBlock(ChunkPosition chunkPosition, Position3D blockPosition) {
+        Map<Position3D, Block> chunkQueuedBlocks = queuedBlocks.get(chunkPosition);
+        if (chunkQueuedBlocks == null) {
+            return null;
+        } else {
+            Block block = chunkQueuedBlocks.remove(blockPosition);
+            if (chunkQueuedBlocks.isEmpty()) {
+                queuedBlocks.remove(chunkPosition);
+            }
+            return block;
+        }
     }
 
     @Override
     public void setBlock(Position3D position3D, Block block) {
-        long chunkX = Math.floorDiv(position3D.x(), ConstantGameSettings.CHUNK_WIDTH);
-        long chunkY = Math.floorDiv(position3D.y(), ConstantGameSettings.CHUNK_HEIGHT);
-        long chunkZ = Math.floorDiv(position3D.z(), ConstantGameSettings.CHUNK_LENGTH);
+        int chunkX = Math.floorDiv(position3D.x(), ConstantGameSettings.CHUNK_WIDTH);
+        int chunkY = Math.floorDiv(position3D.y(), ConstantGameSettings.CHUNK_HEIGHT);
+        int chunkZ = Math.floorDiv(position3D.z(), ConstantGameSettings.CHUNK_LENGTH);
         Position3D chunkPos = new Position3D(chunkX, chunkY, chunkZ);
         if (chunks.keySet().stream().anyMatch(pos -> pos.equals(chunkPos))) {
 //            System.out.println("Chunk exists!");
             // Send a block update in the chunk
         } else {
-            queuedBlocks.put(position3D, block);
-            // TODO: Instead of queueing blocks, generate the chunk and set the block in it
+            queuedBlocks.get(position3D.chunkPosition()).put(position3D, block);
         }
     }
 

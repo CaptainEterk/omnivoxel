@@ -1,13 +1,12 @@
 package omnivoxel.server.world;
 
+import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.client.block.Block;
 import omnivoxel.server.world.chunk.Chunk;
 
 public interface World {
-    boolean isBlockQueued(Position3D position3D);
-
-    Block takeQueuedBlock(Position3D position3D);
+    Block takeQueuedBlock(ChunkPosition chunkPosition, Position3D blockPosition);
 
     void setBlock(Position3D add, Block block);
 

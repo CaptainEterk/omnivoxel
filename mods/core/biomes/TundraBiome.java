@@ -1,13 +1,13 @@
 package core.biomes;
 
-import core.structures.StoneObeliskStructure;
+import core.structures.TestStructure;
 import omnivoxel.server.client.block.Block;
 import omnivoxel.server.client.block.StructureSeed;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 
 public class TundraBiome extends Biome {
-    private final StructureSeed structure = new StructureSeed(new StoneObeliskStructure());
+    private final StructureSeed structure = new StructureSeed(new TestStructure());
 
     public TundraBiome(BlockService blockService) {
         super(blockService);

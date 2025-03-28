@@ -9,6 +9,21 @@ public class ClimateVector {
         this.pos = pos;
     }
 
+    public ClimateVector(ClimateVector climateVector) {
+        this.pos = new double[climateVector.size()];
+        for (int i = 0; i < this.pos.length; i++) {
+            this.pos[i] = climateVector.get(i);
+        }
+    }
+
+    public ClimateVector(ClimateVector climateVector, double... pos) {
+        this.pos = new double[climateVector.size() + pos.length];
+        for (int i = 0; i < climateVector.size(); i++) {
+            this.pos[i] = climateVector.get(i);
+        }
+        System.arraycopy(pos, 0, this.pos, climateVector.size(), pos.length);
+    }
+
     public double get(int i) {
         return pos[i];
     }

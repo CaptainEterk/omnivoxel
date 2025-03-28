@@ -1,8 +1,11 @@
 package omnivoxel.server.client.chunk.worldDataService;
 
 import core.biomes.*;
-import core.noise.FractionalBrownianNoise;
-import core.noise.PerlinNoise;
+import core.noise._2D.FractionalBrownianNoise2D;
+import core.noise._2D.PerlinNoise;
+import core.noise._3D.FractionalBrownianNoise3D;
+import core.noise._3D.PerlinNoise3D;
+import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.Position3D;
 import omnivoxel.server.client.block.Block;
 import omnivoxel.server.client.block.ServerBlock;
@@ -12,6 +15,8 @@ import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise2D;
+import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
+import omnivoxel.server.client.structure.Structure;
 import omnivoxel.server.world.World;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,19 +30,22 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final Noise2D temperatureNoise;
     private final Noise2D humidityNoise;
     private final Noise2D erosionNoise;
-    private final Noise2D worldNoise;
+    private final Noise2D ridgesNoise;
+    private final Noise3D depthNoise;
     private final World world;
     private final BiomeService biomeService;
     private final ServerBlock air;
     private final ServerBlock water;
+    private final ServerBlock stone;
     private final BlockService blockService = new BlockService();
 
     public BasicWorldDataService(Random random, World world) {
-        this.continentalnessNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
-        this.temperatureNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
-        this.humidityNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
-        this.erosionNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
-        this.worldNoise = new FractionalBrownianNoise(new PerlinNoise(random.nextLong()), 5, 0.4, 2.5, 0.0025);
+        this.continentalnessNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
+        this.temperatureNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
+        this.humidityNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
+        this.erosionNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
+        this.ridgesNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 5, 0.4, 2.5, 0.0025);
+        this.depthNoise = new FractionalBrownianNoise3D(new PerlinNoise3D(random.nextLong()), 1, 1, 0.01, 0.02);
         this.world = world;
         this.biomeService = new BiomeService(
                 Map.of(
@@ -55,36 +63,40 @@ public class BasicWorldDataService implements ServerWorldDataService {
         );
         this.air = blockService.getBlock("omnivoxel:air", null);
         this.water = blockService.getBlock("core:water_source_block", null);
+        this.stone = blockService.getBlock("core:stone_block", null);
     }
 
     @Override
-    public @NotNull Block getBlockAt(int x, int y, int z, ClimateVector climateVector2D) {
+    public @NotNull Block getBlockAt(ChunkPosition chunkPosition, int x, int y, int z, ClimateVector climateVector2D) {
         Position3D position3D = new Position3D(x, y, z);
-        if (world.isBlockQueued(position3D)) {
-            Block block = world.takeQueuedBlock(position3D);
-            if (block != null) {
-                return block;
-            }
+
+        Block block = world.takeQueuedBlock(chunkPosition, position3D);
+        if (block != null) {
+            return block;
         }
 
-        Biome biome = biomeService.generateBiome(climateVector2D);
+        double depth = depthNoise.generate(x, y, z);
+
+        Biome biome = biomeService.generateBiome(new ClimateVector(climateVector2D));
 
         int height = (int) (
-                (1 - Math.abs(3 * Math.abs(worldNoise.generate(x, z)) - 2)) * 256
-//                        + continentalnessNoise.generate(x, z) * 128
+                (1 - Math.abs(3 * Math.abs(ridgesNoise.generate(x, z)) - 2)) * 256
+//                continentalnessNoise.generate(x, z) * 128
         );
 
-        Block block = null;
         if (y <= height) {
-            block = biome.getBlock(x, y, z, height - y, blockService);
-        }
-        if (block == null) {
+            if (depth > 0.75) {
+                block = air;
+            } else {
+                block = biome.getBlock(x, y, z, height - y, blockService);
+            }
+        } else {
             if (y <= WATER_LEVEL) {
                 return water;
             }
             return air;
         }
-        if (block instanceof StructureSeed(omnivoxel.server.client.structure.Structure structure)) {
+        if (block instanceof StructureSeed(Structure structure)) {
             Block[][][] blocks = structure.getBlocks();
             int xl = blocks.length;
             int yl = blocks[0].length;

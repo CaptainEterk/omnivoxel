@@ -1,17 +1,17 @@
-package core.noise;
+package core.noise._3D;
 
-import omnivoxel.server.client.chunk.worldDataService.noise.Noise2D;
+import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
 
-public class FractionalBrownianNoise implements Noise2D {
-    private final Noise2D noise;
+public class FractionalBrownianNoise3D implements Noise3D {
+    private final Noise3D noise;
     private final int octaves;
     private final double persistence;
     private final double lacunarity;
     private final double frequency;
 
     // Constructor to set up noise parameters
-    public FractionalBrownianNoise(
-            Noise2D noise,
+    public FractionalBrownianNoise3D(
+            Noise3D noise,
             int octaves,
             double persistence,
             double lacunarity,
@@ -25,16 +25,17 @@ public class FractionalBrownianNoise implements Noise2D {
     }
 
     @Override
-    public double generate(double x, double z) {
+    public double generate(double x, double y, double z) {
         double total = 0;
         double currentX = x * frequency;
+        double currentY = y * frequency;
         double currentZ = z * frequency;
 
         double amplitudeSum = 0; // Precompute normalization factor
         double currentAmplitude = 1;
 
         for (int i = 0; i < octaves; i++) {
-            total += noise.generate(currentX, currentZ) * currentAmplitude;
+            total += noise.generate(currentX, currentY, currentZ) * currentAmplitude;
             amplitudeSum += currentAmplitude;
 
             currentX *= lacunarity;

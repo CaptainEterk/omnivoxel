@@ -23,7 +23,7 @@ public class ChunkGenerator {
                 ClimateVector climateVector2D = worldDataService.getClimateVector2D(worldX, worldZ);
                 for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
                     int worldY = chunkPosition.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
-                    chunk.setBlock(x, y, z, worldDataService.getBlockAt(worldX, worldY, worldZ, climateVector2D));
+                    chunk.setBlock(x, y, z, worldDataService.getBlockAt(chunkPosition, worldX, worldY, worldZ, climateVector2D));
                 }
             }
         }
