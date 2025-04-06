@@ -48,4 +48,12 @@ public record ServerBlock(String id, int[] blockState) implements Block {
         ServerBlock that = (ServerBlock) o;
         return Arrays.equals(blockState, that.blockState) && Objects.equals(id, that.id);
     }
+
+    @Override
+    public String toString() {
+        return "ServerBlock{" +
+                "id='" + id + '\'' +
+                ", blockState=" + Arrays.toString(blockState) +
+                '}';
+    }
 }

@@ -12,13 +12,15 @@ import static org.lwjgl.opengl.GL11C.glViewport;
 
 public final class Window {
     private final long window;
+    private final String version;
     private final List<Consumer<Window>> matrixUsers;
     private int width;
     private int height;
     private float aspectRatio;
 
-    public Window(long window) {
+    public Window(long window, String version) {
         this.window = window;
+        this.version = version;
         this.matrixUsers = new ArrayList<>();
     }
 
@@ -93,13 +95,7 @@ public final class Window {
         this.height = height;
     }
 
-    @Override
-    public String toString() {
-        return "Window{" +
-                "window=" + window +
-                ", width=" + width +
-                ", height=" + height +
-                ", aspectRatio=" + aspectRatio +
-                '}';
+    public String getVersion() {
+        return version;
     }
 }

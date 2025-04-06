@@ -43,7 +43,6 @@ public final class GameLoop {
     private final Settings settings;
     private final TextRenderer textRenderer;
     private final double[] fpsHistory = new double[FPS_SAMPLES];
-    private final float alpha = 0.1f; // Smoothing factor (can be adjusted)
     private ShaderProgram shaderProgram;
     private int fpsIndex = 0;
 
@@ -275,6 +274,7 @@ public final class GameLoop {
                     long usedMemory = totalMemory - freeMemory;
 
                     rightDebugText = String.format("Java Version: %s\n", System.getProperty("java.version"));
+                    rightDebugText += String.format("OpenGL Version: %s\n", window.getVersion());
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
                 }
 

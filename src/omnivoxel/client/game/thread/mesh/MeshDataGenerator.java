@@ -15,10 +15,7 @@ import omnivoxel.debug.Logger;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -213,9 +210,9 @@ public final class MeshDataGenerator implements Runnable {
             temp_g = 0;
             temp_b = 0;
         } else {
-            temp_r = block.getState()[0] / 32f + 0.5f;
-            temp_g = block.getState()[1] / 32f + 0.5f;
-            temp_b = block.getState()[2] / 32f + 0.5f;
+            temp_r = block.getState()[0] / 32f;
+            temp_g = block.getState()[1] / 32f;
+            temp_b = block.getState()[2] / 32f;
         }
 
         for (int index : faceIndices) {

@@ -7,10 +7,11 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
 
-public class WindowFactory {
+public final class WindowFactory {
     public static Window createWindow(int width, int height, String title, Logger logger) throws RuntimeException {
         // Set up an error callback. The default implementation will print the error message in System.err.
         GLFW.glfwSetErrorCallback(((error, description) -> logger.error(error + ": " + description)));
@@ -72,6 +73,9 @@ public class WindowFactory {
         imagebf.put(0, image);
         GLFW.glfwSetWindowIcon(window, imagebf);
 
-        return new Window(window);
+        // Get the version
+        String version = GL11.glGetString(GL11.GL_VERSION);
+
+        return new Window(window, version);
     }
 }

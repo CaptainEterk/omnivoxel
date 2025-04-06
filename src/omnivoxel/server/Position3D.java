@@ -17,4 +17,8 @@ public record Position3D(int x, int y, int z) {
     public ChunkPosition chunkPosition() {
         return new ChunkPosition(x, y, z);
     }
+
+    public Position3D add(Position3D position3D) {
+        return add(position3D.x(), position3D.y(), position3D.z());
+    }
 }

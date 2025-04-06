@@ -1,25 +1,20 @@
 package core.biomes;
 
-import core.structures.TestStructure;
 import omnivoxel.server.client.block.Block;
-import omnivoxel.server.client.block.StructureSeed;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 
 public class TundraBiome extends Biome {
-    private final StructureSeed structure = new StructureSeed(new TestStructure());
-
     public TundraBiome(BlockService blockService) {
         super(blockService);
-        structure.structure().initBlocks();
     }
 
     @Override
     public Block getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
-        if (yOffset == 0 && Math.random() > 0.99) {
-            return structure;
-        } else {
+//        if (yOffset == 0) {
+//            return structure;
+//        } else {
             return blockService.getBlock("core:snow_block", null);
-        }
+//        }
     }
 }
