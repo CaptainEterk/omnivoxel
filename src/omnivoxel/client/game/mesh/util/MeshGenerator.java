@@ -20,7 +20,8 @@ public class MeshGenerator {
                         transparent[0],
                         transparent[1],
                         transparent[2],
-                        mesh.transparentIndices().capacity() / Integer.BYTES
+                        mesh.transparentIndices().capacity() / Integer.BYTES,
+                        mesh
                 );
             }
         } else if (transparent == null) {
@@ -28,7 +29,8 @@ public class MeshGenerator {
                     solid[0],
                     solid[1],
                     solid[2],
-                    mesh.solidIndices().capacity() / Integer.BYTES
+                    mesh.solidIndices().capacity() / Integer.BYTES,
+                    mesh
             );
         } else {
             return new GeneralChunkMesh(
@@ -39,7 +41,8 @@ public class MeshGenerator {
                     transparent[0],
                     transparent[1],
                     transparent[2],
-                    mesh.transparentIndices().capacity() / Integer.BYTES
+                    mesh.transparentIndices().capacity() / Integer.BYTES,
+                    mesh
             );
         }
     }

@@ -13,7 +13,7 @@ layout(location = 1) in uint data2;
 
 out vec2 TexCoord;
 out float shadow;
-out highp vec3 position;
+out vec3 position;
 out vec3 lighting;
 out float ao;
 out float fresnel;
@@ -31,9 +31,9 @@ uniform mat4 projection;
 
 void main() {
     // Unpack data1
-    highp float x = float((data1 >> 22) & BITMASK_10);
-    highp float y = float((data1 >> 12) & BITMASK_10);
-    highp float z = float((data1 >> 2) & BITMASK_10);
+    float x = float((data1 >> 22) & BITMASK_10);
+    float y = float((data1 >> 12) & BITMASK_10);
+    float z = float((data1 >> 2) & BITMASK_10);
     ao = float(data1 & BITMASK_2);
 
     // Unpack data2

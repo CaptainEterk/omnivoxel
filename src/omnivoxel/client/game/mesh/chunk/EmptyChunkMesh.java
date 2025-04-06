@@ -1,6 +1,11 @@
 package omnivoxel.client.game.mesh.chunk;
 
+import omnivoxel.client.game.thread.mesh.meshData.EmptyMeshData;
+import omnivoxel.client.game.thread.mesh.meshData.MeshData;
+
 public class EmptyChunkMesh implements ChunkMesh {
+    private static final MeshData meshData = new EmptyMeshData();
+
     @Override
     public int solidVAO() {
         return 0;
@@ -39,5 +44,10 @@ public class EmptyChunkMesh implements ChunkMesh {
     @Override
     public int transparentIndexCount() {
         return 0;
+    }
+
+    @Override
+    public MeshData meshData() {
+        return meshData;
     }
 }

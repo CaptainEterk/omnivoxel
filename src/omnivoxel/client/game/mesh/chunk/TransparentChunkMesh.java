@@ -1,7 +1,10 @@
 package omnivoxel.client.game.mesh.chunk;
 
+import omnivoxel.client.game.thread.mesh.meshData.MeshData;
+
 public record TransparentChunkMesh(
-        int transparentVAO, int transparentVBO, int transparentEBO, int transparentIndexCount
+        int transparentVAO, int transparentVBO, int transparentEBO, int transparentIndexCount,
+        MeshData meshData
 ) implements ChunkMesh {
     @Override
     public int solidVAO() {

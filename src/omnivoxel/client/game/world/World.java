@@ -3,6 +3,7 @@ package omnivoxel.client.game.world;
 import omnivoxel.client.game.entity.Entity;
 import omnivoxel.client.game.mesh.EntityMesh;
 import omnivoxel.client.game.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.mesh.chunk.multi.MultiChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
 import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
@@ -27,6 +28,7 @@ public class World {
     private final AtomicInteger chunkRequestsSent;
     private final Map<ChunkPosition, MeshData> nonBufferizedChunks;
     private final Map<ChunkPosition, ChunkMesh> chunks;
+    private final Map<ChunkPosition, MultiChunkMesh> chunkMeshes;
 
     private final Map<String, Entity> entities;
     private final Map<String, MeshData> nonBufferizedEntities;
@@ -39,10 +41,11 @@ public class World {
     public World(Client client, GameState gameState) {
         this.client = client;
         this.gameState = gameState;
-        client.setChunkListener(this::loadMeshData);
+        client.setChunkListener(this::loadChunk);
         client.setEntityListener(this::loadEntity);
         queuedChunks = ConcurrentHashMap.newKeySet();
         chunks = new ConcurrentHashMap<>();
+        chunkMeshes = new ConcurrentHashMap<>();
         nonBufferizedChunks = new ConcurrentHashMap<>();
 
         entities = new ConcurrentHashMap<>();
@@ -78,7 +81,6 @@ public class World {
             }
         }
         while (bufferizing && count < ConstantGameSettings.BUFFERIZE_CHUNKS_PER_FRAME);
-//        while (endTime > System.nanoTime() && bufferizing);
         return count;
     }
 
@@ -94,7 +96,7 @@ public class World {
         return false;
     }
 
-    public void loadMeshData(ChunkPosition chunkPosition, MeshData meshData) {
+    public void loadChunk(ChunkPosition chunkPosition, MeshData meshData) {
         nonBufferizedChunks.put(chunkPosition, meshData);
         chunkRequestsSent.decrementAndGet();
         newChunks.add(chunkPosition);
