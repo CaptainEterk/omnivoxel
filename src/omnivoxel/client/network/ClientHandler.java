@@ -19,8 +19,6 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
             PackageID packageID = PackageID.values()[bPackageID];
 
             client.handlePackage(ctx, packageID, byteBuf);
-
-            byteBuf.release();
         }
     }
 

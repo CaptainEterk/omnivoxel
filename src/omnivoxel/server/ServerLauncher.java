@@ -9,13 +9,8 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import omnivoxel.server.client.chunk.ChunkGenerator;
-import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
-import omnivoxel.server.world.BasicWorld;
-import omnivoxel.server.world.World;
 
 import java.io.IOException;
-import java.util.Random;
 
 public class ServerLauncher {
     private static final int PORT = 5000;
@@ -31,14 +26,11 @@ public class ServerLauncher {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-        Random random = new Random(seed);
 
-        World world = new BasicWorld();
-
-        ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(random, world));
+        ServerWorld world = new ServerWorld();
 
         try {
-            ServerHandler serverHandler = new ServerHandler(new Server(chunkGenerator, world));
+            ServerHandler serverHandler = new ServerHandler(new Server(seed, world));
 
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)
@@ -46,17 +38,7 @@ public class ServerLauncher {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(
-                                    new LengthFieldBasedFrameDecoder(
-                                            1048576,
-                                            0,
-                                            4,
-                                            0,
-                                            4
-                                    ),
-                                    new LengthFieldPrepender(4),
-                                    serverHandler
-                            );
+                            ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(1048576, 0, 4, 0, 4), new LengthFieldPrepender(4), serverHandler);
                         }
                     });
 

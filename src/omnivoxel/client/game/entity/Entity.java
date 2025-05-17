@@ -1,11 +1,12 @@
 package omnivoxel.client.game.entity;
 
-import omnivoxel.client.game.position.ChangingPosition;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 
 public abstract class Entity {
     protected final float friction;
-    protected final ChangingPosition changingPosition;
+    protected float x;
+    protected float y;
+    protected float z;
     protected float velocityX;
     protected float velocityY;
     protected float velocityZ;
@@ -15,7 +16,6 @@ public abstract class Entity {
 
     protected Entity(float friction) {
         this.friction = friction;
-        this.changingPosition = new ChangingPosition(0, 0, 0);
     }
 
     public void tick(float deltaTime) {
@@ -29,9 +29,9 @@ public abstract class Entity {
 
         // Apply movement to position
         // TODO: Implement gravity
-        changingPosition.changeX(-moveX);
-        changingPosition.changeY(-velocityY);
-        changingPosition.changeZ(moveZ);
+        x -= moveX;
+        y -= velocityY;
+        z += moveZ;
 
         velocityX *= friction;
         velocityY *= friction;
@@ -39,39 +39,27 @@ public abstract class Entity {
     }
 
     public float getX() {
-        return changingPosition.x();
+        return x;
     }
 
     public void setX(float x) {
-        changingPosition.setX(x);
-    }
-
-    public void changeX(float x) {
-        changingPosition.changeX(x);
+        this.x = x;
     }
 
     public float getY() {
-        return changingPosition.y();
+        return y;
     }
 
     public void setY(float y) {
-        changingPosition.setY(y);
-    }
-
-    public void changeY(float y) {
-        changingPosition.changeY(y);
+        this.y = y;
     }
 
     public float getZ() {
-        return changingPosition.z();
+        return z;
     }
 
     public void setZ(float z) {
-        changingPosition.setZ(z);
-    }
-
-    public void changeZ(float z) {
-        changingPosition.changeZ(z);
+        this.z = z;
     }
 
     public float getVelocityX() {
@@ -120,9 +108,5 @@ public abstract class Entity {
 
     public void setMeshData(MeshData meshData) {
         this.meshData = meshData;
-    }
-
-    public ChangingPosition getPosition() {
-        return changingPosition;
     }
 }

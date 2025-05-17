@@ -40,7 +40,7 @@ public class PerlinNoise implements Noise2D {
             case 0x5 -> -x;
             case 0x6 -> y;
             case 0x7 -> -y;
-            default -> 0; // never happens
+            default -> 0;
         };
     }
 

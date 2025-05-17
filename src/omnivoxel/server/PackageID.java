@@ -15,12 +15,10 @@ public enum PackageID {
     REGISTER_PLAYERS,
     CHUNK,
     NEW_ENTITY,
-
+    SERVER_INFO,
 
     // UDP
 
     // Client -> Server
     PLAYER_UPDATE,
-
-
 }

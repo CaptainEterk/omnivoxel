@@ -1,6 +1,6 @@
 package omnivoxel.server.client.structure;
 
-import omnivoxel.server.Position3D;
+import omnivoxel.math.Position3D;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import org.jetbrains.annotations.NotNull;

@@ -3,28 +3,32 @@ package omnivoxel.server.client.chunk;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.Position3D;
-import omnivoxel.server.world.World;
-import omnivoxel.server.world.chunk.result.ChunkResult;
-import omnivoxel.server.world.chunk.result.GeneratedChunk;
+import omnivoxel.math.Position3D;
+import omnivoxel.server.ServerWorld;
+import omnivoxel.server.chunk.result.ChunkResult;
+import omnivoxel.server.chunk.result.GeneratedChunk;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ChunkGeneratorThread implements Runnable {
+    private static final AtomicReference<String> oldDate = new AtomicReference<>();
+    private static AtomicLong responseCount = new AtomicLong();
+    private static AtomicLong oldCount = new AtomicLong();
+
     private final ChunkGenerator chunkGenerator;
     private final BlockingQueue<ChunkTask> chunkTasks;
-    private final World world;
+    private final ServerWorld world;
     private final Queue<ChunkTask> localQueue; // Reusable queue
 
-    public ChunkGeneratorThread(ChunkGenerator chunkGenerator, World world) {
+    public ChunkGeneratorThread(ChunkGenerator chunkGenerator, BlockingQueue<ChunkTask> chunkTasks, ServerWorld world) {
         this.chunkGenerator = chunkGenerator;
+        this.chunkTasks = chunkTasks;
         this.world = world;
-        this.chunkTasks = new LinkedBlockingQueue<>();
         this.localQueue = new ArrayDeque<>();
     }
 
@@ -44,26 +48,21 @@ public class ChunkGeneratorThread implements Runnable {
     public void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                int count = chunkTasks.drainTo(localQueue);
-                if (count == 0) {
-                    // Sleep briefly to avoid busy waiting
+                int taskCount = chunkTasks.drainTo(localQueue);
+                if (taskCount > 0) {
+                    while (!localQueue.isEmpty()) {
+                        ChunkTask task = localQueue.remove();
+                        Position3D position3D = new Position3D(task.x(), task.y(), task.z());
+                        GeneratedChunk generatedChunk = chunkGenerator.generateChunk(position3D);
+                        ChunkResult chunkResult = GeneratedChunk.getResult(generatedChunk);
+                        sendChunkBytes(task.ctx(), task.x(), task.y(), task.z(), chunkResult.bytes());
+                        world.add(position3D, chunkResult.chunk());
+                    }
+                } else {
                     Thread.sleep(1);
-                    continue;
                 }
-
-                for (ChunkTask task : localQueue) {
-                    Position3D position3D = new Position3D(task.x(), task.y(), task.z());
-                    GeneratedChunk generatedChunk = chunkGenerator.generateChunk(new ChunkPosition(task.x(), task.y(), task.z()));
-                    ChunkResult chunkResult = GeneratedChunk.getResult(generatedChunk);
-                    sendChunkBytes(task.ctx(), task.x(), task.y(), task.z(), chunkResult.bytes());
-                    world.addChunk(position3D, chunkResult.chunk());
-                }
-
-                // Clear queue to reuse it
-                localQueue.clear();
             }
         } catch (InterruptedException e) {
-            // Exit gracefully on interruption
             Thread.currentThread().interrupt();
         }
     }

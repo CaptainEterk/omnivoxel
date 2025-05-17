@@ -6,22 +6,24 @@ import omnivoxel.client.game.thread.mesh.vertex.Vertex;
 
 public class ShapeHelper {
     public static final float PIXEL = 0.0625f;         // Precision of 0.0625 (1/16)
-    private static final int MAX_PACKED_VALUE = 512;      // Maximum value for 10-bit (2^10 - 1)
+    private static final float MAX_PACKED_VALUE = 512f;      // Maximum value for 10-bit (2^10 - 1)
 
     private static final int BITMASK_5 = 0x1F;  // 5-bit mask
     private static final int BITMASK_4 = 0xF;  // 4-bit mask
     private static final int BITMASK_3 = 0x7;  // 3-bit mask
     private static final int BITMASK_8 = 0xFF; // 8-bit mask
+    private static final int BITMASK_10 = 1023; // 8-bit mask
 
     public static int[] packVertexData(Vertex vertex, int ao, float r, float g, float b, BlockFace blockFace, int u, int v) {
         // Position calculations
-        float x = vertex.px();
-        float y = vertex.py();
-        float z = vertex.pz();
 
-        int ix = Math.round(x * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_WIDTH);
-        int iy = Math.round(y * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_HEIGHT);
-        int iz = Math.round(z * MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_LENGTH);
+        int ix = (int) (vertex.px() * (MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_WIDTH));
+        int iy = (int) (vertex.py() * (MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_HEIGHT));
+        int iz = (int) (vertex.pz() * (MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_LENGTH));
+
+//        if (ix % 16 != 0) {
+//        System.out.println(ix);
+//        }
 
         // Pack the position data into a 32-bit integer
         int packedPosition = (ix << 22) | (iy << 12) | (iz << 2) | ao;

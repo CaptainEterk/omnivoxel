@@ -1,13 +1,9 @@
 package omnivoxel.client.game;
 
-import omnivoxel.client.game.mesh.EntityMesh;
+import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.mesh.Mesh;
 import omnivoxel.client.game.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
-import omnivoxel.client.game.player.camera.Camera;
-import omnivoxel.client.game.position.ChangingPosition;
-import omnivoxel.client.game.position.ChunkPosition;
-import omnivoxel.client.game.position.Position;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.shader.ShaderProgram;
@@ -19,10 +15,11 @@ import omnivoxel.client.game.text.font.Font;
 import omnivoxel.client.game.texture.TextureLoader;
 import omnivoxel.client.game.window.Window;
 import omnivoxel.client.game.window.WindowFactory;
-import omnivoxel.client.game.world.World;
+import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
-import omnivoxel.debug.Logger;
+import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
+import omnivoxel.util.Logger;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.*;
@@ -35,7 +32,7 @@ import java.util.function.Consumer;
 public final class GameLoop {
     private static final int FPS_SAMPLES = 50;
     private final Camera camera;
-    private final World world;
+    private final ClientWorld world;
     private final AtomicBoolean gameRunning;
     private final BlockingQueue<Consumer<Long>> contextTasks;
     private final Client client;
@@ -43,10 +40,12 @@ public final class GameLoop {
     private final Settings settings;
     private final TextRenderer textRenderer;
     private final double[] fpsHistory = new double[FPS_SAMPLES];
+    private final long[] timeHistory = new long[FPS_SAMPLES];
     private ShaderProgram shaderProgram;
     private int fpsIndex = 0;
+    private int timeIndex = 0;
 
-    public GameLoop(Camera camera, World world, AtomicBoolean gameRunning, BlockingQueue<Consumer<Long>> contextTasks, Client client, GameState gameState, Settings settings, TextRenderer textRenderer) {
+    public GameLoop(Camera camera, ClientWorld world, AtomicBoolean gameRunning, BlockingQueue<Consumer<Long>> contextTasks, Client client, GameState gameState, Settings settings, TextRenderer textRenderer) {
         this.camera = camera;
         this.world = world;
         this.gameRunning = gameRunning;
@@ -64,24 +63,14 @@ public final class GameLoop {
             // Initializes the default shader
             // TODO: Make the player able to use their shaders instead.
             ShaderProgramHandler shaderProgramHandler = new ShaderProgramHandler();
-            shaderProgramHandler.addShaderProgram("default", Map.of(
-                    "assets/shaders/default.vert",
-                    GL20.GL_VERTEX_SHADER,
-                    "assets/shaders/default.frag",
-                    GL20.GL_FRAGMENT_SHADER
-            ));
-            shaderProgramHandler.addShaderProgram("text", Map.of(
-                    "assets/shaders/text.vert",
-                    GL20.GL_VERTEX_SHADER,
-                    "assets/shaders/text.frag",
-                    GL20.GL_FRAGMENT_SHADER
-            ));
+            shaderProgramHandler.addShaderProgram("default", Map.of("assets/shaders/default.vert", GL20.GL_VERTEX_SHADER, "assets/shaders/default.frag", GL20.GL_FRAGMENT_SHADER));
+            shaderProgramHandler.addShaderProgram("text", Map.of("assets/shaders/text.vert", GL20.GL_VERTEX_SHADER, "assets/shaders/text.frag", GL20.GL_FRAGMENT_SHADER));
             this.shaderProgram = shaderProgramHandler.getShaderProgram("default");
             ShaderProgram textShaderProgram = shaderProgramHandler.getShaderProgram("text");
             shaderProgram.bind();
-            shaderProgram.setUniform("fogColor", 0.0f, 0.61568627451f, 1.0f, 1.0f); // Should be the same as the clear color
+            shaderProgram.setUniform("fogColor", 0.0f, 0.61568627451f, 1.0f, 1.0f);
             shaderProgram.setUniform("fogFar", settings.getFloatSetting("render_distance", 100));
-            shaderProgram.setUniform("fogNear", settings.getFloatSetting("render_distance", 100) / 2);
+            shaderProgram.setUniform("fogNear", settings.getFloatSetting("render_distance", 100) / 10 * 9);
             shaderProgram.unbind();
 
             textShaderProgram.bind();
@@ -100,6 +89,7 @@ public final class GameLoop {
             gameState.setItem("shouldCheckNewChunks", false);
             gameState.setItem("shouldRenderWireframe", false);
             gameState.setItem("seeDebug", true);
+            gameState.setItem("bufferizingQueueSize", 0);
 
             textRenderer.init();
 
@@ -110,7 +100,7 @@ public final class GameLoop {
             GL11C.glClearColor(0.0f, 0.61568627451f, 1.0f, 1.0f);
 
             // TODO: Make this stitch textures together and save texture coordinates in a string->(x, y) map.
-            // TODO: Make the user be able to use texture packs instead
+            // TODO: Make the user be able to use texture packs instead (by loading it and stitching it together)
             int texture = TextureLoader.loadTexture("texture_atlas.png");
 
             // Enable depth testing for solid chunks
@@ -118,7 +108,7 @@ public final class GameLoop {
             GL11C.glEnable(GL11C.GL_CULL_FACE);
             GL11C.glCullFace(GL11C.GL_BACK);
 
-            List<ChunkPosition> renderedChunks = new ArrayList<>();
+            List<Position3D> renderedChunks = new ArrayList<>();
             int totalChunks = 0;
             int totalRenderedChunks = 0;
 
@@ -131,6 +121,12 @@ public final class GameLoop {
             double secondTime = time;
 
             boolean completeRenderDistance = false;
+
+            AtomicBoolean recalculateRenderedChunks = new AtomicBoolean(true);
+
+            ChunkResourceDeallocator chunkResourceDeallocators = new ChunkResourceDeallocator(gameState, gameRunning, contextTasks, world, recalculateRenderedChunks, camera, settings);
+            Thread chunkResourceDeallocatorThread = new Thread(chunkResourceDeallocators);
+            chunkResourceDeallocatorThread.start();
 
             // Renders everything
             while (!window.shouldClose()) {
@@ -160,24 +156,25 @@ public final class GameLoop {
                 shaderProgram.setUniform("useChunkPosition", true);
                 shaderProgram.setUniform("useExactPosition", false);
 
+                if (gameState.getItem("shouldUpdateView", Boolean.class)) {
+                    Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.aspectRatio(), camera.getNear(), camera.getFar());
+                    Matrix4f viewMatrix = new Matrix4f().identity().rotate(camera.getPitch(), 1, 0, 0).rotate(camera.getYaw(), 0, 1, 0).translate(camera.getX(), camera.getY(), camera.getZ());
+
+                    camera.getFrustum().updateFrustum(projectionMatrix, viewMatrix);
+                    shaderProgram.setUniform("projection", projectionMatrix);
+                    shaderProgram.setUniform("view", viewMatrix);
+
+                    gameState.setItem("shouldUpdateView", false);
+                }
+
                 if (gameState.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-                    renderedChunks.clear();
-                    totalChunks = calculateRenderedChunks(renderedChunks, settings.getIntSetting("render_distance", 100));
-
-                    totalRenderedChunks = renderedChunks.size();
-
-                    List<ChunkPosition> newRenderedChunks = renderedChunks.stream().filter(
-                            chunkPosition -> world.getChunk(chunkPosition) != null
-                    ).toList();
-
-                    completeRenderDistance = newRenderedChunks.size() == renderedChunks.size();
+                    recalculateRenderedChunks.set(true);
 
                     renderedChunks.clear();
-                    renderedChunks.addAll(newRenderedChunks);
-
-                    world.getNewChunks().clear();
-
-                    gameState.setItem("shouldUpdateVisibleMeshes", false);
+                    List<Position3D> chunks = new ArrayList<>();
+                    calculateRenderedChunks(chunks, settings.getIntSetting("render_distance", 100));
+                    totalRenderedChunks = chunks.size();
+                    renderedChunks.addAll(chunks.stream().filter(chunkPosition -> world.get(chunkPosition) != null).toList());
                 }
 
                 if (world.totalQueuedChunks() < ConstantServerSettings.QUEUED_CHUNKS_MINIMUM && !completeRenderDistance) {
@@ -185,8 +182,10 @@ public final class GameLoop {
                 }
 
                 if (gameState.getItem("shouldCheckNewChunks", Boolean.class)) {
-                    Set<ChunkPosition> newChunks = world.getNewChunks();
+                    Set<Position3D> newChunks = world.getNewChunks();
                     newChunks.removeIf(chunkPosition -> !camera.getFrustum().isMeshInFrustum(chunkPosition));
+                    newChunks.removeIf(chunkPosition -> world.get(chunkPosition) == null);
+                    totalRenderedChunks += newChunks.size();
                     renderedChunks.addAll(newChunks);
                     newChunks.clear();
                     gameState.setItem("shouldCheckNewChunks", false);
@@ -195,15 +194,17 @@ public final class GameLoop {
                 GL11C.glEnable(GL11C.GL_DEPTH_TEST);
                 GL11C.glEnable(GL11C.GL_CULL_FACE);
 
+                List<Position3D> renderedChunksInFrustum = renderedChunks.stream().filter(chunkPosition -> camera.getFrustum().isMeshInFrustum(chunkPosition)).toList();
+
                 // Solid chunk meshes
-                renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), false));
+                renderedChunksInFrustum.forEach(chunkPosition -> renderMesh(chunkPosition, world.get(chunkPosition).getMesh(), false));
 
                 // Transparent Chunk Meshes
                 GL11C.glDisable(GL11C.GL_CULL_FACE);
                 GL11C.glDepthMask(false);
                 GL11C.glEnable(GL11C.GL_BLEND);
                 GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
-                renderedChunks.forEach(chunkPosition -> renderMesh(chunkPosition, world.getChunk(chunkPosition), true));
+                renderedChunksInFrustum.forEach(chunkPosition -> renderMesh(chunkPosition, world.get(chunkPosition).getMesh(), true));
                 GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glDepthMask(true);
 
@@ -218,53 +219,16 @@ public final class GameLoop {
                 // Bufferize chunks
                 // TODO: Make the bufferizer actually use the endTime
                 int bufferizedChunkCount = world.bufferizeChunks(meshGenerator, System.nanoTime());
-                world.bufferizeEntity(meshGenerator);
 
                 // Unbind the VAO and texture
                 GL30C.glBindVertexArray(0);
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, 0);
 
-                if (gameState.getItem("shouldUpdateView", Boolean.class)) {
-                    Matrix4f projectionMatrix = new Matrix4f()
-                            .setPerspective(
-                                    (float) Math.toRadians(camera.getFOV()),
-                                    window.aspectRatio(),
-                                    camera.getNear(),
-                                    camera.getFar()
-                            );
-                    Matrix4f viewMatrix = new Matrix4f()
-                            .identity()
-                            .rotate(camera.getPitch(), 1, 0, 0)
-                            .rotate(camera.getYaw(), 0, 1, 0)
-                            .translate(
-                                    camera.getX(),
-                                    camera.getY(),
-                                    camera.getZ()
-                            );
+                timeIndex++;
+                timeHistory[timeIndex % timeHistory.length] = System.currentTimeMillis();
+                double fps = 1000d * timeHistory.length / (timeHistory[timeIndex % timeHistory.length] - timeHistory[(timeIndex + 1) % timeHistory.length]);
 
-                    camera.getFrustum().updateFrustum(projectionMatrix, viewMatrix);
-                    shaderProgram.setUniform("projection", projectionMatrix);
-                    shaderProgram.setUniform("view", viewMatrix);
-
-                    gameState.setItem("shouldUpdateView", false);
-                }
-
-                double currentTime = GLFW.glfwGetTime();
-                double deltaTime = currentTime - time;
-                time = currentTime;
-
-                if (deltaTime > 0) {
-                    double currentFPS = (float) (1.0 / deltaTime);
-
-                    fpsHistory[fpsIndex++ % FPS_SAMPLES] = currentFPS;
-                }
-
-                double fps = 0;
-                for (int i = 0; i < FPS_SAMPLES; i++) {
-                    fps += fpsHistory[i];
-                }
-                fps /= FPS_SAMPLES;
-
+                time = GLFW.glfwGetTime();
                 if (time - secondTime > 0.5) {
                     secondTime = time;
 
@@ -276,14 +240,21 @@ public final class GameLoop {
                     rightDebugText = String.format("Java Version: %s\n", System.getProperty("java.version"));
                     rightDebugText += String.format("OpenGL Version: %s\n", window.getVersion());
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
+
+                    world.freeAllChunksNotIn(new ArrayList<>(renderedChunks));
                 }
 
                 if (gameState.getItem("seeDebug", Boolean.class)) {
-                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" +
-                            String.format("FPS: %d\n", (int) fps) +
-                            String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()) +
-                            String.format("Chunks: %d/%d/%d\n", renderedChunks.size(), totalRenderedChunks, totalChunks) +
-                            String.format("Bufferized Chunks: %d\n", bufferizedChunkCount);
+                    StringBuilder ldt = new StringBuilder();
+                    ldt.append(ConstantGameSettings.DEFAULT_WINDOW_TITLE);
+                    ldt.append("\n");
+                    ldt.append(String.format("FPS: %d\n", (int) fps));
+                    ldt.append(String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()));
+                    ldt.append(String.format("Chunks: %d/%d/%d/%d\n", renderedChunksInFrustum.size(), totalRenderedChunks, renderedChunks.size(), 0));
+                    ldt.append(String.format("Bufferizing Chunks: %d\n", gameState.getItem("bufferizingQueueSize", Integer.class)));
+                    ldt.append(String.format("Queued Chunks: %d\n", world.totalQueuedChunks()));
+                    ldt.append(String.format("Bufferized Chunks: %d\n", bufferizedChunkCount));
+                    String leftDebugText = ldt.toString();
 
                     textShaderProgram.bind();
 
@@ -306,6 +277,8 @@ public final class GameLoop {
                     contextTasks.forEach(task -> task.accept(window.window()));
                     contextTasks.clear();
                 }
+
+                client.tick();
 
                 // Swap the framebuffers
                 GLFW.glfwSwapBuffers(window.window());
@@ -332,8 +305,31 @@ public final class GameLoop {
         }
     }
 
-    private int calculateRenderedChunks(List<ChunkPosition> renderedChunks, int renderDistance) {
-        List<ChunkPosition> chunks = new ArrayList<>();
+    private void renderMesh(Position3D position, Mesh mesh, boolean transparent) {
+        if (mesh != null) {
+            if (mesh instanceof ChunkMesh chunkMesh) {
+                renderChunkMesh(position, chunkMesh, transparent);
+            } else {
+                throw new IllegalArgumentException("A mesh cannot have the type of: " + mesh.getClass().getName());
+            }
+        }
+    }
+
+    private void renderChunkMesh(Position3D position3D, ChunkMesh chunkMesh, boolean transparent) {
+        if (transparent) {
+            if (chunkMesh.transparentVAO() > 0 && chunkMesh.transparentIndexCount() > 0) {
+                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                renderVAO(chunkMesh.transparentVAO(), chunkMesh.transparentIndexCount());
+            }
+        } else {
+            if (chunkMesh.solidVAO() > 0 && chunkMesh.solidIndexCount() > 0) {
+                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                renderVAO(chunkMesh.solidVAO(), chunkMesh.solidIndexCount());
+            }
+        }
+    }
+
+    private void calculateRenderedChunks(List<Position3D> chunks, int renderDistance) {
         int chunkX = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_WIDTH);
         int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT);
         int chunkZ = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_LENGTH);
@@ -344,63 +340,18 @@ public final class GameLoop {
         for (int x = -chunkX; x < chunkX; x++) {
             for (int y = -chunkY; y < chunkY; y++) {
                 for (int z = -chunkZ; z < chunkZ; z++) {
-                    chunks.add(new ChunkPosition(x - ccx, y - ccy, z - ccz));
+                    chunks.add(new Position3D(x - ccx, y - ccy, z - ccz));
                 }
             }
         }
-        chunks.sort(Comparator.comparingInt(chunkPosition -> {
-            int distanceInt = chunkPosition.x() * chunkPosition.x() + chunkPosition.y() * chunkPosition.y() + chunkPosition.z() * chunkPosition.z();
-            if (camera.getFrustum().isMeshInFrustum(chunkPosition)) {
-                distanceInt -= Integer.MAX_VALUE;
-            }
-            return distanceInt;
-        }));
-        chunks.forEach(chunkPosition -> {
-            if (camera.getFrustum().isMeshInFrustum(chunkPosition)) {
-                renderedChunks.add(chunkPosition);
-            }
-        });
-        world.freeAllChunksNotIn(chunks);
-        return chunks.size();
-    }
-
-    private void renderMesh(Position position, Mesh mesh, boolean transparent) {
-        if (mesh != null) {
-            if (mesh instanceof ChunkMesh chunkMesh) {
-                renderChunkMesh((ChunkPosition) position, chunkMesh, transparent);
-            } else if (mesh instanceof EntityMesh entityMesh) {
-                renderEntityMesh((ChangingPosition) position, entityMesh, transparent);
-            } else {
-                throw new IllegalArgumentException("A mesh cannot have the type of: " + mesh.getClass().getName());
-            }
-        }
-    }
-
-    private void renderEntityMesh(ChangingPosition changingPosition, EntityMesh entityMesh, boolean transparent) {
-        shaderProgram.setUniform("exactPosition", changingPosition.x(), changingPosition.y(), changingPosition.z());
-        if (transparent) {
-            renderVAO(entityMesh.transparentVAO(), entityMesh.transparentIndexCount());
-        } else {
-            renderVAO(entityMesh.solidVAO(), entityMesh.solidIndexCount());
-        }
-    }
-
-    private void renderChunkMesh(ChunkPosition chunkPosition, ChunkMesh chunkMesh, boolean transparent) {
-        shaderProgram.setUniform("chunkPosition", chunkPosition.x(), chunkPosition.y(), chunkPosition.z());
-        if (transparent) {
-            renderVAO(chunkMesh.transparentVAO(), chunkMesh.transparentIndexCount());
-        } else {
-            renderVAO(chunkMesh.solidVAO(), chunkMesh.solidIndexCount());
-        }
+        chunks.sort(Comparator.comparingInt(chunkPosition -> Math.abs(chunkPosition.x() - ccx) + Math.abs(chunkPosition.y() - ccy) + Math.abs(chunkPosition.z() - ccz)));
     }
 
     private void renderVAO(int vao, int indexCount) {
-        if (vao > 0 && indexCount > 0) {
-            // Bind the VAO
-            GL30C.glBindVertexArray(vao);
+        // Bind the VAO
+        GL30C.glBindVertexArray(vao);
 
-            // Draw the elements using indices in the VAO
-            GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
-        }
+        // Draw the elements using indices in the VAO
+        GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
     }
 }

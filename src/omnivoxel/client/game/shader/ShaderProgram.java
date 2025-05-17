@@ -3,10 +3,9 @@ package omnivoxel.client.game.shader;
 import org.joml.Matrix4f;
 import org.joml.Vector3fc;
 import org.lwjgl.opengl.GL30C;
-import org.lwjgl.opengl.GL40C;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.lwjgl.opengl.GL20C.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20C.glUseProgram;
@@ -17,17 +16,15 @@ public class ShaderProgram {
 
     public ShaderProgram(int program) {
         this.program = program;
-        this.locationMap = new HashMap<>();
+        this.locationMap = new ConcurrentHashMap<>();
     }
 
     public int addUniformLocation(String name) {
-        int loc = glGetUniformLocation(program, name);
-        locationMap.put(name, loc);
-        return loc;
+        return glGetUniformLocation(program, name);
     }
 
-    public Integer getLocation(String location) {
-        return locationMap.getOrDefault(location, addUniformLocation(location));
+    public Integer getLocation(String name) {
+        return locationMap.computeIfAbsent(name, this::addUniformLocation);
     }
 
     public void setUniform(String name, int x, int y, int z) {
@@ -46,16 +43,13 @@ public class ShaderProgram {
         GL30C.glUniform1f(getLocation(name), v);
     }
 
-    public void setUniform(String name, double v) {
-        GL40C.glUniform1d(getLocation(name), v);
-    }
 
     public void setUniform(String name, int v) {
         GL30C.glUniform1ui(getLocation(name), v);
     }
 
     public void setUniform(String name, boolean v) {
-        GL40C.glUniform1i(getLocation(name), v ? 1 : 0);
+        GL30C.glUniform1i(getLocation(name), v ? 1 : 0);
     }
 
     public void setUniform(String name, Matrix4f v) {

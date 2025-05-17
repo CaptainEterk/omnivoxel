@@ -6,6 +6,6 @@ uniform sampler2D textTexture;
 uniform vec3 textColor;
 
 void main() {
-    float alpha = texture(textTexture, TexCoord).r;// Red channel holds the font data
+    float alpha = texture(textTexture, TexCoord).r;
     FragColor = vec4(textColor, alpha);
 }

@@ -1,13 +1,13 @@
 package omnivoxel.client.game.player;
 
 import omnivoxel.client.game.entity.mob.player.PlayerEntity;
-import omnivoxel.client.game.player.camera.Camera;
+import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
-import omnivoxel.client.game.util.input.OVKeyInput;
-import omnivoxel.client.game.util.input.OVMouseButtonInput;
-import omnivoxel.client.game.util.input.OVMouseInput;
+import omnivoxel.client.game.util.input.KeyInput;
+import omnivoxel.client.game.util.input.MouseButtonInput;
+import omnivoxel.client.game.util.input.MouseInput;
 import omnivoxel.client.network.Client;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
@@ -23,9 +23,9 @@ public class PlayerController extends PlayerEntity {
     private final BlockingQueue<Consumer<Long>> contextTasks;
     private final GameState gameState;
     private float speed = 1f;
-    private OVKeyInput keyInput;
-    private OVMouseButtonInput mouseButtonInput;
-    private OVMouseInput mouseInput;
+    private KeyInput keyInput;
+    private MouseButtonInput mouseButtonInput;
+    private MouseInput mouseInput;
 
     private boolean togglingWireframe;
     private boolean togglingFullscreen;
@@ -78,7 +78,7 @@ public class PlayerController extends PlayerEntity {
 //                client.sendRequest(new MovedRequest(getX(), getY(), getZ(), pitch, yaw));
             }
 
-            camera.setPosition(changingPosition.x(), changingPosition.y(), changingPosition.z());
+            camera.setPosition(x, y, z);
 
             // Handle actions
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F1)) {
@@ -151,15 +151,15 @@ public class PlayerController extends PlayerEntity {
         return camera;
     }
 
-    public void setKeyInput(OVKeyInput keyInput) {
+    public void setKeyInput(KeyInput keyInput) {
         this.keyInput = keyInput;
     }
 
-    public void setMouseButtonInput(OVMouseButtonInput mouseButtonInput) {
+    public void setMouseButtonInput(MouseButtonInput mouseButtonInput) {
         this.mouseButtonInput = mouseButtonInput;
     }
 
-    public void setMouseInput(OVMouseInput mouseInput) {
+    public void setMouseInput(MouseInput mouseInput) {
         this.mouseInput = mouseInput;
     }
 }

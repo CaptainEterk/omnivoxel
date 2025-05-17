@@ -1,13 +1,14 @@
 package omnivoxel.client.game.position;
 
 import omnivoxel.client.game.thread.mesh.util.PriorityUtils;
+import omnivoxel.math.Position3D;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-public record PriorityPosition(ChunkPosition chunkPosition) implements Comparable<PriorityPosition> {
+public record PriorityPosition(Position3D position3D) implements Comparable<PriorityPosition> {
     public Double getPriority() {
-        return PriorityUtils.getPriority(chunkPosition);
+        return PriorityUtils.getPriority(position3D);
     }
 
     @Override
@@ -19,14 +20,14 @@ public record PriorityPosition(ChunkPosition chunkPosition) implements Comparabl
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (PriorityPosition) obj;
-        return Objects.equals(this.chunkPosition, that.chunkPosition);
+        PriorityPosition that = (PriorityPosition) obj;
+        return Objects.equals(this.position3D, that.position3D);
     }
 
     @Override
     public String toString() {
         return "PriorityPosition[" +
-                "chunkPosition=" + chunkPosition + ']';
+                "chunkPosition=" + position3D + ']';
     }
 
 }

@@ -1,24 +1,17 @@
 package omnivoxel.client.game.thread.mesh.util;
 
-import omnivoxel.client.game.player.camera.Camera;
-import omnivoxel.client.game.position.ChunkPosition;
-import omnivoxel.client.game.position.Position;
-import omnivoxel.client.game.position.WorldPosition;
+import omnivoxel.client.game.camera.Camera;
+import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.math.Position3D;
 
 public final class PriorityUtils {
     private static Camera camera;
 
-    public static double getPriority(Position position) {
-        WorldPosition worldPosition;
-        if (position instanceof ChunkPosition chunkPosition) {
-            worldPosition = chunkPosition.toWorldPosition(0, 0, 0);
-        } else {
-            worldPosition = (WorldPosition) position;
-        }
+    public static double getPriority(Position3D position) {
         // The closer a chunk is the higher the priority
-        int distanceX = worldPosition.x() - Math.round(camera.getX());
-        int distanceY = worldPosition.y() - Math.round(camera.getY());
-        int distanceZ = worldPosition.z() - Math.round(camera.getZ());
+        int distanceX = position.x() * ConstantGameSettings.CHUNK_WIDTH - Math.round(camera.getX());
+        int distanceY = position.y() * ConstantGameSettings.CHUNK_HEIGHT - Math.round(camera.getY());
+        int distanceZ = position.z() * ConstantGameSettings.CHUNK_LENGTH - Math.round(camera.getZ());
         return (distanceX * distanceX + distanceY * distanceY + distanceZ * distanceZ) / 1000.0;
     }
 

@@ -31,13 +31,14 @@ void main() {
     float fogFactor = (fogFar - distance) / (fogFar - fogNear);
     fogFactor = clamp(fogFactor, 0.0, 1.0);
 
+    // TODO: Make this take in maybe a block type?
     if (FragColor.a < 1) {
         // Water
         FragColor *= vec4(vec3(0.5), 1-fresnel);
         FragColor += CLOSE_FRESNEL_COLOR*fresnel+FAR_FRESNEL_COLOR*(1-fresnel);
     }
 
-    FragColor = mix(vec4(lighting, 1.0), FragColor, 1.0);
+    FragColor = mix(vec4(lighting, 1.0), FragColor, 1);
 
     // Apply shadow effect
     FragColor = vec4(FragColor.rgb * shadow, FragColor.a);

@@ -1,33 +1,39 @@
 package omnivoxel.server;
 
+import core.biomes.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import omnivoxel.math.Position3D;
 import omnivoxel.server.client.ServerPlayer;
+import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkGeneratorThread;
 import omnivoxel.server.client.chunk.ChunkTask;
-import omnivoxel.server.world.World;
+import omnivoxel.server.client.chunk.biomeService.BiomeService;
+import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
+import omnivoxel.server.client.chunk.blockService.BlockService;
+import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Date;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Random;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Server {
     private static final int VERSION_ID = 0;
 
     private final Map<String, ServerPlayer> clients;
-    private final Set<BlockingQueue<ChunkTask>> chunkTasks;
+    private final BlockingQueue<ChunkTask> chunkTasks;
+    private final AtomicLong requestReceived = new AtomicLong();
+    private final AtomicLong requestSent = new AtomicLong();
 
-    public Server(ChunkGenerator chunkGenerator, World world) throws IOException {
-        this.clients = new HashMap<>();
-        chunkTasks = ConcurrentHashMap.newKeySet();
+    public Server(long seed, ServerWorld world) throws IOException {
+        this.clients = new ConcurrentHashMap<>();
+        chunkTasks = new LinkedBlockingDeque<>();
 
 //        Path worldPath = Paths.get("run/.worlds");
 //
@@ -45,11 +51,29 @@ public class Server {
 //            Files.createDirectories(worldPath);
 //        }
 
+        Map<Position3D, ServerBlock> queuedBlocks = new ConcurrentHashMap<>();
+        BlockService blockService = new BlockService();
+
+        BiomeService biomeService = new BiomeService(
+                Map.of(
+                        new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0),
+                        new DesertBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0),
+                        new JungleBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0),
+                        new TundraBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
+                        new TaigaBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
+                        new PlainsBiome(blockService)
+                )
+        );
         ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
         for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {
-            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, world);
+            Random random = new Random(seed);
+            ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(random, world, biomeService, blockService, queuedBlocks), blockService, biomeService);
+            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, chunkTasks, world);
             executorService.execute(thread);
-            chunkTasks.add(thread.getChunkTasks());
         }
     }
 
@@ -70,10 +94,13 @@ public class Server {
     public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) {
         switch (packageID) {
             case CHUNK_REQUEST:
-                int x = byteBuf.getInt(36);
-                int y = byteBuf.getInt(40);
-                int z = byteBuf.getInt(44);
-                queueChunkTask(new ChunkTask(ctx, x, y, z));
+                int count = byteBuf.getInt(36);
+                for (int i = 0; i < count; i++) {
+                    int x = byteBuf.getInt(i * 3 * Integer.BYTES + 40);
+                    int y = byteBuf.getInt(i * 3 * Integer.BYTES + 44);
+                    int z = byteBuf.getInt(i * 3 * Integer.BYTES + 48);
+                    queueChunkTask(new ChunkTask(ctx, x, y, z));
+                }
                 break;
             case REGISTER_CLIENT:
                 registerClient(ctx, byteBuf);
@@ -87,31 +114,15 @@ public class Server {
     }
 
     private void queueChunkTask(ChunkTask chunkTask) {
-        try {
-            BlockingQueue<ChunkTask> smallestQueue = null;
-            int smallestSize = Integer.MAX_VALUE;
-            for (BlockingQueue<ChunkTask> queue : chunkTasks) {
-                int size = queue.size();
-                if (size < smallestSize) {
-                    smallestQueue = queue;
-                    smallestSize = size;
-                }
-                if (smallestSize == 0) {
-                    break;
-                }
-            }
-            if (smallestQueue != null) {
-                smallestQueue.put(chunkTask);
-            }
+        chunkTasks.add(chunkTask);
+        long requests = requestReceived.incrementAndGet();
+        System.out.printf("%s queueChunkTask %s\n", new Date(), requests);
 //            // TODO: Actually generate entities
 //            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, ServerEntity.create(ServerEntity.));
 //            ServerEntity.create()
 //            byte[] entityID = new byte[32];
 //            new SecureRandom().nextBytes(entityID);
 //            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, new ServerEntity(entityID, chunkTask.x() * ConstantGameSettings.CHUNK_WIDTH, chunkTask.y() * ConstantGameSettings.CHUNK_HEIGHT, chunkTask.z() * ConstantGameSettings.CHUNK_LENGTH, 0, 0, 0).getBytes());
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private ServerPlayer getServerPlayer(ByteBuf byteBuf) {

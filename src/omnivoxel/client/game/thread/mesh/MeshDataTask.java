@@ -1,7 +1,7 @@
 package omnivoxel.client.game.thread.mesh;
 
-import omnivoxel.client.game.position.ChunkPosition;
-import omnivoxel.client.game.thread.mesh.block.Block;
+import io.netty.buffer.ByteBuf;
+import omnivoxel.math.Position3D;
 
-public record MeshDataTask(Block[] blocks, ChunkPosition chunkPosition) {
+public record MeshDataTask(ByteBuf blocks, Position3D position3D) {
 }

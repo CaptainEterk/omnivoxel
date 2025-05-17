@@ -31,10 +31,13 @@ uniform mat4 projection;
 
 void main() {
     // Unpack data1
-    float x = float((data1 >> 22) & BITMASK_10);
-    float y = float((data1 >> 12) & BITMASK_10);
-    float z = float((data1 >> 2) & BITMASK_10);
+    uint x = (data1 >> 22u) & BITMASK_10;
+    uint y = (data1 >> 12u) & BITMASK_10;
+    uint z = (data1 >> 2u)  & BITMASK_10;
+
     ao = float(data1 & BITMASK_2);
+
+    vec3 xyz = vec3(x, y, z);
 
     // Unpack data2
     float r = float((data2 >> 28) & BITMASK_4) / float(BITMASK_4);
@@ -47,11 +50,9 @@ void main() {
     float v = float((data2 >> 1) & BITMASK_8);
     TexCoord = vec2(u, v);
 
-    highp vec3 xyz = vec3(x, y, z);
-
     if (useChunkPosition) {
         //xyz = round(xyz * CHUNK_SIZE) / CHUNK_SIZE/32.0;
-        xyz /= 16.0;
+        xyz *= 0.0625;
         xyz += chunkPosition*CHUNK_SIZE;
 
         // Shadow calculation

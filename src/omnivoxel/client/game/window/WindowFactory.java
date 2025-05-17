@@ -2,7 +2,7 @@ package omnivoxel.client.game.window;
 
 import omnivoxel.client.game.image.Image;
 import omnivoxel.client.game.image.ImageLoader;
-import omnivoxel.debug.Logger;
+import omnivoxel.util.Logger;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;

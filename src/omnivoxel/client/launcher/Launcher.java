@@ -3,8 +3,8 @@ package omnivoxel.client.launcher;
 import core.blocks.*;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.player.PlayerController;
-import omnivoxel.client.game.player.camera.Camera;
-import omnivoxel.client.game.player.camera.Frustum;
+import omnivoxel.client.game.camera.Camera;
+import omnivoxel.client.game.camera.Frustum;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.text.TextRenderer;
@@ -12,11 +12,11 @@ import omnivoxel.client.game.thread.mesh.block.AirBlock;
 import omnivoxel.client.game.thread.mesh.shape.BlockShape;
 import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
 import omnivoxel.client.game.thread.tick.TickLoop;
-import omnivoxel.client.game.world.World;
+import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.ClientLauncher;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
-import omnivoxel.debug.Logger;
+import omnivoxel.util.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -52,6 +52,7 @@ public class Launcher {
         clientWorldDataService.addBlock(new SandBlock(new BlockShape()));
         clientWorldDataService.addBlock(new SnowBlock(new BlockShape()));
         clientWorldDataService.addBlock(new GlassBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new IceBlock(new BlockShape()));
 
         // ORES
         clientWorldDataService.addBlock(new IronBlock(new BlockShape()));
@@ -63,10 +64,17 @@ public class Launcher {
         clientWorldDataService.addBlock(new BlueBlock(new BlockShape()));
         clientWorldDataService.addBlock(new ClimateBlock(new BlockShape()));
 
+        GameState gameState = new GameState();
+
+        ClientWorld world = new ClientWorld(gameState);
+
         Client client = new Client(clientID, clientWorldDataService, new Logger());
         ClientLauncher clientLauncher = new ClientLauncher(connected, client);
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
+
+        client.setChunkListener(world::add);
+        world.setClient(client);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
             Settings settings = new Settings();
@@ -75,9 +83,6 @@ public class Launcher {
             AtomicBoolean gameRunning = new AtomicBoolean(true);
             BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingQueue<>();
 
-            GameState gameState = new GameState();
-
-            World world = new World(client, gameState);
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
             GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer());

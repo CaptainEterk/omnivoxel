@@ -1,11 +1,13 @@
 package omnivoxel.server.client.block;
 
+import omnivoxel.world.block.Block;
+import omnivoxel.server.client.ServerItem;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-public record ServerBlock(String id, int[] blockState) implements Block {
+public record ServerBlock(String id, int[] blockState) implements ServerItem {
     public ServerBlock(String id) {
         this(id, null);
     }
@@ -55,5 +57,9 @@ public record ServerBlock(String id, int[] blockState) implements Block {
                 "id='" + id + '\'' +
                 ", blockState=" + Arrays.toString(blockState) +
                 '}';
+    }
+
+    public Block getBlock() {
+        return new Block(id, blockState);
     }
 }

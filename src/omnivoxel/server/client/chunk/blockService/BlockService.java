@@ -3,11 +3,12 @@ package omnivoxel.server.client.chunk.blockService;
 import omnivoxel.server.client.block.ServerBlock;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class BlockService {
     // A map where the key is a composite of id and blockState for faster lookup
-    private final ConcurrentHashMap<String, ServerBlock> serverBlocksById;
+    private final Map<String, ServerBlock> serverBlocksById;
 
     public BlockService() {
         serverBlocksById = new ConcurrentHashMap<>();

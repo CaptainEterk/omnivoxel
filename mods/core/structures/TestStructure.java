@@ -1,6 +1,6 @@
 package core.structures;
 
-import omnivoxel.server.Position3D;
+import omnivoxel.math.Position3D;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.structure.Structure;

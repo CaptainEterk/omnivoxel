@@ -4,7 +4,7 @@ import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 import omnivoxel.client.game.thread.mesh.vertex.Vertex;
 
-public class AirBlock extends Block {
+public final class AirBlock extends Block {
     private final Shape shape = new Shape() {
         private final Vertex[] vertices = new Vertex[0];
         private final int[] indices = new int[0];

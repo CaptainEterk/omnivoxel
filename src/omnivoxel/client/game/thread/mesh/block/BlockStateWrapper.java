@@ -5,11 +5,11 @@ import omnivoxel.client.game.thread.mesh.shape.Shape;
 
 public class BlockStateWrapper extends Block {
     private final Block wrappedBlock;
-    private final int[] state;
 
     public BlockStateWrapper(Block wrappedBlock, int[] state) {
+        super(state);
         this.wrappedBlock = wrappedBlock;
-        this.state = state;
+        setBlock();
     }
 
     @Override
@@ -30,10 +30,5 @@ public class BlockStateWrapper extends Block {
     @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
         return wrappedBlock.getUVCoordinates(blockFace);
-    }
-
-    @Override
-    public int[] getState() {
-        return state;
     }
 }

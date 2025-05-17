@@ -5,24 +5,23 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
-import omnivoxel.client.game.entity.Entity;
 import omnivoxel.client.game.entity.mob.player.PlayerEntity;
-import omnivoxel.client.game.position.ChunkPosition;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.thread.mesh.MeshDataGenerator;
 import omnivoxel.client.game.thread.mesh.MeshDataTask;
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
-import omnivoxel.client.network.block.ClientBlock;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
 import omnivoxel.client.network.request.Request;
-import omnivoxel.debug.Logger;
+import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
+import omnivoxel.math.Position3D;
+import omnivoxel.util.Logger;
 
+import java.util.ArrayDeque;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,11 +37,11 @@ public class Client {
     private final Logger logger;
     private final Set<BlockingQueue<MeshDataTask>> meshDataTaskQueues;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
+    private final Queue<Position3D> queuedChunkTasks = new ArrayDeque<>();
     private ExecutorService meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
-    private BiConsumer<ChunkPosition, MeshData> loadChunk;
-    private BiConsumer<String, Entity> loadEntity;
+    private long lastFlushedTime = System.currentTimeMillis();
 
     public Client(byte[] clientID, ClientWorldDataService worldDataService, Logger logger) {
         this.clientID = clientID;
@@ -93,15 +92,18 @@ public class Client {
         switch (packageID) {
             case REGISTER_PLAYERS:
                 registerPlayers(byteBuf);
+                byteBuf.release();
                 break;
             case NEW_PLAYER:
                 newPlayer(byteBuf);
+                byteBuf.release();
                 break;
             case CHUNK:
                 receiveChunk(byteBuf);
                 break;
             case PLAYER_UPDATE:
                 updatePlayer(byteBuf);
+                byteBuf.release();
                 break;
             default:
                 System.err.println("Unexpected package id: " + packageID);
@@ -128,42 +130,10 @@ public class Client {
         int x = byteBuf.getInt(8);
         int y = byteBuf.getInt(12);
         int z = byteBuf.getInt(16);
-        ChunkPosition chunkPosition = new ChunkPosition(x, y, z);
+        Position3D position3D = new Position3D(x, y, z);
 
-        ClientBlock[] palette = new ClientBlock[byteBuf.getShort(20)];
-        int index = 22;
-        for (int i = 0; i < palette.length; i++) {
-            StringBuilder blockID = new StringBuilder();
-            short paletteLength = byteBuf.getShort(index);
-            int j;
-            for (j = 2; j < paletteLength + 2; j++) {
-                byte b = byteBuf.getByte(index + j);
-                blockID.append((char) b);
-            }
-            short blockStateCount = byteBuf.getShort(index + j);
-            j += 2;
-            int[] blockState = new int[blockStateCount];
-            for (int k = 0; k < blockStateCount; k++) {
-                blockState[k] = byteBuf.getInt(index + j);
-                j += 4;
-            }
-            palette[i] = new ClientBlock(blockID.toString(), blockState);
-            index += j;
-        }
-
-        Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
-        for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED && index < byteBuf.readableBytes(); ) {
-            int blockID = byteBuf.getInt(index);
-            int blockCount = byteBuf.getInt(index + 4);
-            int oi = i;
-            for (; i < blockCount + oi; i++) {
-                blocks[i] = worldDataService.getBlock(palette[blockID].id());
-                if (palette[blockID].blockState().length > 0) {
-                    blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID].blockState());
-                }
-            }
-            index += 8;
-        }
+//        Chunk chunk = ChunkFactory.create(Arrays.stream(blocks).map(Block::getBlock).toArray(omnivoxel.world.block.Block[]::new), palette);
+//        world.add(omnivoxel.math.Position3D.createFrom(position3D), chunk);
 
         BlockingQueue<MeshDataTask> smallestQueue = null;
         int smallestSize = Integer.MAX_VALUE;
@@ -178,13 +148,8 @@ public class Client {
             }
         }
         if (smallestQueue != null) {
-            smallestQueue.put(new MeshDataTask(blocks, chunkPosition));
+            smallestQueue.put(new MeshDataTask(byteBuf, position3D));
         }
-
-//        meshDataGenerators.submit(() -> {
-//            MeshData meshData = new MeshDataGenerator(logger).generateChunkMeshData(blocks);
-//            loadChunk.accept(chunkPosition, meshData);
-//        });
     }
 
     private void loadPlayer(byte[] playerID, String name) {
@@ -233,11 +198,27 @@ public class Client {
         return players;
     }
 
+    public void tick() {
+        long time = System.currentTimeMillis();
+        if (time - lastFlushedTime > ConstantServerSettings.CHUNK_REQUEST_BATCHING_TIME || queuedChunkTasks.size() > ConstantServerSettings.CHUNK_REQUEST_BATCHING_LIMIT) {
+            int[] data = new int[queuedChunkTasks.size() * 3 + 1];
+            data[0] = queuedChunkTasks.size();
+            for (int i = 0; !queuedChunkTasks.isEmpty(); i++) {
+                Position3D req = queuedChunkTasks.remove();
+                data[i * 3 + 1] = req.x();
+                data[i * 3 + 2] = req.y();
+                data[i * 3 + 3] = req.z();
+            }
+            sendInts(channel, PackageID.CHUNK_REQUEST, clientID, data);
+            lastFlushedTime = ConstantServerSettings.CHUNK_REQUEST_BATCHING_TIME;
+        }
+    }
+
     public void sendRequest(Request request) {
         switch (request.getType()) {
             case CHUNK:
-                ChunkPosition chunkPosition = ((ChunkRequest) request).chunkPosition();
-                sendInts(channel, PackageID.CHUNK_REQUEST, clientID, chunkPosition.x(), chunkPosition.y(), chunkPosition.z());
+                Position3D position3D = ((ChunkRequest) request).position3D();
+                queuedChunkTasks.add(position3D);
                 break;
             case CLOSE:
                 sendBytes(channel, PackageID.CLOSE, clientID);
@@ -277,18 +258,13 @@ public class Client {
         System.out.println("Client shutdown");
     }
 
-    public void setChunkListener(BiConsumer<ChunkPosition, MeshData> loadChunk) {
-        this.loadChunk = loadChunk;
-        meshDataGenerators = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
-            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk, clientRunning);
+    public void setChunkListener(BiConsumer<Position3D, MeshData> loadChunk) {
+        meshDataGenerators = Executors.newFixedThreadPool(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS);
+        for (int i = 0; i < ConstantGameSettings.MAX_MESH_GENERATOR_THREADS; i++) {
+            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk, clientRunning, worldDataService);
             Thread meshDataGeneratorThread = new Thread(meshDataGenerator);
             meshDataGenerators.execute(meshDataGeneratorThread);
             meshDataTaskQueues.add(meshDataGenerator.getMeshDataTasks());
         }
-    }
-
-    public void setEntityListener(BiConsumer<String, Entity> loadEntity) {
-        this.loadEntity = loadEntity;
     }
 }

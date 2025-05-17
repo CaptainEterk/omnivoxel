@@ -1,0 +1,18 @@
+# TODO:
+- [ ] Mod support
+  - [ ] Custom textures
+  - [ ] Custom blocks
+  - [ ] Custom entities
+- [ ] Rendering
+  - [ ] Basic Rendering
+    - [X] World Renderer
+    - [X] Text Renderer
+    - [ ] Model Renderer
+  - [ ] Advanced Rendering
+    - [ ] Abstract Rendering Pipeline
+      - [ ] World Renderer
+      - [ ] Text Renderer
+      - [ ] Model Renderer
+    - [ ] Custom Shaders
+      - [ ] Custom Shader Syntax so you can have multiple shaders for different things?
+    - 

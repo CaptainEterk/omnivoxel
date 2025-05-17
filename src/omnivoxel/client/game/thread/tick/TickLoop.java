@@ -2,9 +2,9 @@ package omnivoxel.client.game.thread.tick;
 
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.thread.mesh.util.PriorityUtils;
-import omnivoxel.client.game.util.input.OVKeyInput;
-import omnivoxel.client.game.util.input.OVMouseButtonInput;
-import omnivoxel.client.game.util.input.OVMouseInput;
+import omnivoxel.client.game.util.input.KeyInput;
+import omnivoxel.client.game.util.input.MouseButtonInput;
+import omnivoxel.client.game.util.input.MouseInput;
 import omnivoxel.client.network.Client;
 
 import java.util.concurrent.BlockingQueue;
@@ -27,17 +27,17 @@ public class TickLoop implements Runnable {
     @Override
     public void run() {
         try {
-            OVKeyInput ovKeyInput = new OVKeyInput();
-            OVMouseButtonInput ovMouseButtonInput = new OVMouseButtonInput();
-            OVMouseInput ovMouseInput = new OVMouseInput();
+            KeyInput keyInput = new KeyInput();
+            MouseButtonInput mouseButtonInput = new MouseButtonInput();
+            MouseInput mouseInput = new MouseInput();
 
-            contextTasks.add(ovKeyInput::init);
-            contextTasks.add(ovMouseButtonInput::init);
-            contextTasks.add(ovMouseInput::init);
+            contextTasks.add(keyInput::init);
+            contextTasks.add(mouseButtonInput::init);
+            contextTasks.add(mouseInput::init);
 
-            playerController.setKeyInput(ovKeyInput);
-            playerController.setMouseButtonInput(ovMouseButtonInput);
-            playerController.setMouseInput(ovMouseInput);
+            playerController.setKeyInput(keyInput);
+            playerController.setMouseButtonInput(mouseButtonInput);
+            playerController.setMouseInput(mouseInput);
 
             while (gameRunning.get()) {
                 // TODO: Tick all entities here

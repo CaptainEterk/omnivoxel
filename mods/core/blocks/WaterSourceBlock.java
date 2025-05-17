@@ -1,5 +1,6 @@
 package core.blocks;
 
+import omnivoxel.client.game.thread.mesh.block.AirBlock;
 import omnivoxel.client.game.thread.mesh.block.Block;
 import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
 import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
@@ -36,7 +37,7 @@ public class WaterSourceBlock extends Block {
 
     @Override
     public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
-        return top == null ? shallowBlockShape : blockShape;
+        return top instanceof AirBlock ? shallowBlockShape : blockShape;
     }
 
     @Override

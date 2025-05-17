@@ -16,14 +16,6 @@ public class ClimateVector {
         }
     }
 
-    public ClimateVector(ClimateVector climateVector, double... pos) {
-        this.pos = new double[climateVector.size() + pos.length];
-        for (int i = 0; i < climateVector.size(); i++) {
-            this.pos[i] = climateVector.get(i);
-        }
-        System.arraycopy(pos, 0, this.pos, climateVector.size(), pos.length);
-    }
-
     public double get(int i) {
         return pos[i];
     }
@@ -32,23 +24,28 @@ public class ClimateVector {
         return pos.length;
     }
 
-    public double getDistance(ClimateVector other) {
-        if (other.pos.length != this.pos.length) {
-            throw new IllegalArgumentException("Climate vectors must have equal sizes to calculate the distance");
-        }
+    public final double getDistance(ClimateVector other) {
+        double[] a = this.pos;
+        double[] b = other.pos;
+
+        if (a.length != b.length)
+            throw new IllegalArgumentException("Vector dimensions must match.");
 
         double sum = 0;
-
-        for (int i = 0; i < pos.length; i++) {
-            double diff = this.pos[i] - other.pos[i];
-            sum += diff * diff;
+        for (int i = 0; i < a.length; i++) {
+            double d = a[i] - b[i];
+            sum += d * d;
         }
-
         return sum;
     }
+
 
     @Override
     public String toString() {
         return Arrays.toString(pos);
+    }
+
+    public double[] getArray() {
+        return pos;
     }
 }
