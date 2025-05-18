@@ -2,9 +2,9 @@ package omnivoxel.client.launcher;
 
 import core.blocks.*;
 import omnivoxel.client.game.GameLoop;
-import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.camera.Frustum;
+import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.text.TextRenderer;
@@ -20,7 +20,6 @@ import omnivoxel.util.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -35,8 +34,6 @@ public class Launcher {
         secureRandom.nextBytes(clientID);
 
         CountDownLatch connected = new CountDownLatch(1);
-
-        Random random = new Random(0);
 
         ClientWorldDataService clientWorldDataService = new ClientWorldDataService();
 

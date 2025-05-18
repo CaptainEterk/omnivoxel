@@ -32,6 +32,7 @@ public class ConstantGameSettings {
             render_distance=200""";
 
     public static final long AUTO_RECALCULATE_CHUNKS_TIME = 5000;
+    public static final String DATA_LOCATION = "src/main/resources/";
 
     private static String getRootFolder() {
         return "";

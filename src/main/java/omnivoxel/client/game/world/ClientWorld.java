@@ -128,13 +128,19 @@ public class ClientWorld implements World<ClientWorldChunk> {
         chunks.clear();
     }
 
+    public void tick() {
+        int crs = chunkRequestsSent.get();
+        int crg = chunkResponseGotten.get();
+        int inflightRequests = crs - crg;
+        gameState.setItem("inflight_requests", inflightRequests);
+        gameState.setItem("chunk_requests_sent", crs);
+        gameState.setItem("chunk_requests_received", crg);
+    }
+
     public void freeAllChunksNotIn(List<Position3D> chunks) {
         if (this.chunks.size() == chunks.size()) {
             return;
         }
-
-        int inflightRequests = chunkRequestsSent.get() - chunkResponseGotten.get();
-        System.out.printf("inflight: %d, gotten: %d, sent: %d\n", inflightRequests, chunkResponseGotten.get(), chunkRequestsSent.get());
 
         for (Map.Entry<Position3D, ClientWorldChunk> entry : this.chunks.entrySet()) {
             Position3D position3D = entry.getKey();
@@ -166,5 +172,9 @@ public class ClientWorld implements World<ClientWorldChunk> {
 
     public void setClient(Client client) {
         this.client = client;
+    }
+
+    public int size() {
+        return chunks.size();
     }
 }

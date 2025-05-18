@@ -91,6 +91,10 @@ public final class GameLoop {
             gameState.setItem("seeDebug", true);
             gameState.setItem("bufferizingQueueSize", 0);
 
+            gameState.setItem("inflight_requests", 0);
+            gameState.setItem("chunk_requests_sent", 0);
+            gameState.setItem("chunk_requests_received", 0);
+
             textRenderer.init();
 
             Font font = Font.create("Minecraft.ttf");
@@ -168,11 +172,10 @@ public final class GameLoop {
                 }
 
                 if (gameState.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-                    recalculateRenderedChunks.set(true);
+//                    recalculateRenderedChunks.set(true);
 
                     renderedChunks.clear();
-                    List<Position3D> chunks = new ArrayList<>();
-                    calculateRenderedChunks(chunks, settings.getIntSetting("render_distance", 100));
+                    List<Position3D> chunks = calculateRenderedChunks(settings.getIntSetting("render_distance", 100));
                     totalRenderedChunks = chunks.size();
                     renderedChunks.addAll(chunks.stream().filter(chunkPosition -> world.get(chunkPosition) != null).toList());
                 }
@@ -183,9 +186,8 @@ public final class GameLoop {
 
                 if (gameState.getItem("shouldCheckNewChunks", Boolean.class)) {
                     Set<Position3D> newChunks = world.getNewChunks();
-                    newChunks.removeIf(chunkPosition -> !camera.getFrustum().isMeshInFrustum(chunkPosition));
                     newChunks.removeIf(chunkPosition -> world.get(chunkPosition) == null);
-                    totalRenderedChunks += newChunks.size();
+                    newChunks.removeIf(chunkPosition -> !camera.getFrustum().isMeshInFrustum(chunkPosition));
                     renderedChunks.addAll(newChunks);
                     newChunks.clear();
                     gameState.setItem("shouldCheckNewChunks", false);
@@ -237,8 +239,10 @@ public final class GameLoop {
                     long freeMemory = runtime.freeMemory();
                     long usedMemory = totalMemory - freeMemory;
 
-                    rightDebugText = String.format("Java Version: %s\n", System.getProperty("java.version"));
+                    rightDebugText = String.format("GPU: %s\n", GL11.glGetString(GL11.GL_RENDERER));
+                    rightDebugText += String.format("Java Version: %s\n", System.getProperty("java.version"));
                     rightDebugText += String.format("OpenGL Version: %s\n", window.getVersion());
+                    rightDebugText += String.format("Operating System: %s\n", System.getProperty("os.name"));
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
 
                     world.freeAllChunksNotIn(new ArrayList<>(renderedChunks));
@@ -250,10 +254,8 @@ public final class GameLoop {
                     ldt.append("\n");
                     ldt.append(String.format("FPS: %d\n", (int) fps));
                     ldt.append(String.format("Position: %.2f %.2f %.2f\n", -camera.getX(), -camera.getY(), -camera.getZ()));
-                    ldt.append(String.format("Chunks: %d/%d/%d/%d\n", renderedChunksInFrustum.size(), totalRenderedChunks, renderedChunks.size(), 0));
-                    ldt.append(String.format("Bufferizing Chunks: %d\n", gameState.getItem("bufferizingQueueSize", Integer.class)));
-                    ldt.append(String.format("Queued Chunks: %d\n", world.totalQueuedChunks()));
-                    ldt.append(String.format("Bufferized Chunks: %d\n", bufferizedChunkCount));
+                    ldt.append(String.format("Chunks:\n\t- Rendered: %d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n", renderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount));
+                    ldt.append(String.format("Network:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class)));
                     String leftDebugText = ldt.toString();
 
                     textShaderProgram.bind();
@@ -273,12 +275,13 @@ public final class GameLoop {
                     GL11.glDisable(GL30C.GL_BLEND);
                 }
 
+                client.tick();
+                world.tick();
+
                 if (!contextTasks.isEmpty()) {
                     contextTasks.forEach(task -> task.accept(window.window()));
                     contextTasks.clear();
                 }
-
-                client.tick();
 
                 // Swap the framebuffers
                 GLFW.glfwSwapBuffers(window.window());
@@ -329,10 +332,12 @@ public final class GameLoop {
         }
     }
 
-    private void calculateRenderedChunks(List<Position3D> chunks, int renderDistance) {
-        int chunkX = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_WIDTH);
-        int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT);
-        int chunkZ = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_LENGTH);
+    private List<Position3D> calculateRenderedChunks(int renderDistance) {
+        int chunkX = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_WIDTH) + 1;
+        int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT) + 1;
+        int chunkZ = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_LENGTH) + 1;
+
+        List<PositionedChunk> newChunks = new ArrayList<>();
 
         int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
         int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
@@ -340,11 +345,19 @@ public final class GameLoop {
         for (int x = -chunkX; x < chunkX; x++) {
             for (int y = -chunkY; y < chunkY; y++) {
                 for (int z = -chunkZ; z < chunkZ; z++) {
-                    chunks.add(new Position3D(x - ccx, y - ccy, z - ccz));
+                    int dx = x - ccx;
+                    int dy = y - ccy;
+                    int dz = z - ccz;
+                    int distance = dx * dx + dy * dy + dz * dz;
+
+                    newChunks.add(new PositionedChunk(new Position3D(dx, dy, dz), distance));
                 }
             }
         }
-        chunks.sort(Comparator.comparingInt(chunkPosition -> Math.abs(chunkPosition.x() - ccx) + Math.abs(chunkPosition.y() - ccy) + Math.abs(chunkPosition.z() - ccz)));
+
+        newChunks.sort(Comparator.comparingInt(PositionedChunk::distance));
+
+        return newChunks.stream().map(PositionedChunk::pos).toList();
     }
 
     private void renderVAO(int vao, int indexCount) {
@@ -353,5 +366,8 @@ public final class GameLoop {
 
         // Draw the elements using indices in the VAO
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
+    }
+
+    private record PositionedChunk(Position3D pos, int distance) {
     }
 }

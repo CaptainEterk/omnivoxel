@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TextRenderer {
+    private static final float TAB_SIZE = 40;
     private int vaoID;
     private int vboID;
 
@@ -65,30 +66,35 @@ public class TextRenderer {
 
         // Render the accumulated text
         GL30C.glBindVertexArray(vaoID);
-        GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, verticesArray.length / 4); // Each vertex has 4 components (position + tex coords)
+        GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, verticesArray.length / 4);
         GL30C.glBindVertexArray(0);
     }
 
     private void accumulateLine(Font font, String text, float x, float y, float scale, Alignment alignment, List<Float> verticesList) {
         float startX = x;
 
-        // Calculate total width of the text
-        float totalWidth = 0;
-        for (char c : text.toCharArray()) {
-            if (c < 32 || c > 126) continue;
-            STBTTBakedChar charInfo = font.charData().get(c - 32);
-            totalWidth += charInfo.xadvance() * scale;
-        }
+        if (alignment != Alignment.LEFT) {
+            // Calculate total width of the text
+            float totalWidth = 0;
+            for (char c : text.toCharArray()) {
+                if (c < 32 || c > 126) continue;
+                STBTTBakedChar charInfo = font.charData().get(c - 32);
+                totalWidth += getCharWidth(charInfo, scale);
+            }
 
-        // Adjust startX based on alignment
-        if (alignment == Alignment.CENTER) {
-            startX -= totalWidth / 2;
-        } else if (alignment == Alignment.RIGHT) {
-            startX -= totalWidth;
+            // Adjust startX based on alignment
+            if (alignment == Alignment.CENTER) {
+                startX -= totalWidth / 2;
+            } else if (alignment == Alignment.RIGHT) {
+                startX -= totalWidth;
+            }
         }
 
         // Now accumulate the vertices for each character
         for (char c : text.toCharArray()) {
+            if (c == '\t') {
+                startX += TAB_SIZE * scale;
+            }
             if (c < 32 || c > 126) {
                 continue; // Skip non-printable characters
             }
@@ -96,7 +102,7 @@ public class TextRenderer {
             STBTTBakedChar charInfo = font.charData().get(c - 32);
 
             // Calculate position and size
-            float xPos = startX + charInfo.xoff() * scale;
+            float xPos = startX + getCharOffset(charInfo, scale);
             // Correct the vertical position for each character
             float yPos = y - 32 * scale + charInfo.yoff() * scale;
 
@@ -108,8 +114,16 @@ public class TextRenderer {
             addQuadVertices(verticesList, xPos, yPos, w, h, font, charInfo);
 
             // Move startX to the right for the next character
-            startX += charInfo.xadvance() * scale;
+            startX += getCharWidth(charInfo, scale);
         }
+    }
+
+    private float getCharOffset(STBTTBakedChar charInfo, float scale) {
+        return charInfo.xoff() * scale;
+    }
+
+    private float getCharWidth(STBTTBakedChar charInfo, float scale) {
+        return charInfo.xadvance() * scale;
     }
 
     private void addQuadVertices(List<Float> verticesList, float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
