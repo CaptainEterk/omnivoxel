@@ -1,5 +1,6 @@
 #version 330 core
 
+// TODO: Make these uniforms
 #define TEXTURE_SIZE 16u
 #define CLOSE_FRESNEL_COLOR vec4(0.0, 0.5, 0.5, 0.4)
 #define FAR_FRESNEL_COLOR vec4(0.0, 0.25, 0.3, 0.95)

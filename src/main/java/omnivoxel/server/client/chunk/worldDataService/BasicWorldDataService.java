@@ -5,6 +5,7 @@ import core.noise._2D.PerlinNoise;
 import core.noise._3D.FractionalBrownianNoise3D;
 import core.noise._3D.PerlinNoise3D;
 import omnivoxel.math.Position3D;
+import omnivoxel.server.ServerWorld;
 import omnivoxel.server.client.ServerItem;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
@@ -13,8 +14,6 @@ import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise2D;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
-import omnivoxel.world.DynamicWorld;
-import omnivoxel.world.chunk.Chunk;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -29,7 +28,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final Noise2D erosionNoise;
     private final Noise2D ridgesNoise;
     private final Noise3D depthNoise;
-    private final DynamicWorld<Chunk> world;
+    private final ServerWorld world;
     private final BiomeService biomeService;
     private final ServerBlock air;
     private final ServerBlock water;
@@ -37,7 +36,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final BlockService blockService;
     private final Map<Position3D, ServerBlock> queuedBlocks;
 
-    public BasicWorldDataService(Random random, DynamicWorld<Chunk> world, BiomeService biomeService, BlockService blockService, Map<Position3D, ServerBlock> queuedBlocks) {
+    public BasicWorldDataService(Random random, ServerWorld world, BiomeService biomeService, BlockService blockService, Map<Position3D, ServerBlock> queuedBlocks) {
         this.continentalnessNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
         this.temperatureNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
         this.humidityNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
@@ -66,10 +65,10 @@ public class BasicWorldDataService implements ServerWorldDataService {
 
         Position3D position3D = new Position3D(x, y, z);
 
-        ServerItem block = queuedBlocks.remove(position3D);
-        if (block instanceof ServerBlock serverBlock) {
-            return serverBlock;
-        }
+        ServerItem block;// = queuedBlocks.remove(position3D);
+//        if (block instanceof ServerBlock serverBlock) {
+//            return serverBlock;
+//        }
 
         Biome biome = biomeService.generateBiome(new ClimateVector(climateVector2D));
         int height = (int) climateVector2D.get(0);

@@ -11,7 +11,7 @@ public class ConstantGameSettings {
     public static final int NON_GENERATED_QUEUE_OVERLOAD_LIMIT = 100;
 
     // TODO: Move this to settings
-    public static final int TARGET_FPS = 60;
+    public static final int TARGET_FPS = 120;
     public static final float FRAME_TIME = 1f / TARGET_FPS;
 
     public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.5";
@@ -25,16 +25,18 @@ public class ConstantGameSettings {
 
     public static final String FILE_LOCATION = getRootFolder();
 
-    public static final String SETTING_LOCATION = FILE_LOCATION + ".omnivoxel";
+    public static final String CONFIG_LOCATION = FILE_LOCATION + ".config/";
     public static final String DEFAULT_SETTING_CONTENTS = """
             width=750
             height=750
-            render_distance=200""";
+            render_distance=128""";
 
     public static final long AUTO_RECALCULATE_CHUNKS_TIME = 5000;
     public static final String DATA_LOCATION = "src/main/resources/";
+    public static final String LOG_LOCATION = FILE_LOCATION + ".logs/";
+    public static final int MAX_WORLD_SIZE_CHUNKS = 2097152;
 
     private static String getRootFolder() {
-        return "";
+        return System.getProperty("user.dir") + "/.omnivoxel/";
     }
 }

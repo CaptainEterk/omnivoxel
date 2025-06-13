@@ -28,8 +28,6 @@ public class Camera {
         // Clamp the up-down rotation to looking straight up and looking straight down
         if (angle != pitch) {
             pitch = org.joml.Math.clamp(-org.joml.Math.PI_OVER_2_f, Math.PI_OVER_2_f, pitch + angle);
-            gameState.setItem("shouldUpdateView", true);
-            gameState.setItem("shouldUpdateVisibleMeshes", true);
         }
     }
 
@@ -40,9 +38,6 @@ public class Camera {
             if (yaw < 0) {
                 yaw += (float) (Math.PI * 2);
             }
-
-            gameState.setItem("shouldUpdateView", true);
-            gameState.setItem("shouldUpdateVisibleMeshes", true);
         }
     }
 
@@ -72,6 +67,11 @@ public class Camera {
 
     public void setFOV(double fov) {
         this.fov = fov;
+        if (this.fov < 1) {
+            this.fov = 1;
+        } else if (this.fov > 179) {
+            this.fov = 179;
+        }
     }
 
     public float getNear() {
@@ -92,7 +92,6 @@ public class Camera {
 
     public void setPosition(float x, float y, float z) {
         if (x != this.x || y != this.y || z != this.z) {
-            gameState.setItem("shouldUpdateVisibleMeshes", true);
             this.x = x;
             this.y = y;
             this.z = z;

@@ -8,32 +8,31 @@ import omnivoxel.math.Position3D;
 import omnivoxel.server.client.ServerPlayer;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
-import omnivoxel.server.client.chunk.ChunkGeneratorThread;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
+import omnivoxel.util.thread.WorkerThreadPool;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Server {
     private static final int VERSION_ID = 0;
 
     private final Map<String, ServerPlayer> clients;
-    private final BlockingQueue<ChunkTask> chunkTasks;
     private final AtomicLong requestReceived = new AtomicLong();
     private final AtomicLong requestSent = new AtomicLong();
 
+    private final WorkerThreadPool<ChunkTask> workerThreadPool;
+
     public Server(long seed, ServerWorld world) throws IOException {
         this.clients = new ConcurrentHashMap<>();
-        chunkTasks = new LinkedBlockingDeque<>();
 
 //        Path worldPath = Paths.get("run/.worlds");
 //
@@ -54,27 +53,8 @@ public class Server {
         Map<Position3D, ServerBlock> queuedBlocks = new ConcurrentHashMap<>();
         BlockService blockService = new BlockService();
 
-        BiomeService biomeService = new BiomeService(
-                Map.of(
-                        new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0),
-                        new DesertBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0),
-                        new JungleBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0),
-                        new TundraBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
-                        new TaigaBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
-                        new PlainsBiome(blockService)
-                )
-        );
-        ExecutorService executorService = Executors.newFixedThreadPool(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT);
-        for (int i = 0; i < ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT; i++) {
-            Random random = new Random(seed);
-            ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(random, world, biomeService, blockService, queuedBlocks), blockService, biomeService);
-            ChunkGeneratorThread thread = new ChunkGeneratorThread(chunkGenerator, chunkTasks, world);
-            executorService.execute(thread);
-        }
+        BiomeService biomeService = new BiomeService(Map.of(new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0), new DesertBiome(blockService), new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0), new JungleBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0), new TundraBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0), new TaigaBiome(blockService), new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0), new PlainsBiome(blockService)));
+        workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(new BasicWorldDataService(new Random(seed), world, biomeService, blockService, queuedBlocks), blockService, biomeService, world)::generateChunk);
     }
 
     private static void sendBytes(ChannelHandlerContext ctx, PackageID id, byte[]... bytes) {
@@ -91,7 +71,8 @@ public class Server {
         ctx.channel().writeAndFlush(buffer);
     }
 
-    public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) {
+    public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
+        String clientID = bytesToHex(byteBuf, 4, 32);
         switch (packageID) {
             case CHUNK_REQUEST:
                 int count = byteBuf.getInt(36);
@@ -106,17 +87,29 @@ public class Server {
                 registerClient(ctx, byteBuf);
                 break;
             case CLOSE:
-                clients.remove(bytesToHex(byteBuf, 4, 32));
+                clients.remove(clientID);
+                break;
+            case PLAYER_UPDATE:
+                float[] data = new float[5];
+                for (int i = 0; i < 5; i++) {
+                    data[i] = byteBuf.getFloat(36 + i * Float.BYTES);
+                }
+                float x = data[0];
+                float y = data[1];
+                float z = data[2];
+                float pitch = data[3];
+                float yaw = data[4];
+                System.out.printf("Player Update Packet {x:%.2f, y: %.2f, z: %.2f, pitch: %.2f, yaw: %.2f}\n", x, y, z, pitch, yaw);
                 break;
             default:
                 System.err.println("Unknown package id: " + packageID);
         }
     }
 
-    private void queueChunkTask(ChunkTask chunkTask) {
-        chunkTasks.add(chunkTask);
-        long requests = requestReceived.incrementAndGet();
-        System.out.printf("%s queueChunkTask %s\n", new Date(), requests);
+    private void queueChunkTask(ChunkTask chunkTask) throws InterruptedException {
+        workerThreadPool.submit(chunkTask);
+//        long requests = requestReceived.incrementAndGet();
+//        System.out.printf("%s queueChunkTask %s\n", new Date(), requests);
 //            // TODO: Actually generate entities
 //            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, ServerEntity.create(ServerEntity.));
 //            ServerEntity.create()

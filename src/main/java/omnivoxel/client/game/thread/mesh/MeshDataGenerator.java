@@ -15,7 +15,7 @@ import omnivoxel.client.game.thread.mesh.vertex.Vertex;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.math.Position3D;
 import omnivoxel.util.IndexCalculator;
-import omnivoxel.util.Logger;
+import omnivoxel.util.log.Logger;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;

@@ -8,6 +8,7 @@
     - [X] World Renderer
     - [X] Text Renderer
     - [ ] Model Renderer
+    - [ ] Particle Renderer
   - [ ] Advanced Rendering
     - [ ] Abstract Rendering Pipeline
       - [ ] World Renderer
@@ -15,4 +16,6 @@
       - [ ] Model Renderer
     - [ ] Custom Shaders
       - [ ] Custom Shader Syntax so you can have multiple shaders for different things?
-    - 
+- [ ] Gameplay
+  - [ ] Collision Detection
+    - [ ] __\[HELPER\]__ Outlining blocks/chunks

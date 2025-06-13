@@ -1,7 +1,7 @@
 package omnivoxel.client.game.player;
 
-import omnivoxel.client.game.entity.mob.player.PlayerEntity;
 import omnivoxel.client.game.camera.Camera;
+import omnivoxel.client.game.entity.mob.player.PlayerEntity;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
@@ -9,6 +9,7 @@ import omnivoxel.client.game.util.input.KeyInput;
 import omnivoxel.client.game.util.input.MouseButtonInput;
 import omnivoxel.client.game.util.input.MouseInput;
 import omnivoxel.client.network.Client;
+import omnivoxel.client.network.request.PlayerUpdateRequest;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.system.MemoryUtil;
@@ -22,13 +23,14 @@ public class PlayerController extends PlayerEntity {
     private final Settings settings;
     private final BlockingQueue<Consumer<Long>> contextTasks;
     private final GameState gameState;
-    private float speed = 1f;
+    private float speed = 6000f;
     private KeyInput keyInput;
     private MouseButtonInput mouseButtonInput;
     private MouseInput mouseInput;
 
     private boolean togglingWireframe;
     private boolean togglingFullscreen;
+    private boolean togglingDebug;
 
     private int oldWindowWidth;
     private int oldWindowHeight;
@@ -47,6 +49,8 @@ public class PlayerController extends PlayerEntity {
 
     @Override
     public void tick(float deltaTime) {
+        super.tick(deltaTime);
+        boolean changeRot = false;
         if (mouseButtonInput.isMouseLocked()) {
             float moveSpeed = speed * deltaTime * ConstantGameSettings.TARGET_FPS;
 
@@ -61,28 +65,39 @@ public class PlayerController extends PlayerEntity {
 
             camera.rotateX(pitchChange);
             camera.rotateY(yawChange);
+            if (pitchChange != 0 || yawChange != 0) {
+                changeRot = true;
+            }
 
             // Movement
-            float moveRelativeX = (keyInput.isKeyPressed(GLFW.GLFW_KEY_D) ? moveSpeed : 0) -
-                    (keyInput.isKeyPressed(GLFW.GLFW_KEY_A) ? moveSpeed : 0);
-            float moveRelativeY = (keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE) ? moveSpeed : 0) -
-                    (keyInput.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) ? moveSpeed : 0);
-            float moveRelativeZ = (keyInput.isKeyPressed(GLFW.GLFW_KEY_W) ? moveSpeed : 0) -
-                    (keyInput.isKeyPressed(GLFW.GLFW_KEY_S) ? moveSpeed : 0);
+            float moveRelativeX = (keyInput.isKeyPressed(GLFW.GLFW_KEY_D) ? moveSpeed : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_A) ? moveSpeed : 0);
+            float moveRelativeY = (keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE) ? moveSpeed : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) ? moveSpeed : 0);
+            float moveRelativeZ = (keyInput.isKeyPressed(GLFW.GLFW_KEY_W) ? moveSpeed : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_S) ? moveSpeed : 0);
             if (moveRelativeX != 0 || moveRelativeY != 0 || moveRelativeZ != 0) {
-                setVelocityX(moveRelativeX);
-                setVelocityY(moveRelativeY);
-                setVelocityZ(moveRelativeZ);
-            }
-            if (moveRelativeX != 0 || moveRelativeY != 0 || moveRelativeZ != 0 || pitchChange != 0 || yawChange != 0) {
-//                client.sendRequest(new MovedRequest(getX(), getY(), getZ(), pitch, yaw));
-            }
+                float length = (float) Math.sqrt(moveRelativeX * moveRelativeX + moveRelativeY * moveRelativeY + moveRelativeZ * moveRelativeZ);
+                if (length != 0) {
+                    moveRelativeX /= length;
+                    moveRelativeY /= length;
+                    moveRelativeZ /= length;
+                }
 
-            camera.setPosition(x, y, z);
+                float sinYaw = org.joml.Math.sin(-yaw);
+                float cosYaw = org.joml.Math.cos(-yaw);
+
+                float moveX = -moveRelativeZ * sinYaw + moveRelativeX * cosYaw;
+                float moveZ = -moveRelativeZ * cosYaw - moveRelativeX * sinYaw;
+
+                velocityX += moveX;
+                velocityY += moveRelativeY;
+                velocityZ += moveZ;
+            }
 
             // Handle actions
-            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F1)) {
+            if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F1) && !togglingWireframe) {
+                togglingWireframe = true;
                 gameState.setItem("shouldRenderWireframe", !gameState.getItem("shouldRenderWireframe", Boolean.class));
+            } else {
+                togglingWireframe = false;
             }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_KP_ADD)) {
                 camera.setFOV(camera.getFOV() - 1);
@@ -97,7 +112,10 @@ public class PlayerController extends PlayerEntity {
                 speed -= 0.01f;
             }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+                togglingDebug = true;
                 gameState.setItem("seeDebug", !gameState.getItem("seeDebug", Boolean.class));
+            } else {
+                togglingDebug = false;
             }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F11)) {
                 if (!togglingFullscreen) {
@@ -144,7 +162,14 @@ public class PlayerController extends PlayerEntity {
             contextTasks.add(mouseButtonInput::lockMouse);
         }
         mouseInput.clearDelta();
-        super.tick(deltaTime);
+        if (velocityX != 0 || velocityY != 0 || velocityZ != 0 || changeRot) {
+            gameState.setItem("shouldUpdateView", true);
+            gameState.setItem("shouldUpdateVisibleMeshes", true);
+
+            client.sendRequest(new PlayerUpdateRequest(getX(), getY(), getZ(), pitch, yaw));
+
+            camera.setPosition(x, y, z);
+        }
     }
 
     public Camera getCamera() {

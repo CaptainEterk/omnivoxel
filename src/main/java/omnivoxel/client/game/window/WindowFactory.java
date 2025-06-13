@@ -2,7 +2,7 @@ package omnivoxel.client.game.window;
 
 import omnivoxel.client.game.image.Image;
 import omnivoxel.client.game.image.ImageLoader;
-import omnivoxel.util.Logger;
+import omnivoxel.util.log.Logger;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
@@ -45,7 +45,7 @@ public final class WindowFactory {
         GLFW.glfwMakeContextCurrent(window);
 
         // Enable v-sync
-        GLFW.glfwSwapInterval(1);
+        GLFW.glfwSwapInterval(0);
 
         /*
          This line is critical for LWJGL's interoperation with GLFW's OpenGL context,

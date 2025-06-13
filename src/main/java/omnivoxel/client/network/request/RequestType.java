@@ -1,7 +1,7 @@
 package omnivoxel.client.network.request;
 
 public enum RequestType {
-    MOVE,
+    PLAYER_UPDATE,
     CLOSE,
     CHUNK
 }

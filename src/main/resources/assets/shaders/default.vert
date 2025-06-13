@@ -6,6 +6,8 @@
 #define BITMASK_10 1023u
 #define BITMASK_2 3u
 #define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
+
+// TODO: Make this a uniform
 #define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)// Array of shadow levels
 
 layout(location = 0) in uint data1;
@@ -28,9 +30,14 @@ uniform vec3 cameraPosition;
 
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 model;
+
+float simpleNoise(float x, float z) {
+    float n = dot(vec2(x, z), vec2(127.1, 311.7));// Create a seed value
+    return cos(sin(n) * 13.71632);// Fractal noise using sine function
+}
 
 void main() {
-    // Unpack data1
     uint x = (data1 >> 22u) & BITMASK_10;
     uint y = (data1 >> 12u) & BITMASK_10;
     uint z = (data1 >> 2u)  & BITMASK_10;
@@ -74,5 +81,5 @@ void main() {
     fresnel = abs(dot(viewVector, faceNormal));
 
     // Calculate position and set vertex position
-    gl_Position = projection * view * vec4(xyz, 1.0);
+    gl_Position = projection * view * model * vec4(xyz, 1.0);
 }

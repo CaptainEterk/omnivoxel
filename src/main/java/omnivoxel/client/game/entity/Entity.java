@@ -1,9 +1,11 @@
 package omnivoxel.client.game.entity;
 
+import omnivoxel.client.game.hitbox.Hitbox;
 import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 
 public abstract class Entity {
-    protected final float friction;
+    protected final float friction = getFriction();
+    private final Hitbox hitbox;
     protected float x;
     protected float y;
     protected float z;
@@ -14,28 +16,23 @@ public abstract class Entity {
     protected float pitch;
     private MeshData meshData;
 
-    protected Entity(float friction) {
-        this.friction = friction;
+    protected Entity(Hitbox hitbox) {
+        this.hitbox = hitbox;
+    }
+
+    protected float getFriction() {
+        return 0.1f;
     }
 
     public void tick(float deltaTime) {
-        // Calculate sin and cos
-        float sinYaw = org.joml.Math.sin(yaw);
-        float cosYaw = org.joml.Math.cos(yaw);
+        x += velocityX * deltaTime;
+        y += velocityY * deltaTime;
+        z += velocityZ * deltaTime;
 
-        // Calculate movement from yaw
-        float moveX = velocityZ * sinYaw + velocityX * cosYaw;
-        float moveZ = velocityZ * cosYaw - velocityX * sinYaw;
-
-        // Apply movement to position
-        // TODO: Implement gravity
-        x -= moveX;
-        y -= velocityY;
-        z += moveZ;
-
-        velocityX *= friction;
-        velocityY *= friction;
-        velocityZ *= friction;
+        float frictionFactor = (float) Math.pow(friction, deltaTime);
+        velocityX *= frictionFactor;
+        velocityY *= frictionFactor;
+        velocityZ *= frictionFactor;
     }
 
     public float getX() {

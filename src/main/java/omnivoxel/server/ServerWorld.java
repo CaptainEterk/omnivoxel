@@ -2,20 +2,18 @@ package omnivoxel.server;
 
 import omnivoxel.math.Position3D;
 import omnivoxel.server.client.block.ServerBlock;
-import omnivoxel.world.DynamicWorld;
 import omnivoxel.world.chunk.Chunk;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ServerWorld implements DynamicWorld<Chunk> {
+public class ServerWorld {
     private final Map<Position3D, Chunk> chunks;
 
     public ServerWorld() {
         chunks = new ConcurrentHashMap<>();
     }
 
-    @Override
     public void setBlock(Position3D position3D, ServerBlock block) {
         if (block == null) {
             return;
@@ -32,12 +30,10 @@ public class ServerWorld implements DynamicWorld<Chunk> {
 //        }
     }
 
-    @Override
     public void add(Position3D position3D, Chunk chunk) {
 //        this.chunks.put(position3D, chunk);
     }
 
-    @Override
     public Chunk get(Position3D position3D) {
         return chunks.get(position3D);
     }

@@ -1,17 +1,20 @@
 package omnivoxel.server.client.chunk;
 
-import core.biomes.*;
 import core.structures.TestStructure;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.math.Position3D;
+import omnivoxel.server.PackageID;
 import omnivoxel.server.ServerWorld;
+import omnivoxel.server.chunk.result.ChunkResult;
 import omnivoxel.server.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
-import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.structure.Structure;
 import omnivoxel.server.client.structure.StructureBoundingBox;
@@ -19,7 +22,6 @@ import omnivoxel.server.client.structure.StructureSeed;
 import omnivoxel.server.client.structure.StructureService;
 
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,55 +30,73 @@ public class ChunkGenerator {
     private final Set<Position3D> structureGeneratedChunks = ConcurrentHashMap.newKeySet();
     private final StructureService structureService;
     private final BiomeService biomeService;
+    private final ServerWorld world;
 
-    public ChunkGenerator(ServerWorldDataService worldDataService, BlockService blockService, BiomeService biomeService) {
+    public ChunkGenerator(ServerWorldDataService worldDataService, BlockService blockService, BiomeService biomeService, ServerWorld world) {
         this.worldDataService = worldDataService;
         this.biomeService = biomeService;
+        this.world = world;
         structureService = new StructureService();
         structureService.register(new TestStructure().initBlocks(blockService));
     }
 
-    public static void main(String[] args) {
-        BlockService blockService = new BlockService();
-        BiomeService biomeService = new BiomeService(Map.of(new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0), new DesertBiome(blockService), new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0), new JungleBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0), new TundraBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0), new TaigaBiome(blockService), new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0), new PlainsBiome(blockService)));
-        ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(new Random(0), new ServerWorld(), biomeService, blockService, new ConcurrentHashMap<>()), blockService, biomeService);
+//    public static void main(String[] args) {
+//        BlockService blockService = new BlockService();
+//        BiomeService biomeService = new BiomeService(Map.of(new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0), new DesertBiome(blockService), new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0), new JungleBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0), new TundraBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0), new TaigaBiome(blockService), new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0), new PlainsBiome(blockService)));
+//        ChunkGenerator chunkGenerator = new ChunkGenerator(new BasicWorldDataService(new Random(0), new ServerWorld(), biomeService, blockService, new ConcurrentHashMap<>()), blockService, biomeService);
+//
+//        int totalCount = 0;
+//
+//        for (int i = 0; i < 100; i++) {
+//            long startTime = System.currentTimeMillis();
+//            int count = 0;
+//            while (System.currentTimeMillis() - startTime < 1000) {
+//                chunkGenerator.generateChunk(new Position3D(0, 0, 0));
+//                count++;
+//            }
+//            totalCount += count;
+//
+//            System.out.printf("Chunk Generator Benchmark Results: {generated=" + count + ", average=" + totalCount / (i + 1) + "}\n");
+//        }
+//    }
 
-        int totalCount = 0;
-
-        for (int i = 0; i < 100; i++) {
-            long startTime = System.currentTimeMillis();
-            int count = 0;
-            while (System.currentTimeMillis() - startTime < 1000) {
-                chunkGenerator.generateChunk(new Position3D(0, 0, 0));
-                count++;
-            }
-            totalCount += count;
-
-            System.out.printf("Chunk Generator Benchmark Results: {generated=" + count + ", average=" + totalCount / (i + 1) + "}\n");
-        }
+    private void sendChunkBytes(ChannelHandlerContext ctx, int x, int y, int z, byte[] chunk) {
+        ByteBuf buffer = Unpooled.buffer();
+        int length = 16 + chunk.length;
+        buffer.writeInt(length);
+        buffer.writeInt(PackageID.CHUNK.ordinal());
+        buffer.writeInt(x);
+        buffer.writeInt(y);
+        buffer.writeInt(z);
+        buffer.writeBytes(chunk);
+        ctx.channel().writeAndFlush(buffer);
     }
 
-    public GeneratedChunk generateChunk(Position3D position3D) {
+    public void generateChunk(ChunkTask task) {
+        Position3D position3D = new Position3D(task.x(), task.y(), task.z());
+
         GeneratedChunk chunk = new EmptyGeneratedChunk();
-        if (!worldDataService.shouldGenerateChunk(position3D)) {
-            return chunk;
-        }
 
-        generateSurroundingChunks(position3D);
+        if (worldDataService.shouldGenerateChunk(position3D)) {
+            generateSurroundingChunks(position3D);
 
-        for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
-            int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
-            for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
-                int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
+            for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
+                int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
+                for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
+                    int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
 
-                ClimateVector climateVector2D = worldDataService.getClimateVector2D(worldX, worldZ);
-                for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
-                    int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
-                    chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, worldX, worldY, worldZ, climateVector2D));
+                    ClimateVector climateVector2D = worldDataService.getClimateVector2D(worldX, worldZ);
+                    for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
+                        int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
+                        chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, worldX, worldY, worldZ, climateVector2D));
+                    }
                 }
             }
         }
-        return chunk;
+
+        ChunkResult chunkResult = GeneratedChunk.getResult(chunk);
+        sendChunkBytes(task.ctx(), task.x(), task.y(), task.z(), chunkResult.bytes());
+        world.add(position3D, chunkResult.chunk());
     }
 
     private void generateSurroundingChunks(Position3D position3D) {

@@ -16,7 +16,7 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.ClientLauncher;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
-import omnivoxel.util.Logger;
+import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -29,6 +29,8 @@ import java.util.function.Consumer;
 
 public class Launcher {
     public static void main(String[] args) throws IOException, InterruptedException {
+        OmniVoxel.init();
+
         SecureRandom secureRandom = new SecureRandom();
         byte[] clientID = new byte[32];
         secureRandom.nextBytes(clientID);
@@ -62,10 +64,12 @@ public class Launcher {
         clientWorldDataService.addBlock(new ClimateBlock(new BlockShape()));
 
         GameState gameState = new GameState();
+        Settings settings = new Settings();
+        settings.load();
 
         ClientWorld world = new ClientWorld(gameState);
 
-        Client client = new Client(clientID, clientWorldDataService, new Logger());
+        Client client = new Client(clientID, clientWorldDataService, new Logger("client"));
         ClientLauncher clientLauncher = new ClientLauncher(connected, client);
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
@@ -74,9 +78,6 @@ public class Launcher {
         world.setClient(client);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            Settings settings = new Settings();
-            settings.load();
-
             AtomicBoolean gameRunning = new AtomicBoolean(true);
             BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingQueue<>();
 

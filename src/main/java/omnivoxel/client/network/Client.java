@@ -13,11 +13,12 @@ import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
+import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.client.network.request.Request;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.math.Position3D;
-import omnivoxel.util.Logger;
+import omnivoxel.util.log.Logger;
 
 import java.util.ArrayDeque;
 import java.util.Map;
@@ -75,6 +76,25 @@ public class Client {
         buffer.writeBytes(clientID);
         for (int i : numbers) {
             buffer.writeInt(i);
+        }
+        flush(channel, buffer);
+    }
+
+    private void sendFloats(Channel channel, PackageID id, byte[] clientID, float... numbers) {
+        if (channel == null) {
+            System.err.println("[ERROR] Channel is null! Client may not be connected.");
+            return;
+        }
+        if (!channel.isActive()) {
+            System.out.println("[ERROR] Channel is closed! Cannot send data.");
+            return;
+        }
+
+        ByteBuf buffer = Unpooled.buffer();
+        buffer.writeInt(id.ordinal());
+        buffer.writeBytes(clientID);
+        for (float i : numbers) {
+            buffer.writeFloat(i);
         }
         flush(channel, buffer);
     }
@@ -222,6 +242,10 @@ public class Client {
                 break;
             case CLOSE:
                 sendBytes(channel, PackageID.CLOSE, clientID);
+                break;
+            case PLAYER_UPDATE:
+                PlayerUpdateRequest r = (PlayerUpdateRequest) request;
+                sendFloats(channel, PackageID.PLAYER_UPDATE, clientID, r.x(), r.y(), r.z(), r.pitch(), r.yaw());
                 break;
             default:
                 System.err.println("Unexpected request type: " + request.getType());

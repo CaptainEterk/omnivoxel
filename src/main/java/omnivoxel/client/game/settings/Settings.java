@@ -15,14 +15,14 @@ public class Settings {
     }
 
     public void load() throws IOException {
-        Files.createDirectories(Path.of(ConstantGameSettings.SETTING_LOCATION));
-        boolean newSettings = new File(ConstantGameSettings.SETTING_LOCATION + "/settings").createNewFile();
+        Files.createDirectories(Path.of(ConstantGameSettings.CONFIG_LOCATION));
+        boolean newSettings = new File(ConstantGameSettings.CONFIG_LOCATION + "/settings").createNewFile();
         if (newSettings) {
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(ConstantGameSettings.SETTING_LOCATION + "/settings"));
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(ConstantGameSettings.CONFIG_LOCATION + "/settings"));
             bufferedOutputStream.write(ConstantGameSettings.DEFAULT_SETTING_CONTENTS.getBytes());
             bufferedOutputStream.flush();
         }
-        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(ConstantGameSettings.SETTING_LOCATION + "/settings"));
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(ConstantGameSettings.CONFIG_LOCATION + "/settings"));
         byte[] settingBytes = bufferedInputStream.readAllBytes();
         StringBuilder settingFileContents = new StringBuilder();
         for (byte b : settingBytes) {
