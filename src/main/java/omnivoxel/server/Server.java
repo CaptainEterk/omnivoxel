@@ -80,7 +80,7 @@ public class Server {
                     int x = byteBuf.getInt(i * 3 * Integer.BYTES + 40);
                     int y = byteBuf.getInt(i * 3 * Integer.BYTES + 44);
                     int z = byteBuf.getInt(i * 3 * Integer.BYTES + 48);
-                    System.out.printf("Chunk Request: {%d, %d, %d}", x, y, z);
+//                    System.out.printf("Chunk Request: {%d, %d, %d}", x, y, z);
                     queueChunkTask(new ChunkTask(ctx, x, y, z));
                 }
                 break;
