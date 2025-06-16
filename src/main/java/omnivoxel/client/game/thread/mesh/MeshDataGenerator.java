@@ -124,7 +124,7 @@ public final class MeshDataGenerator implements Runnable {
 
         float temp_r, temp_g, temp_b;
 
-        if (block.getState() == null) {
+        if (block.getState() == null || block.getState().length != 3) {
             temp_r = 0;
             temp_g = 0;
             temp_b = 0;

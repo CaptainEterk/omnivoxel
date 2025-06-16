@@ -8,8 +8,8 @@ public class BlockStateWrapper extends Block {
 
     public BlockStateWrapper(Block wrappedBlock, int[] state) {
         super(state);
+        wrappedBlock.state = state;
         this.wrappedBlock = wrappedBlock;
-        setBlock();
     }
 
     @Override
@@ -30,5 +30,10 @@ public class BlockStateWrapper extends Block {
     @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
         return wrappedBlock.getUVCoordinates(blockFace);
+    }
+
+    @Override
+    public int[] getState() {
+        return super.getState();
     }
 }

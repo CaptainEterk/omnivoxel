@@ -9,7 +9,6 @@ import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
-import omnivoxel.world.chunk.Chunk;
 import org.lwjgl.opengl.GL30C;
 
 import java.util.Map;
@@ -27,6 +26,7 @@ public class ClientWorld {
     private final GameState gameState;
     private final Map<Position3D, ClientWorldChunk> chunks;
     private Client client;
+    private boolean requesting = true;
 
     public ClientWorld(GameState gameState) {
         this.gameState = gameState;
@@ -51,18 +51,20 @@ public class ClientWorld {
         return chunks.size();
     }
 
-    public ClientWorldChunk get(Position3D position3D) {
+    public ClientWorldChunk get(Position3D position3D, boolean request) {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
         if (clientWorldChunk != null) {
             return clientWorldChunk;
-        } else {
+        } else if (request && requesting) {
             int inflightRequests = chunkRequestsSent.get() - chunkResponseGotten.get();
             if (inflightRequests < ConstantServerSettings.CHUNK_REQUEST_LIMIT && queuedChunks.add(position3D)) {
                 client.sendRequest(new ChunkRequest(position3D));
                 chunkRequestsSent.incrementAndGet();
+            } else {
+                requesting = false;
             }
-            return null;
         }
+        return null;
     }
 
     public Position3D[] getKeys() {
@@ -116,15 +118,6 @@ public class ClientWorld {
         gameState.setItem("shouldCheckNewChunks", true);
     }
 
-    public void add(Position3D position3D, Chunk chunk) {
-        ClientWorldChunk clientWorldChunk = chunks.get(position3D);
-        if (clientWorldChunk == null) {
-//            chunks.(position3D, new ClientWorldChunk(chunk));
-        } else {
-//            chunk.setChunkData(chunk);
-        }
-    }
-
     public void freeAll() {
         for (ClientWorldChunk clientWorldChunk : getValues()) {
             ChunkMesh chunkMesh = clientWorldChunk.getMesh();
@@ -148,6 +141,7 @@ public class ClientWorld {
         gameState.setItem("inflight_requests", inflightRequests);
         gameState.setItem("chunk_requests_sent", crs);
         gameState.setItem("chunk_requests_received", crg);
+        requesting = true;
 //        missingChunks.clear()
     }
 
@@ -155,7 +149,7 @@ public class ClientWorld {
         Position3D[] positions = getKeys();
         for (Position3D position : positions) {
             if (!predicate.test(position)) {
-                ChunkMesh mesh = get(position).getMesh();
+                ChunkMesh mesh = get(position, false).getMesh();
                 if (mesh != null) {
                     GL30C.glDeleteVertexArrays(mesh.solidVAO());
                     GL30C.glDeleteBuffers(mesh.solidVBO());

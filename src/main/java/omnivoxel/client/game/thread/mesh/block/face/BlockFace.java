@@ -1,13 +1,26 @@
 package omnivoxel.client.game.thread.mesh.block.face;
 
+import omnivoxel.client.game.settings.ConstantGameSettings;
+
 public enum BlockFace {
-    TOP,
-    BOTTOM,
-    NORTH,
-    SOUTH,
-    EAST,
-    WEST,
-    NONE;
+    TOP(1),                                        // +Y
+    BOTTOM(-1),                                    // -Y
+    NORTH(ConstantGameSettings.PADDED_HEIGHT), // -Z
+    SOUTH(-ConstantGameSettings.PADDED_HEIGHT),    // +Z
+    EAST(ConstantGameSettings.PADDED_LENGTH * ConstantGameSettings.PADDED_HEIGHT), // +X
+    WEST(-ConstantGameSettings.PADDED_LENGTH * ConstantGameSettings.PADDED_HEIGHT), // -X
+    NONE(0);
+
+    private final int paddedNeighborOffset;
+
+    BlockFace(int paddedNeighborOffset) {
+        this.paddedNeighborOffset = paddedNeighborOffset;
+    }
+
+    public int getPaddedNeighborOffset() {
+        return paddedNeighborOffset;
+    }
+
 
     public BlockFace opposite() {
         return switch (this) {

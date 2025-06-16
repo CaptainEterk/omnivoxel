@@ -32,7 +32,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final BiomeService biomeService;
     private final ServerBlock air;
     private final ServerBlock water;
-    private final ServerBlock stone;
+    private final ServerBlock underwater;
     private final BlockService blockService;
     private final Map<Position3D, ServerBlock> queuedBlocks;
 
@@ -48,8 +48,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
         this.blockService = blockService;
         this.queuedBlocks = queuedBlocks;
         this.air = blockService.getBlock("omnivoxel:air", null);
-        this.water = blockService.getBlock("core:water_source_block", null);
-        this.stone = blockService.getBlock("core:stone_block", null);
+        this.water = blockService.getBlock("core:water_source_block", new int[]{1});
+        this.underwater = blockService.getBlock("core:water_source_block", new int[]{0});
     }
 
     @Override
@@ -76,10 +76,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
         if (y <= height) {
             block = biome.getBlock(x, y, z, height - y, blockService);
         } else {
-            if (y <= WATER_LEVEL) {
-                return water;
-            }
-            return air;
+            return y <= WATER_LEVEL ? water : air;
         }
 
         return (ServerBlock) block;

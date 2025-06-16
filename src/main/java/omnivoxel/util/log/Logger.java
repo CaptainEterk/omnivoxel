@@ -6,21 +6,21 @@ import omnivoxel.util.time.Timer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class Logger {
     private final String logName;
-    private final List<String> logs;
-    private final List<String> debugLogs;
+    private final Queue<String> logs;
+    private final Queue<String> debugLogs;
     private final Map<String, Timer> timers;
 
     public Logger(String logName) {
         this.logName = logName;
-        this.logs = new ArrayList<>();
-        this.debugLogs = new ArrayList<>();
+        this.logs = new ConcurrentLinkedDeque<>();
+        this.debugLogs = new ConcurrentLinkedDeque<>();
         timers = new HashMap<>();
     }
 

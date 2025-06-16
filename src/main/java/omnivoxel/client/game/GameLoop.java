@@ -4,6 +4,7 @@ import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.mesh.Mesh;
 import omnivoxel.client.game.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.mesh.util.MeshGenerator;
+import omnivoxel.client.game.position.DistanceChunk;
 import omnivoxel.client.game.position.PositionedChunk;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
@@ -124,9 +125,9 @@ public final class GameLoop {
             GL11C.glEnable(GL11C.GL_CULL_FACE);
             GL11C.glCullFace(GL11C.GL_BACK);
 
-            List<PositionedChunk> solidRenderedChunks = new ArrayList<>();
-            List<PositionedChunk> transparentRenderedChunks = new ArrayList<>();
-            int totalRenderedChunks = 0;
+            List<DistanceChunk> solidRenderedChunks = new ArrayList<>();
+            List<DistanceChunk> transparentRenderedChunks = new ArrayList<>();
+            int totalRenderedChunks = 1;
 
             window.init(500, 500);
             window.show();
@@ -152,7 +153,7 @@ public final class GameLoop {
                 GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
 
-                int trc = update(window, solidRenderedChunks, transparentRenderedChunks, completeRenderDistance);
+                int trc = update(window, solidRenderedChunks, transparentRenderedChunks, world.size() >= totalRenderedChunks);
                 if (trc > -1) {
                     totalRenderedChunks = trc;
                 }
@@ -172,16 +173,16 @@ public final class GameLoop {
                 GL11C.glEnable(GL11C.GL_CULL_FACE);
 
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
-                for (PositionedChunk solidRenderedChunk : solidRenderedChunks) {
+                for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
                     if (camera.getFrustum().isMeshInFrustum(solidRenderedChunk.pos())) {
-                        solidRenderedChunksInFrustum.add(solidRenderedChunk);
+                        solidRenderedChunksInFrustum.add(new PositionedChunk(solidRenderedChunk.pos(), world.get(solidRenderedChunk.pos(), false)));
                     }
                 }
 
                 List<PositionedChunk> transparentRenderedChunksInFrustum = new ArrayList<>((int) (transparentRenderedChunks.size() * (camera.getFOV() / 360.0)));
-                for (PositionedChunk transparentRenderedChunk : transparentRenderedChunks) {
+                for (DistanceChunk transparentRenderedChunk : transparentRenderedChunks) {
                     if (camera.getFrustum().isMeshInFrustum(transparentRenderedChunk.pos())) {
-                        transparentRenderedChunksInFrustum.add(transparentRenderedChunk);
+                        transparentRenderedChunksInFrustum.add(new PositionedChunk(transparentRenderedChunk.pos(), world.get(transparentRenderedChunk.pos(), false)));
                     }
                 }
 
@@ -249,6 +250,11 @@ public final class GameLoop {
 
                 if (gameState.getItem("seeDebug", Boolean.class)) {
                     String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format("FPS: %d\nPosition: %.2f %.2f %.2f\nChunks:\n\t- Rendered: %d/%d/%d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n\t- Missing Chunks: %d\nNetwork:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", (int) fps, -camera.getX(), -camera.getY(), -camera.getZ(), solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(), solidRenderedChunksInFrustum.size(), transparentRenderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount, gameState.getItem("missing_chunks", Integer.class), gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class));
+
+                    if (gameState.getItem("inflight_requests", Integer.class) == 0) {
+                        leftDebugText += "\nNo inflight requests! Increase queuedChunkLimit!";
+                    }
+
                     textShaderProgram.bind();
 
                     GL11.glEnable(GL11.GL_BLEND);
@@ -323,24 +329,27 @@ public final class GameLoop {
         }
     }
 
-    private List<PositionedChunk> calculateRenderedChunks(int renderDistance) {
+    private List<DistanceChunk> calculateRenderedChunks(int renderDistance) {
         int chunkX = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_WIDTH) + 1;
         int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT) + 1;
         int chunkZ = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_LENGTH) + 1;
 
-        Map<Integer, Queue<PositionedChunk>> positionedChunks = new HashMap<>();
+        Map<Integer, Queue<DistanceChunk>> positionedChunks = new HashMap<>();
         int highestBucketDistance = 0;
 
-        int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
-        int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
-        int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
+        int ccx = (int)- Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
+        int ccy = (int)- Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
+        int ccz = (int)- Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
         int count = 0;
+
+//        System.out.println(ccx + " " + ccy + " " + ccz);
+
         for (int x = -chunkX; x <= chunkX; x++) {
             for (int y = -chunkY; y <= chunkY; y++) {
                 for (int z = -chunkZ; z <= chunkZ; z++) {
-                    int dx = x + ccx;
-                    int dy = y + ccy;
-                    int dz = z + ccz;
+                    int dx = x - ccx;
+                    int dy = y - ccy;
+                    int dz = z - ccz;
                     int distance = dx * dx + dy * dy + dz * dz;
 
                     if (distance > highestBucketDistance) {
@@ -349,17 +358,17 @@ public final class GameLoop {
 
                     if (distance < renderDistance) {
                         Position3D position3D = new Position3D(dx, dy, dz);
-                        positionedChunks.computeIfAbsent(distance, i -> new ArrayDeque<>()).add(new PositionedChunk(distance, position3D, world.get(position3D)));
+                        positionedChunks.computeIfAbsent(distance, i -> new ArrayDeque<>()).add(new DistanceChunk(distance, position3D));
                         count++;
                     }
                 }
             }
         }
 
-        List<PositionedChunk> out = new ArrayList<>(count);
+        List<DistanceChunk> out = new ArrayList<>(count);
 
         for (int i = 0; i < highestBucketDistance; i++) {
-            Queue<PositionedChunk> posChunks = positionedChunks.get(i);
+            Queue<DistanceChunk> posChunks = positionedChunks.get(i);
             if (posChunks != null) {
                 out.addAll(posChunks);
             }
@@ -376,7 +385,7 @@ public final class GameLoop {
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
     }
 
-    private int update(Window window, List<PositionedChunk> solidRenderedChunks, List<PositionedChunk> transparentRenderedChunks, boolean completeRenderDistance) {
+    private int update(Window window, List<DistanceChunk> solidRenderedChunks, List<DistanceChunk> transparentRenderedChunks, boolean completeRenderDistance) {
         int totalRenderedChunks = -1;
         // Render wireframe or not
         if (gameState.getItem("shouldRenderWireframe", Boolean.class)) {
@@ -388,69 +397,65 @@ public final class GameLoop {
         // Set camera position uniforms
         shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
 
-//        logger.getTimer("shouldUpdateView").time(() -> {
-            if (gameState.getItem("shouldUpdateView", Boolean.class)) {
-                Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.aspectRatio(), camera.getNear(), camera.getFar());
-                Matrix4f viewMatrix = new Matrix4f().rotate(camera.getPitch(), 1, 0, 0).rotate(camera.getYaw(), 0, 1, 0).translate(-camera.getX(), -camera.getY(), -camera.getZ());
+        if (gameState.getItem("shouldUpdateView", Boolean.class)) {
+            Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.aspectRatio(), camera.getNear(), camera.getFar());
+            Matrix4f viewMatrix = new Matrix4f().rotate(camera.getPitch(), 1, 0, 0).rotate(camera.getYaw(), 0, 1, 0).translate(-camera.getX(), -camera.getY(), -camera.getZ());
 
-                camera.updateFrustum(projectionMatrix, viewMatrix);
-                shaderProgram.setUniform("projection", projectionMatrix);
-                shaderProgram.setUniform("view", viewMatrix);
+            camera.updateFrustum(projectionMatrix, viewMatrix);
+            shaderProgram.setUniform("projection", projectionMatrix);
+            shaderProgram.setUniform("view", viewMatrix);
 
-                zppShaderProgram.bind();
-                zppShaderProgram.setUniform("projection", projectionMatrix);
-                zppShaderProgram.setUniform("view", viewMatrix);
-                shaderProgram.bind();
+            zppShaderProgram.bind();
+            zppShaderProgram.setUniform("projection", projectionMatrix);
+            zppShaderProgram.setUniform("view", viewMatrix);
+            shaderProgram.bind();
 
-                gameState.setItem("shouldUpdateView", false);
-            }
-//        });
+            gameState.setItem("shouldUpdateView", false);
+        }
+        if (world.totalQueuedChunks() < ConstantServerSettings.QUEUED_CHUNKS_MINIMUM && !completeRenderDistance) {
+            gameState.setItem("shouldUpdateVisibleMeshes", true);
+        }
+        if (gameState.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
+            solidRenderedChunks.clear();
+            transparentRenderedChunks.clear();
 
-//        logger.getTimer("shouldUpdateVisibleMeshes").time(() -> {
-            if (gameState.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-                solidRenderedChunks.clear();
-                transparentRenderedChunks.clear();
+            int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
+            int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
+            int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
 
-                int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
-                int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
-                int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
+            int renderDistance = settings.getIntSetting("render_distance", 100);
+            int squaredRenderDistance = renderDistance * renderDistance;
 
-                int renderDistance = settings.getIntSetting("render_distance", 100);
-                int squaredRenderDistance = renderDistance * renderDistance;
+            List<DistanceChunk> chunks = calculateRenderedChunks(renderDistance);
+            world.freeAllChunksNotIn(position3D -> {
+                int dx = position3D.x() - ccx;
+                int dy = position3D.y() - ccy;
+                int dz = position3D.z() - ccz;
+                int distance = dx * dx + dy * dy + dz * dz;
 
-                List<PositionedChunk> chunks = calculateRenderedChunks(renderDistance);
-                world.freeAllChunksNotIn(position3D -> {
-                    int dx = position3D.x() + ccx;
-                    int dy = position3D.y() + ccy;
-                    int dz = position3D.z() + ccz;
-                    int distance = dx * dx + dy * dy + dz * dz;
+                return distance < squaredRenderDistance;
+            });
 
-                    return distance < squaredRenderDistance;
-                });
+            totalRenderedChunks = chunks.size();
 
-                totalRenderedChunks = chunks.size();
-
-                // Filter chunks
-                for (PositionedChunk chunk : chunks) {
-                    ClientWorldChunk clientWorldChunk = chunk.chunk();
-                    if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
-                        if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
-                            solidRenderedChunks.add(chunk);
-                        }
-                        if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
-                            transparentRenderedChunks.add(chunk);
-                        }
+            // Filter chunks
+            for (DistanceChunk chunk : chunks) {
+                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true);
+                if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
+                    if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
+                        solidRenderedChunks.add(chunk);
+                    }
+                    if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
+                        transparentRenderedChunks.add(chunk);
                     }
                 }
-
-                // TODO: Make it so that
-                transparentRenderedChunks.sort(Comparator.comparingInt(PositionedChunk::distance));
-
-                gameState.setItem("shouldUpdateVisibleMeshes", false);
-            } else if (world.totalQueuedChunks() < ConstantServerSettings.QUEUED_CHUNKS_MINIMUM && !completeRenderDistance) {
-                gameState.setItem("shouldUpdateVisibleMeshes", true);
             }
-//        });
+
+            // TODO: Make it so that
+            transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
+
+            gameState.setItem("shouldUpdateVisibleMeshes", false);
+        }
 
         return totalRenderedChunks;
     }

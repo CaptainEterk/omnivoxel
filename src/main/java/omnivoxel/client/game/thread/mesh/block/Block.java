@@ -4,15 +4,10 @@ import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
 import omnivoxel.client.game.thread.mesh.shape.Shape;
 
 public abstract class Block {
-    protected final int[] state;
-    protected omnivoxel.world.block.Block block;
+    protected int[] state;
 
     protected Block(int[] state) {
         this.state = state;
-    }
-
-    protected void setBlock() {
-        block = new omnivoxel.world.block.Block(getModID(), state);
     }
 
     protected Block() {
@@ -41,9 +36,5 @@ public abstract class Block {
 
     public int[] getState() {
         return state;
-    }
-
-    public final omnivoxel.world.block.Block getBlock() {
-        return block;
     }
 }

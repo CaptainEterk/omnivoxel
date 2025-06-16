@@ -15,9 +15,9 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.client.network.request.Request;
+import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
-import omnivoxel.math.Position3D;
 import omnivoxel.util.log.Logger;
 
 import java.util.ArrayDeque;
@@ -31,7 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
-public class Client {
+public final class Client {
     private final Map<String, PlayerEntity> players;
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
@@ -285,7 +285,7 @@ public class Client {
     public void setChunkListener(BiConsumer<Position3D, MeshData> loadChunk) {
         meshDataGenerators = Executors.newFixedThreadPool(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS);
         for (int i = 0; i < ConstantGameSettings.MAX_MESH_GENERATOR_THREADS; i++) {
-            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(logger, loadChunk, clientRunning, worldDataService);
+            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(new Logger("mdg-" + (i + 1)), loadChunk, clientRunning, worldDataService);
             Thread meshDataGeneratorThread = new Thread(meshDataGenerator);
             meshDataGenerators.execute(meshDataGeneratorThread);
             meshDataTaskQueues.add(meshDataGenerator.getMeshDataTasks());

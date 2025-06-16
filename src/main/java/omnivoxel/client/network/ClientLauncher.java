@@ -79,6 +79,4 @@ public class ClientLauncher implements Runnable {
             group.shutdownGracefully();
         }
     }
-
-
 }

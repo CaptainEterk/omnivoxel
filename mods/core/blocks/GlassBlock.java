@@ -48,6 +48,6 @@ public class GlassBlock extends Block {
 
     @Override
     public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
-        return !Objects.equals(adjacentBlock.getModID(), getModID()) && adjacentBlock.isTransparent();
+        return !Objects.equals(adjacentBlock.getModID(), getModID()) && super.shouldRenderFace(face, adjacentBlock);
     }
 }

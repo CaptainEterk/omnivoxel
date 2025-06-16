@@ -20,10 +20,7 @@ import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -74,12 +71,12 @@ public class Launcher {
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
 
-        client.setChunkListener(world::add);
         world.setClient(client);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
+            client.setChunkListener(world::add);
             AtomicBoolean gameRunning = new AtomicBoolean(true);
-            BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingQueue<>();
+            BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingDeque<>();
 
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
 
