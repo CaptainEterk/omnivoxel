@@ -1,7 +1,9 @@
-package omnivoxel.client.game.entity;
+package omnivoxel.server.client.entity;
 
-import omnivoxel.client.game.hitbox.Hitbox;
+import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
+import omnivoxel.client.game.hitbox.Hitbox;
+import omnivoxel.math.FloatPosition3D;
 
 public abstract class Entity {
     protected final float friction = getFriction();
@@ -12,9 +14,8 @@ public abstract class Entity {
     protected float velocityX;
     protected float velocityY;
     protected float velocityZ;
-    protected float yaw;
-    protected float pitch;
     private MeshData meshData;
+    protected EntityMesh mesh;
 
     protected Entity(Hitbox hitbox) {
         this.hitbox = hitbox;
@@ -33,6 +34,12 @@ public abstract class Entity {
         velocityX *= frictionFactor;
         velocityY *= frictionFactor;
         velocityZ *= frictionFactor;
+    }
+
+    public void set(float x, float y, float z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
     public float getX() {
@@ -83,27 +90,27 @@ public abstract class Entity {
         this.velocityZ = velocityZ;
     }
 
-    public float getYaw() {
-        return yaw;
-    }
-
-    public void setYaw(float yaw) {
-        this.yaw = yaw;
-    }
-
-    public float getPitch() {
-        return pitch;
-    }
-
-    public void setPitch(float pitch) {
-        this.pitch = pitch;
-    }
-
     public MeshData getMeshData() {
         return meshData;
     }
 
+    public Hitbox getHitbox() {
+        return hitbox;
+    }
+
+    public EntityMesh getMesh() {
+        return mesh;
+    }
+
+    public void setMesh(EntityMesh mesh) {
+        this.mesh = mesh;
+    }
+
     public void setMeshData(MeshData meshData) {
         this.meshData = meshData;
+    }
+
+    public FloatPosition3D getPosition() {
+        return new FloatPosition3D(x, y, z);
     }
 }

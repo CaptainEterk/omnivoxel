@@ -1,21 +1,29 @@
 package omnivoxel.client.game.graphics.opengl.mesh.meshData;
 
+import omnivoxel.server.client.entity.Entity;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 
-public record GeneralMeshData(
+public record EntityMeshData(
         ByteBuffer solidVertices,
         ByteBuffer solidIndices,
-        ByteBuffer transparentVertices,
-        ByteBuffer transparentIndices
+        Entity entity
 ) implements MeshData {
+    @Override
+    public ByteBuffer transparentVertices() {
+        return null;
+    }
+
+    @Override
+    public ByteBuffer transparentIndices() {
+        return null;
+    }
+
     @Override
     public void cleanup() {
         // Free buffer data
         MemoryUtil.memFree(solidVertices);
         MemoryUtil.memFree(solidIndices);
-        MemoryUtil.memFree(transparentVertices);
-        MemoryUtil.memFree(transparentIndices);
     }
 }

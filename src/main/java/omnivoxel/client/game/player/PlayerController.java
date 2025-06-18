@@ -1,7 +1,7 @@
 package omnivoxel.client.game.player;
 
 import omnivoxel.client.game.camera.Camera;
-import omnivoxel.client.game.entity.mob.player.PlayerEntity;
+import omnivoxel.server.client.entity.mob.player.PlayerEntity;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;

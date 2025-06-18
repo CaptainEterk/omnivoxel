@@ -5,9 +5,10 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
-import omnivoxel.client.game.entity.mob.player.PlayerEntity;
-import omnivoxel.client.game.graphics.opengl.mesh.MeshDataGenerator;
+import omnivoxel.client.game.graphics.opengl.mesh.ChunkMeshDataTask;
+import omnivoxel.client.game.graphics.opengl.mesh.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
+import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
@@ -18,6 +19,8 @@ import omnivoxel.client.network.request.Request;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
+import omnivoxel.server.client.entity.Entity;
+import omnivoxel.server.client.entity.mob.player.PlayerEntity;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.thread.WorkerThreadPool;
 
@@ -27,6 +30,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public final class Client {
     private final Map<String, PlayerEntity> players;
@@ -120,6 +124,12 @@ public final class Client {
                 updatePlayer(byteBuf);
                 byteBuf.release();
                 break;
+            case CLOSE:
+                String playerID = bytesToHex(getBytes(byteBuf, 8, 32));
+                players.remove(playerID);
+                logger.info("Removed Player: " + playerID);
+                byteBuf.release();
+                break;
             default:
                 System.err.println("Unexpected package id: " + packageID);
         }
@@ -128,17 +138,20 @@ public final class Client {
     private void updatePlayer(ByteBuf byteBuf) {
         String playerID = bytesToHex(byteBuf, 8, 32);
         PlayerEntity playerEntity = players.get(playerID);
-        float x = Float.intBitsToFloat(byteBuf.getInt(40));
-        float y = Float.intBitsToFloat(byteBuf.getInt(44));
-        float z = Float.intBitsToFloat(byteBuf.getInt(48));
-        float pitch = Float.intBitsToFloat(byteBuf.getInt(52));
-        float yaw = Float.intBitsToFloat(byteBuf.getInt(56));
-        System.out.println(x + " " + y + " " + z + " " + pitch + " " + yaw);
-        playerEntity.setX(x);
-        playerEntity.setY(y);
-        playerEntity.setZ(z);
-        playerEntity.setPitch(pitch);
-        playerEntity.setYaw(yaw);
+        if (playerEntity == null) {
+            System.err.println("Received update for unknown player: " + playerID);
+        } else {
+            float x = Float.intBitsToFloat(byteBuf.getInt(40));
+            float y = Float.intBitsToFloat(byteBuf.getInt(44));
+            float z = Float.intBitsToFloat(byteBuf.getInt(48));
+            float pitch = Float.intBitsToFloat(byteBuf.getInt(52));
+            float yaw = Float.intBitsToFloat(byteBuf.getInt(56));
+            playerEntity.setX(x);
+            playerEntity.setY(y);
+            playerEntity.setZ(z);
+            playerEntity.setPitch(pitch);
+            playerEntity.setYaw(yaw);
+        }
     }
 
     private void receiveChunk(ByteBuf byteBuf) throws InterruptedException {
@@ -151,26 +164,23 @@ public final class Client {
 //        Chunk chunk = ChunkFactory.create(Arrays.stream(blocks).map(Block::getBlock).toArray(omnivoxel.world.block.Block[]::new), palette);
 //        world.add(omnivoxel.math.Position3D.createFrom(position3D), chunk);
 
-        meshDataGenerators.submit(new MeshDataTask(byteBuf, position3D));
+        meshDataGenerators.submit(new ChunkMeshDataTask(byteBuf, position3D));
     }
 
-    private void loadPlayer(byte[] playerID, String name) {
-//        PlayerEntity playerEntity = new PlayerEntity(name, playerID);
-//        String id = bytesToHex(playerID);
-//        players.put(id, playerEntity);
-        // Generate mesh data
-//        MeshData meshData = meshDataGenerator.generateEntityMeshData(playerEntity);
-//        playerEntity.setMeshData(meshData);
-        //
-//        loadEntity.accept(id, playerEntity);
+    private void loadPlayer(byte[] playerID, String name) throws InterruptedException {
+        PlayerEntity playerEntity = new PlayerEntity(name, playerID);
+        String id = bytesToHex(playerID);
+        players.put(id, playerEntity);
+
+        meshDataGenerators.submit(new EntityMeshDataTask(playerEntity));
     }
 
-    private void newPlayer(ByteBuf byteBuf) {
+    private void newPlayer(ByteBuf byteBuf) throws InterruptedException {
         // TODO: Add more information to the player packet, such as name, position, etc...
         loadPlayer(getBytes(byteBuf, 8, 32), "Other client!!");
     }
 
-    private void registerPlayers(ByteBuf byteBuf) {
+    private void registerPlayers(ByteBuf byteBuf) throws InterruptedException {
         int playerCount = Math.floorDiv(byteBuf.readableBytes(), 32);
         for (int i = 0; i < playerCount; i++) {
             // TODO: Add more information to the player packet, such as name, position, etc...
@@ -180,14 +190,15 @@ public final class Client {
 
     private String bytesToHex(byte[] bytes) {
         StringBuilder hex = new StringBuilder();
-        for (int i = 0; i < bytes[i]; i++) {
-            hex.append(String.format("%02X", bytes[i]));
+        for (byte b : bytes) {
+            hex.append(String.format("%02X", b));
         }
         return hex.toString();
     }
 
     private String bytesToHex(ByteBuf byteBuf, int start, int length) {
-        return bytesToHex(getBytes(byteBuf, start, length));
+        byte[] bytes = getBytes(byteBuf, start, length);
+        return bytesToHex(bytes);
     }
 
     private byte[] getBytes(ByteBuf byteBuf, int start, int length) {
@@ -212,7 +223,7 @@ public final class Client {
                 data[i * 3 + 3] = req.z();
             }
             sendInts(channel, PackageID.CHUNK_REQUEST, clientID, data);
-            lastFlushedTime = ConstantServerSettings.CHUNK_REQUEST_BATCHING_TIME;
+            lastFlushedTime += ConstantServerSettings.CHUNK_REQUEST_BATCHING_TIME;
         }
     }
 
@@ -266,7 +277,7 @@ public final class Client {
         logger.info("Client shutdown");
     }
 
-    public void setChunkListener(BiConsumer<Position3D, MeshData> loadChunk) {
-        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, worldDataService)::generateMeshData);
+    public void setListeners(BiConsumer<Position3D, MeshData> loadChunk, Consumer<Entity> loadEntity) {
+        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, loadEntity, worldDataService)::generateMeshData);
     }
 }

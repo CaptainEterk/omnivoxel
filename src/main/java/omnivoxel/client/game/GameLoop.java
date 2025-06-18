@@ -4,24 +4,25 @@ import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.graphics.opengl.mesh.Mesh;
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
-import omnivoxel.client.game.position.DistanceChunk;
-import omnivoxel.client.game.position.PositionedChunk;
-import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.graphics.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.opengl.shader.ShaderProgramHandler;
-import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.graphics.opengl.text.Alignment;
 import omnivoxel.client.game.graphics.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.opengl.text.font.Font;
 import omnivoxel.client.game.graphics.opengl.texture.TextureLoader;
 import omnivoxel.client.game.graphics.opengl.window.Window;
 import omnivoxel.client.game.graphics.opengl.window.WindowFactory;
+import omnivoxel.client.game.position.DistanceChunk;
+import omnivoxel.client.game.position.PositionedChunk;
+import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.client.game.settings.Settings;
+import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
+import omnivoxel.server.client.entity.Entity;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.time.Timer;
 import org.joml.Matrix4f;
@@ -214,16 +215,14 @@ public final class GameLoop {
                 GL11C.glDepthMask(true);
 
                 // Render entities
-//                shaderProgram.setUniform("useChunkPosition", false);
-//                shaderProgram.setUniform("useExactPosition", true);
-//                Map<String, EntityMesh> entityMeshes = world.getEntityMeshes();
-//                for (Map.Entry<String, EntityMesh> entry : entityMeshes.entrySet()) {
-//                    renderMesh(world.getEntity(entry.getKey()).getPosition(), entry.getValue(), false);
-//                }
+                shaderProgram.setUniform("useChunkPosition", false);
+                shaderProgram.setUniform("useExactPosition", true);
+                Queue<Entity> entityMeshes = world.getEntities();
+                entityMeshes.forEach(this::renderEntityMesh);
 
                 // Bufferize chunks
                 // TODO: Make the bufferizer actually use the endTime
-                int bufferizedChunkCount = world.bufferizeChunks(meshGenerator, System.nanoTime());
+                int bufferizedChunkCount = world.bufferizeQueued(meshGenerator, System.nanoTime());
 
                 // Unbind the VAO and texture
                 GL30C.glBindVertexArray(0);
@@ -306,6 +305,13 @@ public final class GameLoop {
         }
     }
 
+    private void renderEntityMesh(Entity entity) {
+        if (entity.getMesh() != null) {
+            shaderProgram.setUniform("exactPosition", entity.getX(), entity.getY(), entity.getZ());
+            renderVAO(entity.getMesh().solidVAO(), entity.getMesh().solidIndexCount());
+        }
+    }
+
     private void renderMesh(Position3D position, Mesh mesh, boolean transparent) {
         if (mesh != null) {
             if (mesh instanceof ChunkMesh chunkMesh) {
@@ -338,9 +344,9 @@ public final class GameLoop {
         Map<Integer, Queue<DistanceChunk>> positionedChunks = new HashMap<>();
         int highestBucketDistance = 0;
 
-        int ccx = (int)- Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
-        int ccy = (int)- Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
-        int ccz = (int)- Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
+        int ccx = (int) -Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
+        int ccy = (int) -Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
+        int ccz = (int) -Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
         int count = 0;
 
 //        System.out.println(ccx + " " + ccy + " " + ccz);

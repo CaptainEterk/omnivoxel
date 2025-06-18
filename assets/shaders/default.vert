@@ -64,7 +64,7 @@ void main() {
     }
     if (useExactPosition) {
         xyz += exactPosition;
-        xyz /= 32;
+        xyz /= 16;
 
         shadow = 1.0;
     }

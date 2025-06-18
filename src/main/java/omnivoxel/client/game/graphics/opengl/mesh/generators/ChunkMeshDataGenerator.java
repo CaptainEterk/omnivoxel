@@ -1,10 +1,10 @@
-package omnivoxel.client.game.graphics.opengl.mesh;
+package omnivoxel.client.game.graphics.opengl.mesh.generators;
 
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
 import omnivoxel.client.game.graphics.opengl.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
-import omnivoxel.client.game.graphics.opengl.mesh.meshData.GeneralMeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.UniqueVertex;
@@ -22,15 +22,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
-public final class MeshDataGenerator {
-    private final BiConsumer<Position3D, MeshData> loadChunk;
+public class ChunkMeshDataGenerator {
     private final ClientWorldDataService worldDataService;
 
-    public MeshDataGenerator(BiConsumer<Position3D, MeshData> loadChunk, ClientWorldDataService worldDataService) {
+    public ChunkMeshDataGenerator(ClientWorldDataService worldDataService) {
         this.worldDataService = worldDataService;
-        this.loadChunk = loadChunk;
     }
 
     private void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, Vertex position, int tx, int ty, BlockFace normal, float r, float g, float b) {
@@ -46,7 +43,7 @@ public final class MeshDataGenerator {
         indices.add(vertexIndexMap.get(vertex) / 2);
     }
 
-    public MeshData generateChunkMeshData(Block[] blocks) {
+    private MeshData generateChunkMeshData(Block[] blocks, Position3D position3D) {
         List<Integer> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         List<Integer> transparentVertices = new ArrayList<>();
@@ -103,7 +100,7 @@ public final class MeshDataGenerator {
         ByteBuffer transparentVertexBuffer = createBuffer(transparentVertices);
         ByteBuffer transparentIndexBuffer = createBuffer(transparentIndices);
 
-        return new GeneralMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer);
+        return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, position3D);
     }
 
     private void generateBlockMeshData(int x, int y, int z, Block block, Block top, Block bottom, Block north, Block south, Block east, Block west, List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
@@ -218,12 +215,7 @@ public final class MeshDataGenerator {
         return blocks;
     }
 
-    public void generateMeshData(MeshDataTask meshDataTask) {
-        try {
-            loadChunk.accept(meshDataTask.position3D(),
-                    generateChunkMeshData(unpackChunk(meshDataTask.blocks())));
-        } finally {
-            meshDataTask.blocks().release();
-        }
+    public MeshData generateMeshData(ByteBuf blocks, Position3D position3D) {
+        return generateChunkMeshData(unpackChunk(blocks), position3D);
     }
 }

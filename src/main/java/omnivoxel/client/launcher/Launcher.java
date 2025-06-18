@@ -82,7 +82,7 @@ public class Launcher {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            client.setChunkListener(world::add);
+            client.setListeners(world::add, world::addEntity);
             AtomicBoolean gameRunning = new AtomicBoolean(true);
             BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingDeque<>();
 

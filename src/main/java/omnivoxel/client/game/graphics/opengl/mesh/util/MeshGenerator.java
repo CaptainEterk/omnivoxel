@@ -49,16 +49,11 @@ public class MeshGenerator {
 
     public EntityMesh bufferizeEntityMesh(MeshData mesh) {
         int[] solid = generate(mesh.solidVertices(), mesh.solidIndices());
-        int[] transparent = generate(mesh.transparentVertices(), mesh.transparentIndices());
         return new EntityMesh(
                 solid[0],
                 solid[1],
                 solid[2],
-                mesh.solidIndices().capacity() / Integer.BYTES,
-                transparent[0],
-                transparent[1],
-                transparent[2],
-                mesh.transparentIndices().capacity() / Integer.BYTES
+                mesh.solidIndices().capacity() / Integer.BYTES
         );
     }
 

@@ -1,19 +1,24 @@
 package omnivoxel.client.game.world;
 
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.ChunkMeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.state.GameState;
-import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
+import omnivoxel.server.client.entity.Entity;
 import org.lwjgl.opengl.GL30C;
 
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -21,22 +26,24 @@ public class ClientWorld {
     private final Set<Position3D> queuedChunks;
     private final AtomicInteger chunkRequestsSent;
     private final AtomicInteger chunkResponseGotten;
-    private final Map<Position3D, MeshData> nonBufferizedChunks;
+    private final Queue<MeshData> nonBufferizedChunks;
     private final Set<Position3D> newChunks;
     private final GameState gameState;
     private final Map<Position3D, ClientWorldChunk> chunks;
     private Client client;
     private boolean requesting = true;
+    private final Queue<Entity> entities;
 
     public ClientWorld(GameState gameState) {
         this.gameState = gameState;
         queuedChunks = ConcurrentHashMap.newKeySet();
-        nonBufferizedChunks = new ConcurrentHashMap<>();
+        nonBufferizedChunks = new ConcurrentLinkedDeque<>();
         this.chunks = new ConcurrentHashMap<>();
 
         chunkRequestsSent = new AtomicInteger();
         chunkResponseGotten = new AtomicInteger();
         newChunks = ConcurrentHashMap.newKeySet();
+        entities = new ConcurrentLinkedDeque<>();
     }
 
     public int totalQueuedChunks() {
@@ -75,11 +82,11 @@ public class ClientWorld {
         return chunks.values().toArray(new ClientWorldChunk[0]);
     }
 
-    public int bufferizeChunks(MeshGenerator meshGenerator, long endTime) {
+    public int bufferizeQueued(MeshGenerator meshGenerator, long endTime) {
         int count = 0;
         boolean bufferizing;
         do {
-            bufferizing = bufferizeChunk(meshGenerator);
+            bufferizing = bufferize(meshGenerator);
             if (bufferizing) {
                 count++;
             }
@@ -88,18 +95,21 @@ public class ClientWorld {
         return count;
     }
 
-    public boolean bufferizeChunk(MeshGenerator meshGenerator) {
+    public boolean bufferize(MeshGenerator meshGenerator) {
         if (!nonBufferizedChunks.isEmpty()) {
-            Map.Entry<Position3D, MeshData> entry = nonBufferizedChunks.entrySet().iterator().next();
-            nonBufferizedChunks.remove(entry.getKey());
-            ChunkMesh chunkMesh = meshGenerator.bufferizeChunkMesh(entry.getValue());
-            ClientWorldChunk clientWorldChunk = chunks.get(entry.getKey());
-            if (clientWorldChunk == null) {
-                chunks.put(entry.getKey(), new ClientWorldChunk(chunkMesh));
-            } else {
-                clientWorldChunk.setMesh(chunkMesh);
+            MeshData meshData = nonBufferizedChunks.remove();
+            if (meshData instanceof EntityMeshData entityMeshData) {
+                entityMeshData.entity().setMesh(meshGenerator.bufferizeEntityMesh(meshData));
+            } else if (meshData instanceof ChunkMeshData chunkMeshData) {
+                ChunkMesh chunkMesh = meshGenerator.bufferizeChunkMesh(chunkMeshData);
+                ClientWorldChunk clientWorldChunk = chunks.get(chunkMeshData.chunkPosition());
+                if (clientWorldChunk == null) {
+                    chunks.put(chunkMeshData.chunkPosition(), new ClientWorldChunk(chunkMesh));
+                } else {
+                    clientWorldChunk.setMesh(chunkMesh);
+                }
+                queuedChunks.remove(chunkMeshData.chunkPosition());
             }
-            queuedChunks.remove(entry.getKey());
             return true;
         }
         return false;
@@ -112,7 +122,7 @@ public class ClientWorld {
         } else {
             clientWorldChunk.setMeshData(meshData);
         }
-        nonBufferizedChunks.put(position3D, meshData);
+        nonBufferizedChunks.add(meshData);
         chunkResponseGotten.incrementAndGet();
         newChunks.add(position3D);
         gameState.setItem("shouldCheckNewChunks", true);
@@ -163,5 +173,14 @@ public class ClientWorld {
                 }
             }
         }
+    }
+
+    public void addEntity(Entity entity) {
+        entities.add(entity);
+        nonBufferizedChunks.add(entity.getMeshData());
+    }
+
+    public Queue<Entity> getEntities() {
+        return entities;
     }
 }

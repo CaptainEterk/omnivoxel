@@ -1,7 +1,8 @@
 package omnivoxel.client.game.graphics.opengl.mesh;
 
-import io.netty.buffer.ByteBuf;
-import omnivoxel.math.Position3D;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 
-public record MeshDataTask(ByteBuf blocks, Position3D position3D) {
+public interface MeshDataTask {
+    default void finished(MeshData meshData) {}
+    default void cleanup() {}
 }

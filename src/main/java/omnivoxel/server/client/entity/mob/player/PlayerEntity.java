@@ -1,6 +1,6 @@
-package omnivoxel.client.game.entity.mob.player;
+package omnivoxel.server.client.entity.mob.player;
 
-import omnivoxel.client.game.entity.mob.MobEntity;
+import omnivoxel.server.client.entity.mob.MobEntity;
 import omnivoxel.client.game.hitbox.Hitbox;
 
 import java.util.Arrays;

@@ -20,7 +20,7 @@ public class ConstantGameSettings {
     public static final int TARGET_FPS = 120;
     public static final float FRAME_TIME = 1f / TARGET_FPS;
 
-    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.5";
+    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.6-alpha";
 
     public static final int TICKS_PER_SECOND = 1;
     public static final float TICK_TIME = 1f / TICKS_PER_SECOND;

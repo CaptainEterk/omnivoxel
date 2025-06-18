@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.math.Position3D;
-import omnivoxel.server.client.ServerPlayer;
+import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.PriorityServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Server {
     private static final int VERSION_ID = 0;
 
-    private final Map<String, ServerPlayer> clients;
+    private final Map<String, ServerClient> clients;
     private final AtomicLong requestReceived = new AtomicLong();
     private final AtomicLong requestSent = new AtomicLong();
 
@@ -89,6 +89,8 @@ public class Server {
                 break;
             case CLOSE:
                 clients.remove(clientID);
+                clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.CLOSE, player.getPlayerID()));
+                System.out.println("Removed Client: " + clientID);
                 break;
             case PLAYER_UPDATE:
                 float[] data = new float[5];
@@ -100,7 +102,14 @@ public class Server {
                 float z = data[2];
                 float pitch = data[3];
                 float yaw = data[4];
-                System.out.printf("Player Update Packet {x:%.2f, y: %.2f, z: %.2f, pitch: %.2f, yaw: %.2f}\n", x, y, z, pitch, yaw);
+                ServerClient serverClient = clients.get(clientID);
+                serverClient.set(x, y, z, pitch, yaw);
+
+                clients.values().forEach(player -> {
+                    if (!Arrays.equals(player.getPlayerID(), serverClient.getPlayerID())) {
+                        sendBytes(player.getCTX(), PackageID.PLAYER_UPDATE, serverClient.getBytes());
+                    }
+                });
                 break;
             default:
                 System.err.println("Unknown package id: " + packageID);
@@ -119,21 +128,12 @@ public class Server {
 //            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, new ServerEntity(entityID, chunkTask.x() * ConstantGameSettings.CHUNK_WIDTH, chunkTask.y() * ConstantGameSettings.CHUNK_HEIGHT, chunkTask.z() * ConstantGameSettings.CHUNK_LENGTH, 0, 0, 0).getBytes());
     }
 
-    private ServerPlayer getServerPlayer(ByteBuf byteBuf) {
-        StringBuilder clientID = new StringBuilder();
-        byte[] clientIDBytes = getBytes(byteBuf, 4, 32);
-        for (int i = 0; i < 32; i++) {
-            clientID.append(String.format("%02X", clientIDBytes[i]));
-        }
-        return clients.get(clientID.toString());
-    }
-
     private void registerClient(ChannelHandlerContext ctx, ByteBuf byteBuf) {
         byte[] versionID = getBytes(byteBuf, 4, 8);
         if (Arrays.equals(versionID, String.format("%-8s", VERSION_ID).getBytes())) {
             String clientID = bytesToHex(byteBuf, 12, 32);
-            ServerPlayer serverPlayer = new ServerPlayer(clientID, ctx);
-            byte[] encodedServerPlayer = serverPlayer.getBytes();
+            ServerClient serverClient = new ServerClient(clientID, ctx);
+            byte[] encodedServerPlayer = serverClient.getBytes();
 
             byte[] playerList = new byte[32 * clients.size()];
 
@@ -148,7 +148,7 @@ public class Server {
             });
             sendBytes(ctx, PackageID.REGISTER_PLAYERS, playerList);
 
-            clients.put(clientID, serverPlayer);
+            clients.put(clientID, serverClient);
 
             System.out.println("Registered Client: " + clientID);
         } else {
