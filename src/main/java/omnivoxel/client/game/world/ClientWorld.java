@@ -1,10 +1,10 @@
 package omnivoxel.client.game.world;
 
-import omnivoxel.client.game.mesh.chunk.ChunkMesh;
-import omnivoxel.client.game.mesh.util.MeshGenerator;
+import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.state.GameState;
-import omnivoxel.client.game.thread.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.math.Position3D;

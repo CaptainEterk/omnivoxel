@@ -1,7 +1,7 @@
 package omnivoxel.client.network.chunk.worldDataService;
 
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.BlockStateWrapper;
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
+import omnivoxel.client.game.graphics.opengl.mesh.block.BlockStateWrapper;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,10 +19,6 @@ public class ClientWorldDataService {
 
     public void addBlock(Block block) {
         blocks.put(block.getModID(), new BlockMap(new ConcurrentHashMap<>(), block));
-    }
-
-    private record StateIDPair(String id, int[] state) {
-
     }
 
     private record BlockMap(Map<int[], Block> blocks, Block block) {

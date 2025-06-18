@@ -1,7 +1,7 @@
 package omnivoxel.client.game.world;
 
-import omnivoxel.client.game.mesh.chunk.ChunkMesh;
-import omnivoxel.client.game.thread.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.world.chunk.Chunk;
 
 public class ClientWorldChunk {

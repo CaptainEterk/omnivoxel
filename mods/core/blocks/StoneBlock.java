@@ -1,17 +1,18 @@
 package core.blocks;
 
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.BlockShape;
-import omnivoxel.client.game.thread.mesh.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
+import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.client.game.graphics.opengl.shape.BlockShape;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.util.cache.IDCache;
 
 // TODO: Make this a mod
 public class StoneBlock extends Block {
     private final Shape shape;
     private final int[] uvCoords;
 
-    public StoneBlock(BlockShape shape) {
-        this.shape = shape;
+    public StoneBlock(IDCache<Shape> shapeCache) {
+        this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
                 2, 0,
                 3, 0,
@@ -38,5 +39,10 @@ public class StoneBlock extends Block {
     @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
         return uvCoords;
+    }
+
+    @Override
+    public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
+        return super.shouldRenderFace(face, adjacentBlock);
     }
 }

@@ -18,7 +18,7 @@ out float shadow;
 out vec3 position;
 out vec3 lighting;
 out float ao;
-out float fresnel;
+out vec3 vNormal;
 
 uniform bool useChunkPosition;
 uniform bool useExactPosition;
@@ -46,7 +46,6 @@ void main() {
 
     vec3 xyz = vec3(x, y, z);
 
-    // Unpack data2
     float r = float((data2 >> 28) & BITMASK_4) / float(BITMASK_4);
     float g = float((data2 >> 24) & BITMASK_4) / float(BITMASK_4);
     float b = float((data2 >> 20) & BITMASK_4) / float(BITMASK_4);
@@ -58,11 +57,9 @@ void main() {
     TexCoord = vec2(u, v);
 
     if (useChunkPosition) {
-        //xyz = round(xyz * CHUNK_SIZE) / CHUNK_SIZE/32.0;
         xyz *= 0.0625;
         xyz += chunkPosition*CHUNK_SIZE;
 
-        // Shadow calculation
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
     }
     if (useExactPosition) {
@@ -77,9 +74,7 @@ void main() {
 
     vec3 toCameraVector = cameraPosition - xyz;
     vec3 viewVector = normalize(toCameraVector);
-    vec3 faceNormal = vec3(0.0, 1.0, 0.0);
-    fresnel = abs(dot(viewVector, faceNormal));
+    vNormal = viewVector;
 
-    // Calculate position and set vertex position
     gl_Position = projection * view * model * vec4(xyz, 1.0);
 }

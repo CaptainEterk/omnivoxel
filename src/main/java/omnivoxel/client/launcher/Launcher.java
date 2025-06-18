@@ -1,26 +1,30 @@
 package omnivoxel.client.launcher;
 
 import core.blocks.*;
+import io.netty.util.ResourceLeakDetector;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.camera.Frustum;
+import omnivoxel.client.game.graphics.opengl.mesh.block.AirBlock;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.text.TextRenderer;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.GameState;
-import omnivoxel.client.game.text.TextRenderer;
-import omnivoxel.client.game.thread.mesh.block.AirBlock;
-import omnivoxel.client.game.thread.mesh.shape.BlockShape;
-import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
-import omnivoxel.client.game.thread.tick.TickLoop;
+import omnivoxel.client.game.tick.TickLoop;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.ClientLauncher;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -39,26 +43,27 @@ public class Launcher {
         // Air
         clientWorldDataService.addBlock(new AirBlock());
 
+        IDCache<Shape> shapeCache = new IDCache<>();
+
+
         // TODO: Add these with a mod loader
         // Regular blocks
-        clientWorldDataService.addBlock(new StoneBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new DirtBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new GrassBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new WaterSourceBlock(new ShallowBlockShape(2), new BlockShape()));
-        clientWorldDataService.addBlock(new SandBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new SnowBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new GlassBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new IceBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new StoneBlock(shapeCache));
+        clientWorldDataService.addBlock(new DirtBlock(shapeCache));
+        clientWorldDataService.addBlock(new GrassBlock(shapeCache));
+        clientWorldDataService.addBlock(new WaterSourceBlock(shapeCache));
+        clientWorldDataService.addBlock(new SandBlock(shapeCache));
+        clientWorldDataService.addBlock(new SnowBlock(shapeCache));
+        clientWorldDataService.addBlock(new GlassBlock(shapeCache));
+        clientWorldDataService.addBlock(new IceBlock(shapeCache));
+        clientWorldDataService.addBlock(new SnowDirtBlock(shapeCache));
+
 
         // ORES
-        clientWorldDataService.addBlock(new IronBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new IronBlock(shapeCache));
 
         // DEBUG
-        clientWorldDataService.addBlock(new RedBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new YellowBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new GreenBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new BlueBlock(new BlockShape()));
-        clientWorldDataService.addBlock(new ClimateBlock(new BlockShape()));
+        clientWorldDataService.addBlock(new ClimateBlock(shapeCache));
 
         GameState gameState = new GameState();
         Settings settings = new Settings();
@@ -72,6 +77,7 @@ public class Launcher {
         clientThread.start();
 
         world.setClient(client);
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
             client.setChunkListener(world::add);

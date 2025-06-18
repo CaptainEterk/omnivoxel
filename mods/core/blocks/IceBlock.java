@@ -1,18 +1,20 @@
 package core.blocks;
 
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
+import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.client.game.graphics.opengl.shape.BlockShape;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.util.cache.IDCache;
 
 import java.util.Objects;
 
 // TODO: Make this a mod
 public class IceBlock extends Block {
-    private final Shape blockShape;
+    private final Shape shape;
     private final int[] uvCoords;
 
-    public IceBlock(Shape blockShape) {
-        this.blockShape = blockShape;
+    public IceBlock(IDCache<Shape> shapeCache) {
+        this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
                 3, 3,
                 3, 4,
@@ -33,7 +35,7 @@ public class IceBlock extends Block {
 
     @Override
     public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
-        return blockShape;
+        return shape;
     }
 
     @Override

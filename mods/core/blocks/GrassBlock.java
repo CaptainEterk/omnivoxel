@@ -1,9 +1,10 @@
 package core.blocks;
 
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.BlockShape;
-import omnivoxel.client.game.thread.mesh.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
+import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.client.game.graphics.opengl.shape.BlockShape;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.util.cache.IDCache;
 
 // TODO: Make this a mod
 public class GrassBlock extends Block {
@@ -13,8 +14,8 @@ public class GrassBlock extends Block {
     private final int[] southEastUVCoords;
     private final int[] northWestUVCoords;
 
-    public GrassBlock(BlockShape shape) {
-        this.shape = shape;
+    public GrassBlock(IDCache<Shape> shapeCache) {
+        this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.topUVCoords = new int[]{
                 0, 1,
                 1, 1,

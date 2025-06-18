@@ -10,7 +10,7 @@ in float shadow;
 in vec3 position;
 in vec3 lighting;
 in float ao;
-in float fresnel;
+in vec3 vNormal;
 
 out vec4 FragColor;
 
@@ -23,28 +23,26 @@ uniform float fogNear;
 uniform sampler2D texture1;
 
 void main() {
-    // Sample the texture at the pixelated texture coordinate
     FragColor = texture(texture1, TexCoord / TEXTURE_SIZE);
     if (FragColor.a == 0) discard;
 
-    // Fog
     float distance = length(position-cameraPosition);
     float fogFactor = (fogFar - distance) / (fogFar - fogNear);
     fogFactor = clamp(fogFactor, 0.0, 1.0);
 
     // TODO: Make this take in maybe a block type?
     if (FragColor.a < 1) {
-        // Water
+        vec3 faceNormal = vec3(0.0, 1.0, 0.0);
+
+        float fresnel = abs(dot(vNormal, faceNormal));
         FragColor *= vec4(vec3(0.5), 1-fresnel);
         FragColor += CLOSE_FRESNEL_COLOR*fresnel+FAR_FRESNEL_COLOR*(1-fresnel);
     }
 
     FragColor = mix(vec4(lighting, 1.0), FragColor, 1);
 
-    // Apply shadow effect
     FragColor = vec4(FragColor.rgb * shadow, FragColor.a);
 
-    // Apply fog effect
     FragColor = mix(fogColor, FragColor, fogFactor);
     // TODO: Mix with filter color too.
 }

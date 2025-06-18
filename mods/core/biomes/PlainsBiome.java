@@ -11,6 +11,6 @@ public class PlainsBiome extends Biome {
 
     @Override
     public ServerItem getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
-        return blockService.getBlock("core:grass_block", null);
+        return yOffset == 0 ? blockService.getBlock("core:grass_block", null) : blockService.getBlock("core:dirt_block", null);
     }
 }

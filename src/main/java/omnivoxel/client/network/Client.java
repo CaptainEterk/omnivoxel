@@ -6,10 +6,10 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 import omnivoxel.client.game.entity.mob.player.PlayerEntity;
+import omnivoxel.client.game.graphics.opengl.mesh.MeshDataGenerator;
+import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.client.game.thread.mesh.MeshDataGenerator;
-import omnivoxel.client.game.thread.mesh.MeshDataTask;
-import omnivoxel.client.game.thread.mesh.meshData.MeshData;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
@@ -19,15 +19,12 @@ import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.util.log.Logger;
+import omnivoxel.util.thread.WorkerThreadPool;
 
 import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
@@ -36,10 +33,9 @@ public final class Client {
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final Logger logger;
-    private final Set<BlockingQueue<MeshDataTask>> meshDataTaskQueues;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
     private final Queue<Position3D> queuedChunkTasks = new ArrayDeque<>();
-    private ExecutorService meshDataGenerators;
+    private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
     private long lastFlushedTime = System.currentTimeMillis();
@@ -49,7 +45,6 @@ public final class Client {
         this.worldDataService = worldDataService;
         this.logger = logger;
         players = new ConcurrentHashMap<>();
-        meshDataTaskQueues = ConcurrentHashMap.newKeySet();
     }
 
     private void sendBytes(Channel channel, PackageID id, byte[]... bytes) {
@@ -150,26 +145,13 @@ public final class Client {
         int x = byteBuf.getInt(8);
         int y = byteBuf.getInt(12);
         int z = byteBuf.getInt(16);
+        byteBuf.retain();
         Position3D position3D = new Position3D(x, y, z);
 
 //        Chunk chunk = ChunkFactory.create(Arrays.stream(blocks).map(Block::getBlock).toArray(omnivoxel.world.block.Block[]::new), palette);
 //        world.add(omnivoxel.math.Position3D.createFrom(position3D), chunk);
 
-        BlockingQueue<MeshDataTask> smallestQueue = null;
-        int smallestSize = Integer.MAX_VALUE;
-        for (BlockingQueue<MeshDataTask> queue : meshDataTaskQueues) {
-            int size = queue.size();
-            if (size < smallestSize) {
-                smallestQueue = queue;
-                smallestSize = size;
-                if (size == 0) {
-                    break;
-                }
-            }
-        }
-        if (smallestQueue != null) {
-            smallestQueue.put(new MeshDataTask(byteBuf, position3D));
-        }
+        meshDataGenerators.submit(new MeshDataTask(byteBuf, position3D));
     }
 
     private void loadPlayer(byte[] playerID, String name) {
@@ -265,6 +247,7 @@ public final class Client {
     }
 
     public void close() {
+        logger.info("Client shutting down...");
         sendRequest(new CloseRequest());
         try {
             if (channel != null) {
@@ -277,18 +260,13 @@ public final class Client {
                 group.shutdownGracefully();
             }
             clientRunning.set(false);
-            meshDataGenerators.close();
+            meshDataGenerators.shutdown();
+            meshDataGenerators.awaitTermination();
         }
-        System.out.println("Client shutdown");
+        logger.info("Client shutdown");
     }
 
     public void setChunkListener(BiConsumer<Position3D, MeshData> loadChunk) {
-        meshDataGenerators = Executors.newFixedThreadPool(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS);
-        for (int i = 0; i < ConstantGameSettings.MAX_MESH_GENERATOR_THREADS; i++) {
-            MeshDataGenerator meshDataGenerator = new MeshDataGenerator(new Logger("mdg-" + (i + 1)), loadChunk, clientRunning, worldDataService);
-            Thread meshDataGeneratorThread = new Thread(meshDataGenerator);
-            meshDataGenerators.execute(meshDataGeneratorThread);
-            meshDataTaskQueues.add(meshDataGenerator.getMeshDataTasks());
-        }
+        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, worldDataService)::generateMeshData);
     }
 }

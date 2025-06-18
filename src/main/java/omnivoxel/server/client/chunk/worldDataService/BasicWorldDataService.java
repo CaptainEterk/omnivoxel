@@ -32,7 +32,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final BiomeService biomeService;
     private final ServerBlock air;
     private final ServerBlock water;
-    private final ServerBlock underwater;
+    private final ServerBlock stone;
     private final BlockService blockService;
     private final Map<Position3D, ServerBlock> queuedBlocks;
 
@@ -48,8 +48,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
         this.blockService = blockService;
         this.queuedBlocks = queuedBlocks;
         this.air = blockService.getBlock("omnivoxel:air", null);
-        this.water = blockService.getBlock("core:water_source_block", new int[]{1});
-        this.underwater = blockService.getBlock("core:water_source_block", new int[]{0});
+        this.water = blockService.getBlock("core:water_source_block", null);
+        this.stone = blockService.getBlock("core:stone_block", null);
     }
 
     @Override
@@ -65,10 +65,10 @@ public class BasicWorldDataService implements ServerWorldDataService {
 
         Position3D position3D = new Position3D(x, y, z);
 
-        ServerItem block;// = queuedBlocks.remove(position3D);
-//        if (block instanceof ServerBlock serverBlock) {
-//            return serverBlock;
-//        }
+        ServerItem block = queuedBlocks.remove(position3D);
+        if (block instanceof ServerBlock serverBlock) {
+            return serverBlock;
+        }
 
         Biome biome = biomeService.generateBiome(new ClimateVector(climateVector2D));
         int height = (int) climateVector2D.get(0);

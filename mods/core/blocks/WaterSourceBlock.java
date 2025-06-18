@@ -1,10 +1,12 @@
 package core.blocks;
 
-import omnivoxel.client.game.thread.mesh.block.AirBlock;
-import omnivoxel.client.game.thread.mesh.block.Block;
-import omnivoxel.client.game.thread.mesh.block.face.BlockFace;
-import omnivoxel.client.game.thread.mesh.shape.ShallowBlockShape;
-import omnivoxel.client.game.thread.mesh.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.mesh.block.AirBlock;
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
+import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.client.game.graphics.opengl.shape.ShallowBlockShape;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.shape.TransparentBlockShape;
+import omnivoxel.util.cache.IDCache;
 
 import java.util.Objects;
 
@@ -14,9 +16,9 @@ public class WaterSourceBlock extends Block {
     private final Shape blockShape;
     private final int[] uvCoords;
 
-    public WaterSourceBlock(ShallowBlockShape shallowBlockShape, Shape blockShape) {
-        this.shallowBlockShape = shallowBlockShape;
-        this.blockShape = blockShape;
+    public WaterSourceBlock(IDCache<Shape> shapeCache) {
+        this.blockShape = shapeCache.get("omnivoxel:transparent_block_shape", TransparentBlockShape.class);
+        this.shallowBlockShape = shapeCache.get("omnivoxel:shallow_block_shape_2", ShallowBlockShape.class, new Class[] {Integer.class}, new Object[] {2});
         this.uvCoords = new int[]{
                 3, 2,
                 3, 3,

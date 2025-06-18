@@ -11,10 +11,6 @@ public class TundraBiome extends Biome {
 
     @Override
     public ServerItem getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
-//        if (yOffset == 0) {
-//            return structure;
-//        } else {
-            return blockService.getBlock("core:snow_block", null);
-//        }
+        return yOffset == 0 ? blockService.getBlock("core:snow_block", null) : blockService.getBlock("core:snow_dirt_block", null);
     }
 }

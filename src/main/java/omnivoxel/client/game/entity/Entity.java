@@ -1,7 +1,7 @@
 package omnivoxel.client.game.entity;
 
 import omnivoxel.client.game.hitbox.Hitbox;
-import omnivoxel.client.game.thread.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 
 public abstract class Entity {
     protected final float friction = getFriction();
