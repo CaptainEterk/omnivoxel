@@ -6,7 +6,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.client.ServerPlayer;
-import omnivoxel.server.client.block.ServerBlock;
+import omnivoxel.server.client.block.PriorityServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
@@ -50,7 +50,7 @@ public class Server {
 //            Files.createDirectories(worldPath);
 //        }
 
-        Map<Position3D, ServerBlock> queuedBlocks = new ConcurrentHashMap<>();
+        Map<Position3D, PriorityServerBlock> queuedBlocks = new ConcurrentHashMap<>();
         BlockService blockService = new BlockService();
 
         BiomeService biomeService = new BiomeService(Map.of(new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0), new DesertBiome(blockService), new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0), new JungleBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0), new TundraBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0), new TaigaBiome(blockService), new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0), new PlainsBiome(blockService)));

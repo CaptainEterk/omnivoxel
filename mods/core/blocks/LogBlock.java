@@ -7,23 +7,30 @@ import omnivoxel.client.game.graphics.opengl.shape.Shape;
 import omnivoxel.util.cache.IDCache;
 
 // TODO: Make this a mod
-public class StoneBlock extends Block {
+public class LogBlock extends Block {
     private final Shape shape;
-    private final int[] uvCoords;
+    private final int[] sideUVCoords;
+    private final int[] topUVCoords;
 
-    public StoneBlock(IDCache<Shape> shapeCache) {
+    public LogBlock(IDCache<Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
-        this.uvCoords = new int[]{
-                2, 0,
-                3, 0,
+        this.sideUVCoords = new int[]{
+                2, 1,
                 3, 1,
-                2, 1
+                3, 2,
+                2, 2
+        };
+        this.topUVCoords = new int[]{
+                1, 2,
+                2, 2,
+                2, 3,
+                1, 3
         };
     }
 
     @Override
     public String getID() {
-        return "stone_block";
+        return "log_block";
     }
 
     @Override
@@ -38,6 +45,6 @@ public class StoneBlock extends Block {
 
     @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
-        return uvCoords;
+        return blockFace == BlockFace.TOP || blockFace == BlockFace.BOTTOM ? topUVCoords : sideUVCoords;
     }
 }

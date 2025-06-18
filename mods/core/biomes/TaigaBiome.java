@@ -1,12 +1,12 @@
 package core.biomes;
 
-import omnivoxel.server.client.ServerItem;
+import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 
 public class TaigaBiome extends Biome {
-    private final ServerItem dirtBlock;
-    private final ServerItem snowBlock;
+    private final ServerBlock dirtBlock;
+    private final ServerBlock snowBlock;
 
     public TaigaBiome(BlockService blockService) {
         super(blockService);
@@ -15,7 +15,7 @@ public class TaigaBiome extends Biome {
     }
 
     @Override
-    public ServerItem getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
+    public ServerBlock getBlock(int x, int y, int z, int yOffset, BlockService blockService) {
         return Math.random() > 0.5 ? dirtBlock : snowBlock;
     }
 }

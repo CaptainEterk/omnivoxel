@@ -4,18 +4,20 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class WorkerThreadPool<T> {
     private final WorkerThread<T>[] workers;
-    private volatile boolean running = true;
+    private final AtomicBoolean running;
 
     @SuppressWarnings("unchecked")
     public WorkerThreadPool(int threadCount, Consumer<T> taskHandler) {
         this.workers = new WorkerThread[threadCount];
+        running = new AtomicBoolean(true);
 
         for (int i = 0; i < threadCount; i++) {
-            WorkerThread<T> workerThread = new WorkerThread<>(new LinkedBlockingDeque<T>(), taskHandler);
+            WorkerThread<T> workerThread = new WorkerThread<>(new LinkedBlockingDeque<T>(), taskHandler, running);
             Thread thread = new Thread(workerThread, "Worker-" + i);
             workers[i] = workerThread;
             thread.start();
@@ -23,7 +25,7 @@ public class WorkerThreadPool<T> {
     }
 
     public void submit(T task) throws InterruptedException {
-        if (running) {
+        if (running.get()) {
             BlockingQueue<T> smallestQueue = null;
             int smallestSize = Integer.MAX_VALUE;
             for (WorkerThread<T> workerThread : workers) {
@@ -44,14 +46,15 @@ public class WorkerThreadPool<T> {
     }
 
     public void shutdown() {
-        running = false;
+        running.set(false);
     }
 
     public void awaitTermination() {
         for (WorkerThread<T> worker : workers) {
             try {
-                worker.stop();
-            } catch (InterruptedException ignored) {
+                worker.thread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -60,17 +63,21 @@ public class WorkerThreadPool<T> {
         private final BlockingQueue<V> taskQueue;
         private final Consumer<V> taskHandler;
         private final Queue<V> localQueue;
+        private final AtomicBoolean running;
+        private Thread thread;
 
-        public WorkerThread(BlockingQueue<V> taskQueue, Consumer<V> taskHandler) {
+        public WorkerThread(BlockingQueue<V> taskQueue, Consumer<V> taskHandler, AtomicBoolean running) {
             this.taskQueue = taskQueue;
             this.taskHandler = taskHandler;
+            this.running = running;
             this.localQueue = new ArrayDeque<>();
         }
 
         @Override
         public void run() {
+            thread = Thread.currentThread();
             try {
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted() && running.get()) {
                     int taskCount = taskQueue.drainTo(localQueue);
                     if (taskCount > 0) {
                         while (!localQueue.isEmpty()) {
@@ -83,10 +90,6 @@ public class WorkerThreadPool<T> {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-        }
-
-        public void stop() throws InterruptedException {
-            Thread.currentThread().join();
         }
 
         public BlockingQueue<V> taskQueue() {

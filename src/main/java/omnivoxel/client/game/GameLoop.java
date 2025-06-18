@@ -186,13 +186,14 @@ public final class GameLoop {
                     }
                 }
 
-                GL11C.glDepthFunc(GL11C.GL_LESS);
-                GL11C.glColorMask(false, false, false, false);
-
-                // Z-prepass
-                solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
-
-                GL11C.glDepthFunc(GL11C.GL_EQUAL);
+                GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+//                // Z-prepass
+//                GL11C.glDepthFunc(GL11C.GL_LESS);
+//                GL11C.glColorMask(false, false, false, false);
+//
+//                solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
+//
+//                GL11C.glDepthFunc(GL11C.GL_EQUAL);
                 GL11C.glColorMask(true, true, true, true);
                 shaderProgram.bind();
 
@@ -249,7 +250,7 @@ public final class GameLoop {
                 }
 
                 if (gameState.getItem("seeDebug", Boolean.class)) {
-                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format("FPS: %d\nPosition: %.2f %.2f %.2f\nChunks:\n\t- Rendered: %d/%d/%d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n\t- Missing Chunks: %d\nNetwork:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", (int) fps, -camera.getX(), -camera.getY(), -camera.getZ(), solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(), solidRenderedChunksInFrustum.size(), transparentRenderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount, gameState.getItem("missing_chunks", Integer.class), gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class));
+                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format("FPS: %d\nPosition: %.2f %.2f %.2f\nChunks:\n\t- Rendered: %d/%d/%d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n\t- Missing Chunks: %d\nNetwork:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", (int) fps, camera.getX(), camera.getY(), camera.getZ(), solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(), solidRenderedChunksInFrustum.size(), transparentRenderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount, gameState.getItem("missing_chunks", Integer.class), gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class));
 
                     if (gameState.getItem("inflight_requests", Integer.class) == 0) {
                         leftDebugText += "\nNo inflight requests! Increase queuedChunkLimit!";
@@ -350,7 +351,7 @@ public final class GameLoop {
                     int dx = x - ccx;
                     int dy = y - ccy;
                     int dz = z - ccz;
-                    int distance = dx * dx + dy * dy + dz * dz;
+                    int distance = x * x + y * y + z * z;
 
                     if (distance > highestBucketDistance) {
                         highestBucketDistance = distance;

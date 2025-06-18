@@ -25,7 +25,13 @@ public class StructureService {
 //        } else {
 //            return null;
 //        }
-        if (biome instanceof PlainsBiome && x % ConstantGameSettings.CHUNK_WIDTH == 16 && z % ConstantGameSettings.CHUNK_LENGTH == 16) {
+
+        int yOffset = (int) (climateVector2D.get(0) - y);
+        if (biome instanceof PlainsBiome &&
+                Math.floorMod(x, ConstantGameSettings.CHUNK_WIDTH) == 0 &&
+                Math.floorMod(z, ConstantGameSettings.CHUNK_LENGTH) == 0 &&
+                yOffset == 0
+        ) {
             return new StructureSeed(structures.getFirst(), null);
         }
         return null;

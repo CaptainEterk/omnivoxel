@@ -6,7 +6,7 @@ import core.noise._3D.FractionalBrownianNoise3D;
 import core.noise._3D.PerlinNoise3D;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ServerWorld;
-import omnivoxel.server.client.ServerItem;
+import omnivoxel.server.client.block.PriorityServerBlock;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
@@ -34,9 +34,9 @@ public class BasicWorldDataService implements ServerWorldDataService {
     private final ServerBlock water;
     private final ServerBlock stone;
     private final BlockService blockService;
-    private final Map<Position3D, ServerBlock> queuedBlocks;
+    private final Map<Position3D, PriorityServerBlock> queuedBlocks;
 
-    public BasicWorldDataService(Random random, ServerWorld world, BiomeService biomeService, BlockService blockService, Map<Position3D, ServerBlock> queuedBlocks) {
+    public BasicWorldDataService(Random random, ServerWorld world, BiomeService biomeService, BlockService blockService, Map<Position3D, PriorityServerBlock> queuedBlocks) {
         this.continentalnessNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
         this.temperatureNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
         this.humidityNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
@@ -53,34 +53,33 @@ public class BasicWorldDataService implements ServerWorldDataService {
     }
 
     @Override
-    public void queueBlock(Position3D position3D, ServerBlock block) {
+    public void queueBlock(Position3D position3D, PriorityServerBlock block) {
         queuedBlocks.put(position3D, block);
     }
 
     @Override
-    public @NotNull ServerBlock getBlockAt(Position3D chunkPosition, int x, int y, int z, ClimateVector climateVector2D) {
-//        if (true) {
-//            return y < 1 ? stone : air;
-//        }
-
+    public @NotNull ServerBlock getBlockAt(Position3D chunkPosition, int x, int y, int z, boolean border, ClimateVector climateVector2D) {
         Position3D position3D = new Position3D(x, y, z);
 
-        ServerItem block = queuedBlocks.remove(position3D);
-        if (block instanceof ServerBlock serverBlock) {
-            return serverBlock;
+        PriorityServerBlock priorityBlock = border ? queuedBlocks.get(position3D) : queuedBlocks.remove(position3D);
+        if (priorityBlock != null && priorityBlock.priority().canOverwrite(PriorityServerBlock.Priority.WORLD_TERRAIN)) {
+            return priorityBlock.serverBlock();
         }
 
         Biome biome = biomeService.generateBiome(new ClimateVector(climateVector2D));
         int height = (int) climateVector2D.get(0);
 
+        ServerBlock block;
         if (y <= height) {
             block = biome.getBlock(x, y, z, height - y, blockService);
         } else {
-            return y <= WATER_LEVEL ? water : air;
+            block = y <= WATER_LEVEL ? water : air;
         }
 
-        return (ServerBlock) block;
-//        return new ServerBlock(((ServerBlock) block).id(), new int[]{(int) climateVector2D.get(1) * 32, 0, 0});
+        if (priorityBlock != null && block == air) {
+            return priorityBlock.serverBlock();
+        }
+        return block;
     }
 
     @Override
