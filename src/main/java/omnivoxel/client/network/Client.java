@@ -13,6 +13,7 @@ import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefin
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
@@ -27,10 +28,7 @@ import omnivoxel.util.log.Logger;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
 
-import java.util.ArrayDeque;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
@@ -47,11 +45,13 @@ public final class Client {
     private EventLoopGroup group;
     private Channel channel;
     private long lastFlushedTime = System.currentTimeMillis();
+    private final ClientWorld world;
 
-    public Client(byte[] clientID, ClientWorldDataService worldDataService, Logger logger) {
+    public Client(byte[] clientID, ClientWorldDataService worldDataService, Logger logger, ClientWorld world) {
         this.clientID = clientID;
         this.worldDataService = worldDataService;
         this.logger = logger;
+        this.world = world;
         entities = new ConcurrentHashMap<>();
     }
 
@@ -66,11 +66,11 @@ public final class Client {
 
     private void sendInts(Channel channel, PackageID id, byte[] clientID, int... numbers) {
         if (channel == null) {
-            System.err.println("[ERROR] Channel is null! Client may not be connected.");
+            logger.error(String.format("Failed to send PackageID.%s because channel is null. Client may not be connected.", id.toString()));
             return;
         }
         if (!channel.isActive()) {
-            System.out.println("[ERROR] Channel is closed! Cannot send data.");
+            logger.error("Channel is closed. Cannot send data.");
             return;
         }
 
@@ -132,6 +132,7 @@ public final class Client {
                 String playerID = bytesToHex(getBytes(byteBuf, 8, 32));
                 entities.remove(playerID);
                 logger.info("Removed Player: " + playerID);
+                world.removeEntity(playerID);
                 byteBuf.release();
                 break;
             default:
@@ -140,7 +141,7 @@ public final class Client {
     }
 
     private void updateEntity(ByteBuf byteBuf) {
-        String entityID = bytesToHex(byteBuf, 8, 32);
+        String entityID = bytesToHex(getBytes(byteBuf, 8, 32));
         ClientEntity entity = entities.get(entityID);
         if (entity == null) {
             System.err.println("Received update for unknown player: " + entityID);
@@ -161,6 +162,9 @@ public final class Client {
                         .rotateY(-yaw)
                         .rotateX(-pitch);
 
+                if (!entity.getMesh().getChildren().isEmpty()) {
+                    entity.getMesh().getChildren().getFirst().getModel().rotateY(0.1f);
+                }
                 entity.getMesh().setModel(model);
 
             }
@@ -181,11 +185,11 @@ public final class Client {
     }
 
     private void loadPlayer(byte[] playerID, String name) throws InterruptedException {
-        ClientEntity playerEntity = new ClientEntity(name, bytesToHex(playerID), new EntityType(EntityType.Type.PLAYER, name));
         String id = bytesToHex(playerID);
+        ClientEntity playerEntity = new ClientEntity(name, id, new EntityType(EntityType.Type.PLAYER, name));
         entities.put(id, playerEntity);
 
-        System.out.println("Added player: " + id);
+        logger.info("Added player: " + id);
 
         meshDataGenerators.submit(new EntityMeshDataTask(playerEntity));
     }

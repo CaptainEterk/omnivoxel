@@ -34,7 +34,7 @@ public class ClientWorld {
     private final Map<Position3D, ClientWorldChunk> chunks;
     private Client client;
     private boolean requesting = true;
-    private final Queue<ClientEntity> entities;
+    private final Map<String, ClientEntity> entities;
     private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
     private final Set<String> queuedEntityMeshData;
 
@@ -48,7 +48,7 @@ public class ClientWorld {
         chunkRequestsSent = new AtomicInteger();
         chunkResponseGotten = new AtomicInteger();
         newChunks = ConcurrentHashMap.newKeySet();
-        entities = new ConcurrentLinkedDeque<>();
+        entities = new ConcurrentHashMap<>();
         queuedEntityMeshData = ConcurrentHashMap.newKeySet();
     }
 
@@ -183,11 +183,11 @@ public class ClientWorld {
     }
 
     public void addEntity(ClientEntity entity) {
-        entities.add(entity);
+        entities.put(entity.getUUID(), entity);
         nonBufferizedChunks.add(entity.getMeshData());
     }
 
-    public Queue<ClientEntity> getEntities() {
+    public Map<String, ClientEntity> getEntities() {
         return entities;
     }
 
@@ -197,5 +197,9 @@ public class ClientWorld {
 
     public Set<String> getQueuedEntityMeshData() {
         return this.queuedEntityMeshData;
+    }
+
+    public void removeEntity(String entityID) {
+        entities.remove(entityID);
     }
 }

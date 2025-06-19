@@ -88,9 +88,9 @@ public class Server {
                 registerClient(ctx, byteBuf);
                 break;
             case CLOSE:
+                ServerClient client = clients.get(clientID);
                 clients.remove(clientID);
-                clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.CLOSE, player.getPlayerID()));
-                System.out.println("Removed Client: " + clientID);
+                clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.CLOSE, client.getPlayerID()));
                 break;
             case PLAYER_UPDATE:
                 float[] data = new float[5];
@@ -150,7 +150,7 @@ public class Server {
 
             clients.put(clientID, serverClient);
 
-            System.out.println("Registered Client: " + clientID);
+            System.out.println("Registered Client: " + clientID + " with playerID: " + bytesToHex(serverClient.getPlayerID()));
         } else {
             System.err.println("Client has different version, disconnecting...");
             System.err.println("\tClient: " + Arrays.toString(versionID));
@@ -164,6 +164,14 @@ public class Server {
         byte[] clientIDBytes = getBytes(byteBuf, start, length);
         for (int i = 0; i < 32; i++) {
             hex.append(String.format("%02X", clientIDBytes[i]));
+        }
+        return hex.toString();
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder hex = new StringBuilder();
+        for (byte b : bytes) {
+            hex.append(String.format("%02X", b));
         }
         return hex.toString();
     }

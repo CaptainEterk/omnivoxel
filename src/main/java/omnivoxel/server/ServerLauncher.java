@@ -14,6 +14,7 @@ import java.io.IOException;
 
 public class ServerLauncher {
     private static final int PORT = 5000;
+    private static final String IP = "192.168.14.162";
 
     public ServerLauncher() {
     }
@@ -42,8 +43,8 @@ public class ServerLauncher {
                         }
                     });
 
-            ChannelFuture future = serverBootstrap.bind(PORT).sync();
-            System.out.println("Server started on port " + PORT);
+            ChannelFuture future = serverBootstrap.bind(IP, PORT).sync();
+            System.out.println("Server started at " + IP + ":" + PORT);
 
             future.channel().closeFuture().sync();
         } catch (InterruptedException | IOException e) {

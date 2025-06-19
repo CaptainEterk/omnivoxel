@@ -125,7 +125,7 @@ public final class GameLoop {
             // TODO: Make this stitch textures together and save texture coordinates in a string->(x, y) map.
             // TODO: Make the user be able to use texture packs instead (by loading it and stitching it together)
             int texture = TextureLoader.loadTexture("texture_atlas.png");
-            int TEMP_texture = TextureLoader.loadTexture("smileyface.png");
+            int TEMP_texture = TextureLoader.loadTexture("player_texture.png");
 
             // Enable depth testing for solid chunks
             GL11C.glEnable(GL11C.GL_CULL_FACE);
@@ -169,10 +169,8 @@ public final class GameLoop {
                 GL11C.glDepthFunc(GL11C.GL_LEQUAL);
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
                 shaderProgram.setUniform("meshType", 1);
-                Queue<ClientEntity> entityMeshes = world.getEntities();
-                entityMeshes.forEach(clientEntity -> {
-                    renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
-                });
+                Map<String, ClientEntity> entityMeshes = world.getEntities();
+                entityMeshes.forEach((id, clientEntity) -> renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX));
 
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
                 for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {

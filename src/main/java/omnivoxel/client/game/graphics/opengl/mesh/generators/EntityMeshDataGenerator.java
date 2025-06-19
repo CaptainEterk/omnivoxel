@@ -112,6 +112,33 @@ public class EntityMeshDataGenerator {
                 BlockFace.EAST, BlockFace.WEST
         };
 
+        float[][][] uvMap = {
+                {
+                        {0.000f, 0.0f}, {0.125f, 0.0f}, {0.125f, 0.5f},
+                        {0.125f, 0.5f}, {0.000f, 0.5f}, {0.000f, 0.0f}
+                },
+                {
+                        {0.125f, 0.0f}, {0.250f, 0.0f}, {0.250f, 0.5f},
+                        {0.250f, 0.5f}, {0.125f, 0.5f}, {0.125f, 0.0f}
+                },
+                {
+                        {0.375f, 0.5f}, {0.250f, 0.5f}, {0.250f, 0.0f},
+                        {0.250f, 0.0f}, {0.375f, 0.0f}, {0.375f, 0.5f}
+                },
+                {
+                        {0.125f, 1.0f}, {0.000f, 1.0f}, {0.000f, 0.5f},
+                        {0.000f, 0.5f}, {0.125f, 0.5f}, {0.125f, 1.0f}
+                },
+                {
+                        {0.375f, 1.0f}, {0.250f, 1.0f}, {0.250f, 0.5f},
+                        {0.250f, 0.5f}, {0.375f, 0.5f}, {0.375f, 1.0f}
+                },
+                {
+                        {0.250f, 1.0f}, {0.125f, 1.0f}, {0.125f, 0.5f},
+                        {0.125f, 0.5f}, {0.250f, 0.5f}, {0.250f, 1.0f}
+                },
+        };
+
         for (int f = 0; f < 6; f++) {
             BlockFace face = faces[f];
             for (int i = 0; i < 6; i++) {
@@ -119,15 +146,9 @@ public class EntityMeshDataGenerator {
                 float[] offset = cubeOffsets[index];
                 Vertex position = new Vertex(offset[0], offset[1], offset[2]);
 
-                int[][] uvMap = {
-                        {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1}
-                };
+                float[] uv = uvMap[f][i];
 
-                int[] uv = uvMap[i];
-                int tx = face == BlockFace.SOUTH ? uv[0] : 0;
-                int ty = face == BlockFace.SOUTH ? uv[1] : 0;
-
-                addPoint(vertices, indices, vertexIndexMap, position, tx, ty, face);
+                addPoint(vertices, indices, vertexIndexMap, position, uv[0], uv[1], face);
             }
         }
 

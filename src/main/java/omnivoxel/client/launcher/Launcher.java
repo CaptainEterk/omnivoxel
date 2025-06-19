@@ -73,7 +73,7 @@ public class Launcher {
 
         ClientWorld world = new ClientWorld(gameState);
 
-        Client client = new Client(clientID, clientWorldDataService, new Logger("client"));
+        Client client = new Client(clientID, clientWorldDataService, new Logger("client"), world);
         ClientLauncher clientLauncher = new ClientLauncher(connected, client);
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
