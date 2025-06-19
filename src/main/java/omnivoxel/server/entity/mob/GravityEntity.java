@@ -1,6 +1,6 @@
-package omnivoxel.server.client.entity.mob;
+package omnivoxel.server.entity.mob;
 
-import omnivoxel.server.client.entity.Entity;
+import omnivoxel.server.entity.Entity;
 import omnivoxel.client.game.hitbox.Hitbox;
 
 public abstract class GravityEntity extends Entity {

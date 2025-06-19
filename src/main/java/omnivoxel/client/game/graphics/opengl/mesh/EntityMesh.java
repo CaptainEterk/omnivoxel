@@ -1,64 +1,29 @@
 package omnivoxel.client.game.graphics.opengl.mesh;
 
+import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import org.joml.Matrix4f;
 
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class EntityMesh implements Mesh {
-    private final int solidVAO;
-    private final int solidVBO;
-    private final int solidEBO;
-    private final int solidIndexCount;
+    private final EntityMeshDataDefinition definition;
     private Matrix4f model = new Matrix4f();
+    private final List<EntityMesh> children;
 
     public EntityMesh(
-            int solidVAO, int solidVBO, int solidEBO, int solidIndexCount
+            EntityMeshDataDefinition definition
     ) {
-        this.solidVAO = solidVAO;
-        this.solidVBO = solidVBO;
-        this.solidEBO = solidEBO;
-        this.solidIndexCount = solidIndexCount;
+        this.definition = definition;
+        children = new ArrayList<>();
     }
 
-    public int solidVAO() {
-        return solidVAO;
+    public void addChild(EntityMesh child) {
+        children.add(child);
     }
 
-    public int solidVBO() {
-        return solidVBO;
-    }
-
-    public int solidEBO() {
-        return solidEBO;
-    }
-
-    public int solidIndexCount() {
-        return solidIndexCount;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (EntityMesh) obj;
-        return this.solidVAO == that.solidVAO &&
-                this.solidVBO == that.solidVBO &&
-                this.solidEBO == that.solidEBO &&
-                this.solidIndexCount == that.solidIndexCount;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(solidVAO, solidVBO, solidEBO, solidIndexCount);
-    }
-
-    @Override
-    public String toString() {
-        return "EntityMesh[" +
-                "solidVAO=" + solidVAO + ", " +
-                "solidVBO=" + solidVBO + ", " +
-                "solidEBO=" + solidEBO + ", " +
-                "solidIndexCount=" + solidIndexCount + ']';
+    public List<EntityMesh> getChildren() {
+        return children;
     }
 
     public Matrix4f getModel() {
@@ -67,5 +32,9 @@ public final class EntityMesh implements Mesh {
 
     public void setModel(Matrix4f model) {
         this.model = model;
+    }
+
+    public EntityMeshDataDefinition getDefinition() {
+        return definition;
     }
 }

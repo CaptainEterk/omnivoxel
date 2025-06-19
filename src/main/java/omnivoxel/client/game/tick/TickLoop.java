@@ -44,7 +44,6 @@ public class TickLoop implements Runnable {
             while (gameRunning.get()) {
                 // TODO: Tick all entities here
                 playerController.tick(1 / 60f);
-                client.getPlayers().values().forEach(playerEntity -> playerEntity.tick(1 / 60f));
                 PriorityUtils.setCamera(playerController.getCamera());
                 try {
                     Thread.sleep(1000 / 60);

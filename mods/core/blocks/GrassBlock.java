@@ -14,7 +14,7 @@ public class GrassBlock extends Block {
     private final int[] southEastUVCoords;
     private final int[] northWestUVCoords;
 
-    public GrassBlock(IDCache<Shape> shapeCache) {
+    public GrassBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.topUVCoords = new int[]{
                 0, 1,

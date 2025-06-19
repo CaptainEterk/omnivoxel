@@ -13,7 +13,7 @@ public class GlassBlock extends Block {
     private final Shape shape;
     private final int[] uvCoords;
 
-    public GlassBlock(IDCache<Shape> shapeCache) {
+    public GlassBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
                 1, 1,

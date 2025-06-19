@@ -107,7 +107,7 @@ public class Server {
 
                 clients.values().forEach(player -> {
                     if (!Arrays.equals(player.getPlayerID(), serverClient.getPlayerID())) {
-                        sendBytes(player.getCTX(), PackageID.PLAYER_UPDATE, serverClient.getBytes());
+                        sendBytes(player.getCTX(), PackageID.ENTITY_UPDATE, serverClient.getBytes());
                     }
                 });
                 break;

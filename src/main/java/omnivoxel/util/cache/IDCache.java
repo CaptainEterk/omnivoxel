@@ -5,15 +5,18 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class IDCache<V> {
-    private final Map<String, V> cache = new ConcurrentHashMap<>();
+public final class IDCache<K, V> {
+    private final Map<K, V> cache = new ConcurrentHashMap<>();
 
-    public void add(String id, V value) {
-        cache.put(id, value);
+    public void add(K key, V value) {
+        cache.put(key, value);
     }
 
-    public V get(String id, Class<? extends V> clazz) {
-        return cache.computeIfAbsent(id, k -> {
+    public V get(K key, Class<? extends V> clazz) {
+        return cache.computeIfAbsent(key, k -> {
+            if (clazz == null) {
+                return null;
+            }
             try {
                 return clazz.getConstructor().newInstance();
             } catch (NoSuchMethodException | InvocationTargetException |
@@ -23,8 +26,8 @@ public final class IDCache<V> {
         });
     }
 
-    public V get(String id, Class<? extends V> clazz, Class<?>[] parameterTypes, Object[] args) {
-        return cache.computeIfAbsent(id, k -> {
+    public V get(K key, Class<? extends V> clazz, Class<?>[] parameterTypes, Object[] args) {
+        return cache.computeIfAbsent(key, k -> {
             try {
                 Constructor<? extends V> constructor = clazz.getConstructor(parameterTypes);
                 return constructor.newInstance(args);
@@ -34,5 +37,9 @@ public final class IDCache<V> {
                         " with arguments", e);
             }
         });
+    }
+
+    public void put(K key, V value) {
+        cache.put(key, value);
     }
 }

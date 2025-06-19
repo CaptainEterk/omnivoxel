@@ -1,6 +1,7 @@
 package omnivoxel.client.game;
 
 import omnivoxel.client.game.camera.Camera;
+import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.graphics.opengl.mesh.Mesh;
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
@@ -22,7 +23,6 @@ import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
-import omnivoxel.server.client.entity.Entity;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.time.Timer;
 import org.joml.Matrix4f;
@@ -50,6 +50,7 @@ public final class GameLoop {
     private ShaderProgram shaderProgram;
     private int timeIndex = 0;
     private ShaderProgram zppShaderProgram;
+    private Font font;
 
     // TODO: Separate tasks
 
@@ -106,13 +107,15 @@ public final class GameLoop {
             gameState.setItem("bufferizingQueueSize", 0);
             gameState.setItem("missing_chunks", 0);
 
+            gameState.setItem("z-prepass", false);
+
             gameState.setItem("inflight_requests", 0);
             gameState.setItem("chunk_requests_sent", 0);
             gameState.setItem("chunk_requests_received", 0);
 
             textRenderer.init();
 
-            Font font = Font.create("Minecraft.ttf");
+            font = Font.create("Minecraft.ttf");
 
             MeshGenerator meshGenerator = new MeshGenerator();
 
@@ -148,12 +151,8 @@ public final class GameLoop {
                 // Clear the framebuffer
                 GL11.glClear(GL11C.GL_COLOR_BUFFER_BIT | GL11C.GL_DEPTH_BUFFER_BIT);
 
-                // Bind the shader program
                 shaderProgram.bind();
-
-                // Bind the texture atlas
                 GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
-                GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
 
                 int trc = update(window, solidRenderedChunks, transparentRenderedChunks, world.size() >= totalRenderedChunks);
                 if (trc > -1) {
@@ -162,12 +161,15 @@ public final class GameLoop {
 
                 // RENDER
 
-                // Render chunks
-                shaderProgram.setUniform("meshType", 0);
-                shaderProgram.setUniform("model", IDENTITY_MATRIX);
-                zppShaderProgram.bind();
-                zppShaderProgram.setUniform("meshType", 0);
-                zppShaderProgram.setUniform("model", IDENTITY_MATRIX);
+                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+                GL11C.glEnable(GL11C.GL_CULL_FACE);
+
+                // Render entities
+                GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+                GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
+                shaderProgram.setUniform("meshType", 1);
+                Queue<ClientEntity> entityMeshes = world.getEntities();
+                entityMeshes.forEach(this::renderEntityMesh);
 
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
                 for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
@@ -183,16 +185,30 @@ public final class GameLoop {
                     }
                 }
 
-                GL11C.glDepthFunc(GL11C.GL_LEQUAL);
-//                // Z-prepass
-//                GL11C.glDepthFunc(GL11C.GL_LESS);
-//                GL11C.glColorMask(false, false, false, false);
+                // Render chunks
+                shaderProgram.setUniform("meshType", 0);
+                shaderProgram.setUniform("model", IDENTITY_MATRIX);
 //
-//                solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
-//
-//                GL11C.glDepthFunc(GL11C.GL_EQUAL);
-                GL11C.glColorMask(true, true, true, true);
-                shaderProgram.bind();
+                if (gameState.getItem("z-prepass", Boolean.class)) {
+                    zppShaderProgram.bind();
+                    zppShaderProgram.setUniform("meshType", 0);
+                    zppShaderProgram.setUniform("model", IDENTITY_MATRIX);
+
+                    GL11C.glDepthFunc(GL11C.GL_LESS);
+                    GL11C.glColorMask(false, false, false, false);
+
+                    solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
+
+                    GL11C.glDepthFunc(GL11C.GL_EQUAL);
+
+                    GL11C.glColorMask(true, true, true, true);
+
+                    shaderProgram.bind();
+                } else {
+                    GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+                }
+
+                GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
 
                 // Color pass
                 solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
@@ -208,15 +224,7 @@ public final class GameLoop {
                     renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), true);
                 }
                 GL11C.glDisable(GL11C.GL_BLEND);
-                GL11C.glDepthMask(true);
-                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
                 GL11C.glEnable(GL11C.GL_CULL_FACE);
-
-                // Render entities
-                GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
-                shaderProgram.setUniform("meshType", 1);
-                Queue<Entity> entityMeshes = world.getEntities();
-                entityMeshes.forEach(this::renderEntityMesh);
 
                 // Bufferize chunks
                 // TODO: Make the bufferizer actually use the endTime
@@ -266,6 +274,8 @@ public final class GameLoop {
                     GL11.glDisable(GL30C.GL_BLEND);
                 }
 
+                GL11C.glDepthMask(true);
+
                 client.tick();
                 world.tick();
 
@@ -299,10 +309,11 @@ public final class GameLoop {
         }
     }
 
-    private void renderEntityMesh(Entity entity) {
+    private void renderEntityMesh(ClientEntity entity) {
         if (entity.getMesh() != null) {
             shaderProgram.setUniform("model", entity.getMesh().getModel());
-            renderVAO(entity.getMesh().solidVAO(), entity.getMesh().solidIndexCount());
+            renderVAO(entity.getMesh().getDefinition().solidVAO(), entity.getMesh().getDefinition().solidIndexCount());
+//            textRenderer.renderText(font, "Hello World!", 0, 0, 1.0f, Alignment.CENTER);
         }
     }
 

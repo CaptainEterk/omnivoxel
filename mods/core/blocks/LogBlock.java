@@ -12,7 +12,7 @@ public class LogBlock extends Block {
     private final int[] sideUVCoords;
     private final int[] topUVCoords;
 
-    public LogBlock(IDCache<Shape> shapeCache) {
+    public LogBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.sideUVCoords = new int[]{
                 2, 1,

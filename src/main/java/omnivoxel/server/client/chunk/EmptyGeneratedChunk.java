@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk;
 
-import omnivoxel.server.chunk.result.GeneralGeneratedChunk;
-import omnivoxel.server.chunk.result.GeneratedChunk;
+import omnivoxel.server.client.chunk.result.GeneralGeneratedChunk;
+import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.block.ServerBlock;
 import org.jetbrains.annotations.NotNull;
 

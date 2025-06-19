@@ -43,7 +43,7 @@ public class Launcher {
         // Air
         clientWorldDataService.addBlock(new AirBlock());
 
-        IDCache<Shape> shapeCache = new IDCache<>();
+        IDCache<String, Shape> shapeCache = new IDCache<>();
 
 
         // TODO: Add these with a mod loader
@@ -82,7 +82,7 @@ public class Launcher {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            client.setListeners(world::add, world::addEntity);
+            client.setListeners(world::add, world::addEntity, world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData());
             AtomicBoolean gameRunning = new AtomicBoolean(true);
             BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingDeque<>();
 

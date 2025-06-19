@@ -1,4 +1,4 @@
-package omnivoxel.server.client.entity.mob;
+package omnivoxel.server.entity.mob;
 
 import omnivoxel.client.game.hitbox.Hitbox;
 

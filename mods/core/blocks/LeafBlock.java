@@ -13,7 +13,7 @@ public class LeafBlock extends Block {
     private final Shape shape;
     private final int[] uvCoords;
 
-    public LeafBlock(IDCache<Shape> shapeCache) {
+    public LeafBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:transparent_block_shape", TransparentBlockShape.class);
         this.uvCoords = new int[]{
                 0, 2,

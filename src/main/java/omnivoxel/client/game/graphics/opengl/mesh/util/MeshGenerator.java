@@ -2,6 +2,8 @@ package omnivoxel.client.game.graphics.opengl.mesh.util;
 
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.*;
+import omnivoxel.client.game.graphics.opengl.mesh.definition.GeneralEntityMeshDefinition;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 
 import java.nio.ByteBuffer;
@@ -47,14 +49,18 @@ public class MeshGenerator {
         }
     }
 
-    public EntityMesh bufferizeEntityMesh(MeshData mesh) {
-        int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
-        return new EntityMesh(
-                solid[0],
-                solid[1],
-                solid[2],
-                mesh.solidIndices().capacity() / Integer.BYTES
-        );
+    public EntityMesh bufferizeEntityMesh(EntityMeshData mesh) {
+        if (mesh.entity().getMesh() == null) {
+            int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
+            return new EntityMesh(new GeneralEntityMeshDefinition(
+                    solid[0],
+                    solid[1],
+                    solid[2],
+                    mesh.solidIndices().capacity() / Integer.BYTES,
+                    mesh)
+            );
+        }
+        return mesh.entity().getMesh();
     }
 
     private int[] generateFloat(ByteBuffer vertexBuffer, ByteBuffer indexBuffer) {

@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.meshData;
 
-import omnivoxel.server.client.entity.Entity;
+import omnivoxel.client.game.entity.ClientEntity;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 public record EntityMeshData(
         ByteBuffer solidVertices,
         ByteBuffer solidIndices,
-        Entity entity
+        ClientEntity entity
 ) implements MeshData {
     @Override
     public ByteBuffer transparentVertices() {

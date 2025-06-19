@@ -17,8 +17,12 @@ public enum PackageID {
     NEW_ENTITY,
     SERVER_INFO,
 
+    // TODO: Implement UDP Client/Server (using TCP for now)
     // UDP
 
     // Client -> Server
     PLAYER_UPDATE,
+
+    // Server -> Client
+    ENTITY_UPDATE,
 }

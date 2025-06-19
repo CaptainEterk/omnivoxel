@@ -1,21 +1,29 @@
 package omnivoxel.client.game.graphics.opengl.mesh.generators;
 
+import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
+import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataNoDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
-import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.UniqueVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
-import omnivoxel.server.client.entity.Entity;
+import omnivoxel.util.cache.IDCache;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class EntityMeshDataGenerator {
+    private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
+    private final Set<String> queuedEntityMeshData;
+
+    public EntityMeshDataGenerator(IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData) {
+        this.entityMeshDefinitionCache = entityMeshDefinitionCache;
+        this.queuedEntityMeshData = queuedEntityMeshData;
+    }
+
     private void addPoint(
             List<Float> vertices,
             List<Integer> indices,
@@ -75,7 +83,7 @@ public class EntityMeshDataGenerator {
         }
     }
 
-    private MeshData generate(Entity entity) {
+    private EntityMeshData generate(ClientEntity entity) {
         List<Float> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
@@ -134,8 +142,16 @@ public class EntityMeshDataGenerator {
         return new EntityMeshData(vertexBuffer, indexBuffer, entity);
     }
 
-    public Entity generateMeshData(Entity entity) {
-        entity.setMeshData(generate(entity));
+    public ClientEntity generateMeshData(ClientEntity entity) {
+        EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entity.getType().toString(), null);
+        if (definition == null) {
+            queuedEntityMeshData.add(entity.getType().toString());
+            entity.setMeshData(generate(entity));
+            entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entity.getMeshData()));
+            return entity;
+        }
+        entity.setMeshData(definition.meshData());
+        entity.setMesh(new EntityMesh(definition));
         return entity;
     }
 }

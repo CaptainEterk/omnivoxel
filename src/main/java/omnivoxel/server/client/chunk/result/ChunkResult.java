@@ -1,4 +1,4 @@
-package omnivoxel.server.chunk.result;
+package omnivoxel.server.client.chunk.result;
 
 import omnivoxel.world.chunk.Chunk;
 

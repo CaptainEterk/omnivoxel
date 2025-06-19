@@ -1,4 +1,4 @@
-package omnivoxel.server.client.entity;
+package omnivoxel.server.entity;
 
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;

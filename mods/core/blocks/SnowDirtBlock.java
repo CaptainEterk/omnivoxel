@@ -11,7 +11,7 @@ public class SnowDirtBlock extends Block {
     private final Shape shape;
     private final int[] uvCoords;
 
-    public SnowDirtBlock(IDCache<Shape> shapeCache) {
+    public SnowDirtBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
                 0, 4,

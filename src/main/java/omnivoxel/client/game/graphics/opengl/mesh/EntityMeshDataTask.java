@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh;
 
-import omnivoxel.server.client.entity.Entity;
+import omnivoxel.client.game.entity.ClientEntity;
 
-public record EntityMeshDataTask(Entity entity) implements MeshDataTask {
+public record EntityMeshDataTask(ClientEntity entity) implements MeshDataTask {
 }

@@ -16,7 +16,7 @@ public class WaterSourceBlock extends Block {
     private final Shape blockShape;
     private final int[] uvCoords;
 
-    public WaterSourceBlock(IDCache<Shape> shapeCache) {
+    public WaterSourceBlock(IDCache<String, Shape> shapeCache) {
         this.blockShape = shapeCache.get("omnivoxel:transparent_block_shape", TransparentBlockShape.class);
         this.shallowBlockShape = shapeCache.get("omnivoxel:shallow_block_shape_2", ShallowBlockShape.class, new Class[] {Integer.class}, new Object[] {2});
         this.uvCoords = new int[]{

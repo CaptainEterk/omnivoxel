@@ -5,9 +5,11 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
+import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.graphics.opengl.mesh.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
+import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
@@ -19,8 +21,8 @@ import omnivoxel.client.network.request.Request;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.client.entity.Entity;
-import omnivoxel.server.client.entity.mob.player.PlayerEntity;
+import omnivoxel.server.entity.EntityType;
+import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
@@ -28,13 +30,14 @@ import org.joml.Matrix4f;
 import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public final class Client {
-    private final Map<String, PlayerEntity> players;
+    private final Map<String, ClientEntity> entities;
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final Logger logger;
@@ -49,7 +52,7 @@ public final class Client {
         this.clientID = clientID;
         this.worldDataService = worldDataService;
         this.logger = logger;
-        players = new ConcurrentHashMap<>();
+        entities = new ConcurrentHashMap<>();
     }
 
     private void sendBytes(Channel channel, PackageID id, byte[]... bytes) {
@@ -121,13 +124,13 @@ public final class Client {
             case CHUNK:
                 receiveChunk(byteBuf);
                 break;
-            case PLAYER_UPDATE:
-                updatePlayer(byteBuf);
+            case ENTITY_UPDATE:
+                updateEntity(byteBuf);
                 byteBuf.release();
                 break;
             case CLOSE:
                 String playerID = bytesToHex(getBytes(byteBuf, 8, 32));
-                players.remove(playerID);
+                entities.remove(playerID);
                 logger.info("Removed Player: " + playerID);
                 byteBuf.release();
                 break;
@@ -136,29 +139,30 @@ public final class Client {
         }
     }
 
-    private void updatePlayer(ByteBuf byteBuf) {
-        String playerID = bytesToHex(byteBuf, 8, 32);
-        PlayerEntity playerEntity = players.get(playerID);
-        if (playerEntity == null) {
-            System.err.println("Received update for unknown player: " + playerID);
+    private void updateEntity(ByteBuf byteBuf) {
+        String entityID = bytesToHex(byteBuf, 8, 32);
+        ClientEntity entity = entities.get(entityID);
+        if (entity == null) {
+            System.err.println("Received update for unknown player: " + entityID);
         } else {
-            float x = Float.intBitsToFloat(byteBuf.getInt(40));
-            float y = Float.intBitsToFloat(byteBuf.getInt(44));
-            float z = Float.intBitsToFloat(byteBuf.getInt(48));
-            float pitch = Float.intBitsToFloat(byteBuf.getInt(52));
-            float yaw = Float.intBitsToFloat(byteBuf.getInt(56));
-            playerEntity.setX(x);
-            playerEntity.setY(y);
-            playerEntity.setZ(z);
-            playerEntity.setPitch(pitch);
-            playerEntity.setYaw(yaw);
-            if (playerEntity.getMesh() != null) {
+            float x = Float.intBitsToFloat(byteBuf.getInt(44));
+            float y = Float.intBitsToFloat(byteBuf.getInt(48));
+            float z = Float.intBitsToFloat(byteBuf.getInt(52));
+            float pitch = Float.intBitsToFloat(byteBuf.getInt(56));
+            float yaw = Float.intBitsToFloat(byteBuf.getInt(60));
+            entity.setX(x);
+            entity.setY(y);
+            entity.setZ(z);
+            entity.setPitch(pitch);
+            entity.setYaw(yaw);
+            if (entity.getMesh() != null) {
                 Matrix4f model = new Matrix4f().identity()
                         .translate(x, y, z)
                         .rotateY(-yaw)
                         .rotateX(-pitch);
 
-                playerEntity.getMesh().setModel(model);
+                entity.getMesh().setModel(model);
+
             }
         }
     }
@@ -177,9 +181,9 @@ public final class Client {
     }
 
     private void loadPlayer(byte[] playerID, String name) throws InterruptedException {
-        PlayerEntity playerEntity = new PlayerEntity(name, playerID);
+        ClientEntity playerEntity = new ClientEntity(name, bytesToHex(playerID), new EntityType(EntityType.Type.PLAYER, name));
         String id = bytesToHex(playerID);
-        players.put(id, playerEntity);
+        entities.put(id, playerEntity);
 
         System.out.println("Added player: " + id);
 
@@ -218,8 +222,8 @@ public final class Client {
         return bytes;
     }
 
-    public Map<String, PlayerEntity> getPlayers() {
-        return players;
+    public Map<String, ClientEntity> getEntities() {
+        return entities;
     }
 
     public void tick() {
@@ -288,7 +292,7 @@ public final class Client {
         logger.info("Client shutdown");
     }
 
-    public void setListeners(BiConsumer<Position3D, MeshData> loadChunk, Consumer<Entity> loadEntity) {
-        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, loadEntity, worldDataService)::generateMeshData);
+    public void setListeners(BiConsumer<Position3D, MeshData> loadChunk, Consumer<ClientEntity> loadEntity, IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData) {
+        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, loadEntity, worldDataService, entityMeshDefinitionCache, queuedEntityMeshData)::generateMeshData);
     }
 }
