@@ -169,9 +169,6 @@ public final class GameLoop {
                 zppShaderProgram.setUniform("meshType", 0);
                 zppShaderProgram.setUniform("model", IDENTITY_MATRIX);
 
-                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
-                GL11C.glEnable(GL11C.GL_CULL_FACE);
-
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
                 for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
                     if (camera.getFrustum().isMeshInFrustum(solidRenderedChunk.pos())) {
@@ -212,6 +209,8 @@ public final class GameLoop {
                 }
                 GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glDepthMask(true);
+                GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+                GL11C.glEnable(GL11C.GL_CULL_FACE);
 
                 // Render entities
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);

@@ -153,10 +153,11 @@ public final class Client {
             playerEntity.setPitch(pitch);
             playerEntity.setYaw(yaw);
             if (playerEntity.getMesh() != null) {
-                Matrix4f model = new Matrix4f()
+                Matrix4f model = new Matrix4f().identity()
                         .translate(x, y, z)
                         .rotateY(-yaw)
                         .rotateX(-pitch);
+
                 playerEntity.getMesh().setModel(model);
             }
         }
