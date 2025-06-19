@@ -23,6 +23,7 @@ import omnivoxel.server.client.entity.Entity;
 import omnivoxel.server.client.entity.mob.player.PlayerEntity;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.thread.WorkerThreadPool;
+import org.joml.Matrix4f;
 
 import java.util.ArrayDeque;
 import java.util.Map;
@@ -151,6 +152,13 @@ public final class Client {
             playerEntity.setZ(z);
             playerEntity.setPitch(pitch);
             playerEntity.setYaw(yaw);
+            if (playerEntity.getMesh() != null) {
+                Matrix4f model = new Matrix4f()
+                        .translate(x, y, z)
+                        .rotateY(-yaw)
+                        .rotateX(-pitch);
+                playerEntity.getMesh().setModel(model);
+            }
         }
     }
 
@@ -171,6 +179,8 @@ public final class Client {
         PlayerEntity playerEntity = new PlayerEntity(name, playerID);
         String id = bytesToHex(playerID);
         players.put(id, playerEntity);
+
+        System.out.println("Added player: " + id);
 
         meshDataGenerators.submit(new EntityMeshDataTask(playerEntity));
     }

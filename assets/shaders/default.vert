@@ -12,6 +12,8 @@
 
 layout(location = 0) in uint data1;
 layout(location = 1) in uint data2;
+layout(location = 2) in vec3 vPosition;
+layout(location = 3) in vec2 vUV;
 
 out vec2 TexCoord;
 out float shadow;
@@ -20,8 +22,7 @@ out vec3 lighting;
 out float ao;
 out vec3 vNormal;
 
-uniform bool useChunkPosition;
-uniform bool useExactPosition;
+uniform uint meshType;
 
 uniform ivec3 chunkPosition;
 uniform vec3 exactPosition;
@@ -38,43 +39,41 @@ float simpleNoise(float x, float z) {
 }
 
 void main() {
-    uint x = (data1 >> 22u) & BITMASK_10;
-    uint y = (data1 >> 12u) & BITMASK_10;
-    uint z = (data1 >> 2u)  & BITMASK_10;
+    if (meshType == 0u) {
+        uint x = (data1 >> 22u) & BITMASK_10;
+        uint y = (data1 >> 12u) & BITMASK_10;
+        uint z = (data1 >> 2u)  & BITMASK_10;
 
-    ao = float(data1 & BITMASK_2);
+        ao = float(data1 & BITMASK_2);
 
-    vec3 xyz = vec3(x, y, z);
+        vec3 xyz = vec3(x, y, z);
 
-    float r = float((data2 >> 28) & BITMASK_4) / float(BITMASK_4);
-    float g = float((data2 >> 24) & BITMASK_4) / float(BITMASK_4);
-    float b = float((data2 >> 20) & BITMASK_4) / float(BITMASK_4);
+        float r = float((data2 >> 28) & BITMASK_4) / float(BITMASK_4);
+        float g = float((data2 >> 24) & BITMASK_4) / float(BITMASK_4);
+        float b = float((data2 >> 20) & BITMASK_4) / float(BITMASK_4);
 
-    uint normal = (data2 >> 17) & BITMASK_3;
+        uint normal = (data2 >> 17) & BITMASK_3;
 
-    float u = float((data2 >> 9) & BITMASK_8);
-    float v = float((data2 >> 1) & BITMASK_8);
-    TexCoord = vec2(u, v);
+        float u = float((data2 >> 9) & BITMASK_8);
+        float v = float((data2 >> 1) & BITMASK_8);
+        TexCoord = vec2(u, v);
 
-    if (useChunkPosition) {
         xyz *= 0.0625;
         xyz += chunkPosition*CHUNK_SIZE;
 
+        position = xyz;
+
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
+
+        lighting = vec3(r, g, b);
+
+        vec3 toCameraVector = cameraPosition - xyz;
+        vec3 viewVector = normalize(toCameraVector);
+        vNormal = viewVector;
+    } else if (meshType == 1u) {
+        position = vPosition;
+        TexCoord = vUV;
     }
-    if (useExactPosition) {
-        xyz += exactPosition;
-        xyz /= 16;
 
-        shadow = 1.0;
-    }
-
-    position = xyz;
-    lighting = vec3(r, g, b);
-
-    vec3 toCameraVector = cameraPosition - xyz;
-    vec3 viewVector = normalize(toCameraVector);
-    vNormal = viewVector;
-
-    gl_Position = projection * view * model * vec4(xyz, 1.0);
+    gl_Position = projection * view * model * vec4(position, 1.0);
 }

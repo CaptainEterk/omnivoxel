@@ -60,13 +60,13 @@ public class PlayerController extends PlayerEntity {
 
             float pitchChange = (float) deltaY / settings.getFloatSetting("sensitivity", 50f) * deltaTime * ConstantGameSettings.TARGET_FPS;
             float yawChange = (float) deltaX / settings.getFloatSetting("sensitivity", 50f) * deltaTime * ConstantGameSettings.TARGET_FPS;
-            setPitch(pitch + pitchChange);
-            setYaw(yaw + yawChange);
 
-            camera.rotateX(pitchChange);
-            camera.rotateY(yawChange);
             if (pitchChange != 0 || yawChange != 0) {
                 changeRot = true;
+                camera.rotateX(pitchChange);
+                camera.rotateY(yawChange);
+                setPitch(camera.getPitch());
+                setYaw(camera.getYaw());
             }
 
             // Movement

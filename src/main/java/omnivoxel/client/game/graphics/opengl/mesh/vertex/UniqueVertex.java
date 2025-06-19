@@ -21,8 +21,8 @@ public final class UniqueVertex {
         result = 31 * result + Float.hashCode(vertex.px());
         result = 31 * result + Float.hashCode(vertex.py());
         result = 31 * result + Float.hashCode(vertex.pz());
-        result = 31 * result + Integer.hashCode(textureVertex.tx());
-        result = 31 * result + Integer.hashCode(textureVertex.ty());
+        result = 31 * result + Float.hashCode(textureVertex.tx());
+        result = 31 * result + Float.hashCode(textureVertex.ty());
         result = 31 * result + blockFace.hashCode();
         return result;
     }

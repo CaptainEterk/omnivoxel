@@ -121,6 +121,7 @@ public final class GameLoop {
             // TODO: Make this stitch textures together and save texture coordinates in a string->(x, y) map.
             // TODO: Make the user be able to use texture packs instead (by loading it and stitching it together)
             int texture = TextureLoader.loadTexture("texture_atlas.png");
+            int TEMP_texture = TextureLoader.loadTexture("smileyface.png");
 
             // Enable depth testing for solid chunks
             GL11C.glEnable(GL11C.GL_CULL_FACE);
@@ -162,12 +163,10 @@ public final class GameLoop {
                 // RENDER
 
                 // Render chunks
-                shaderProgram.setUniform("useChunkPosition", true);
-                shaderProgram.setUniform("useExactPosition", false);
+                shaderProgram.setUniform("meshType", 0);
                 shaderProgram.setUniform("model", IDENTITY_MATRIX);
                 zppShaderProgram.bind();
-                zppShaderProgram.setUniform("useChunkPosition", true);
-                zppShaderProgram.setUniform("useExactPosition", false);
+                zppShaderProgram.setUniform("meshType", 0);
                 zppShaderProgram.setUniform("model", IDENTITY_MATRIX);
 
                 GL11C.glEnable(GL11C.GL_DEPTH_TEST);
@@ -215,8 +214,8 @@ public final class GameLoop {
                 GL11C.glDepthMask(true);
 
                 // Render entities
-                shaderProgram.setUniform("useChunkPosition", false);
-                shaderProgram.setUniform("useExactPosition", true);
+                GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
+                shaderProgram.setUniform("meshType", 1);
                 Queue<Entity> entityMeshes = world.getEntities();
                 entityMeshes.forEach(this::renderEntityMesh);
 
@@ -250,10 +249,6 @@ public final class GameLoop {
 
                 if (gameState.getItem("seeDebug", Boolean.class)) {
                     String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format("FPS: %d\nPosition: %.2f %.2f %.2f\nChunks:\n\t- Rendered: %d/%d/%d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n\t- Missing Chunks: %d\nNetwork:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", (int) fps, camera.getX(), camera.getY(), camera.getZ(), solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(), solidRenderedChunksInFrustum.size(), transparentRenderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount, gameState.getItem("missing_chunks", Integer.class), gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class));
-
-                    if (gameState.getItem("inflight_requests", Integer.class) == 0) {
-                        leftDebugText += "\nNo inflight requests! Increase queuedChunkLimit!";
-                    }
 
                     textShaderProgram.bind();
 
@@ -307,7 +302,7 @@ public final class GameLoop {
 
     private void renderEntityMesh(Entity entity) {
         if (entity.getMesh() != null) {
-            shaderProgram.setUniform("exactPosition", entity.getX(), entity.getY(), entity.getZ());
+            shaderProgram.setUniform("model", entity.getMesh().getModel());
             renderVAO(entity.getMesh().solidVAO(), entity.getMesh().solidIndexCount());
         }
     }
