@@ -88,10 +88,6 @@ public class EntityMeshDataGenerator {
         List<Integer> indices = new ArrayList<>();
         Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
 
-        float ex = entity.getX();
-        float ey = entity.getY();
-        float ez = entity.getZ();
-
         float[][] cubeOffsets = {
                 {-1, -1, 1}, {1, -1, 1}, {1, 1, 1}, {-1, 1, 1}, // Front
                 {1, -1, -1}, {-1, -1, -1}, {-1, 1, -1}, {1, 1, -1}, // Back
@@ -121,7 +117,7 @@ public class EntityMeshDataGenerator {
             for (int i = 0; i < 6; i++) {
                 int index = faceIndices[f][i];
                 float[] offset = cubeOffsets[index];
-                Vertex position = new Vertex(ex + offset[0], ey + offset[1], ez + offset[2]);
+                Vertex position = new Vertex(offset[0], offset[1], offset[2]);
 
                 int[][] uvMap = {
                         {0, 1}, {1, 1}, {1, 0}, {1, 0}, {0, 0}, {0, 1}
@@ -132,14 +128,13 @@ public class EntityMeshDataGenerator {
                 int ty = face == BlockFace.SOUTH ? uv[1] : 0;
 
                 addPoint(vertices, indices, vertexIndexMap, position, tx, ty, face);
-
             }
         }
 
         ByteBuffer vertexBuffer = createFloatBuffer(vertices);
         ByteBuffer indexBuffer = createIntBuffer(indices);
 
-        return new EntityMeshData(vertexBuffer, indexBuffer, entity);
+        return new EntityMeshData(vertexBuffer, indexBuffer, entity, new ArrayList<>());
     }
 
     public ClientEntity generateMeshData(ClientEntity entity) {
@@ -147,6 +142,7 @@ public class EntityMeshDataGenerator {
         if (definition == null) {
             queuedEntityMeshData.add(entity.getType().toString());
             entity.setMeshData(generate(entity));
+            entity.getMeshData().addChild(generate(entity));
             entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entity.getMeshData()));
             return entity;
         }

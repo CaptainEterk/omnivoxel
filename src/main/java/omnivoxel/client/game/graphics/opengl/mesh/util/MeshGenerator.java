@@ -52,13 +52,20 @@ public class MeshGenerator {
     public EntityMesh bufferizeEntityMesh(EntityMeshData mesh) {
         if (mesh.entity().getMesh() == null) {
             int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
-            return new EntityMesh(new GeneralEntityMeshDefinition(
-                    solid[0],
-                    solid[1],
-                    solid[2],
-                    mesh.solidIndices().capacity() / Integer.BYTES,
-                    mesh)
+            EntityMesh entityMesh = new EntityMesh(
+                    new GeneralEntityMeshDefinition(
+                            solid[0],
+                            solid[1],
+                            solid[2],
+                            mesh.solidIndices().capacity() / Integer.BYTES,
+                            mesh
+                    )
             );
+            mesh.children().forEach(entityMeshData -> {
+                EntityMesh em = bufferizeEntityMesh(entityMeshData);
+                entityMesh.addChild(em);
+            });
+            return entityMesh;
         }
         return mesh.entity().getMesh();
     }

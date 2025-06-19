@@ -4,11 +4,13 @@ import omnivoxel.client.game.entity.ClientEntity;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public record EntityMeshData(
         ByteBuffer solidVertices,
         ByteBuffer solidIndices,
-        ClientEntity entity
+        ClientEntity entity,
+        List<EntityMeshData> children
 ) implements MeshData {
     @Override
     public ByteBuffer transparentVertices() {
@@ -25,5 +27,9 @@ public record EntityMeshData(
         // Free buffer data
         MemoryUtil.memFree(solidVertices);
         MemoryUtil.memFree(solidIndices);
+    }
+
+    public void addChild(EntityMeshData entityMeshData) {
+        children.add(entityMeshData);
     }
 }

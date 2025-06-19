@@ -2,6 +2,7 @@ package omnivoxel.client.game;
 
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.Mesh;
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
@@ -169,7 +170,9 @@ public final class GameLoop {
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
                 shaderProgram.setUniform("meshType", 1);
                 Queue<ClientEntity> entityMeshes = world.getEntities();
-                entityMeshes.forEach(this::renderEntityMesh);
+                entityMeshes.forEach(clientEntity -> {
+                    renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
+                });
 
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
                 for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
@@ -309,11 +312,12 @@ public final class GameLoop {
         }
     }
 
-    private void renderEntityMesh(ClientEntity entity) {
-        if (entity.getMesh() != null) {
-            shaderProgram.setUniform("model", entity.getMesh().getModel());
-            renderVAO(entity.getMesh().getDefinition().solidVAO(), entity.getMesh().getDefinition().solidIndexCount());
-//            textRenderer.renderText(font, "Hello World!", 0, 0, 1.0f, Alignment.CENTER);
+    private void renderEntityMesh(EntityMesh entityMesh, Matrix4f parentTransform) {
+        if (entityMesh != null) {
+            Matrix4f currentTransform = new Matrix4f(parentTransform).mul(entityMesh.getModel());
+            shaderProgram.setUniform("model", currentTransform);
+            renderVAO(entityMesh.getDefinition().solidVAO(), entityMesh.getDefinition().solidIndexCount());
+            entityMesh.getChildren().forEach(mesh -> renderEntityMesh(mesh, currentTransform));
         }
     }
 
