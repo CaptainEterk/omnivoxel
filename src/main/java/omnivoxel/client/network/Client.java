@@ -158,6 +158,7 @@ public final class Client {
             entity.setYaw(yaw);
             if (entity.getMesh() != null) {
                 Matrix4f model = new Matrix4f().identity()
+                        .scale(0.5f)
                         .translate(x, y - 1, z)
                         .rotateY(-yaw);
 
