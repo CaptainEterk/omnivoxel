@@ -31,7 +31,6 @@ public final class EntityMesh implements Mesh {
     }
 
     public void setModel(Matrix4f model) {
-        System.out.println(this + " " + model);
         this.model = model;
     }
 

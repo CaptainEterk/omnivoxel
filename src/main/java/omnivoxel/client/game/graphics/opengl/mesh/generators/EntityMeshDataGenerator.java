@@ -5,10 +5,14 @@ import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataNoDefinition;
+import omnivoxel.client.game.graphics.opengl.mesh.generators.meshShape.BoxMeshShape;
+import omnivoxel.client.game.graphics.opengl.mesh.generators.meshShape.MeshShape;
+import omnivoxel.client.game.graphics.opengl.mesh.generators.textureShape.BoxTextureShape;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.UniqueVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
+import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.cache.IDCache;
 import org.lwjgl.system.MemoryUtil;
 
@@ -158,28 +162,95 @@ public class EntityMeshDataGenerator {
         return new EntityMeshData(vertexBuffer, indexBuffer, entity, new ArrayList<>());
     }
 
+    public EntityMeshData generate(ClientEntity entity, MeshShape[] meshShapes) {
+        List<Float> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+        Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
+
+        for (MeshShape meshShape : meshShapes) {
+            meshShape.generate(vertices, indices, vertexIndexMap);
+        }
+
+        ByteBuffer vertexBuffer = createFloatBuffer(vertices);
+        ByteBuffer indexBuffer = createIntBuffer(indices);
+
+        return new EntityMeshData(vertexBuffer, indexBuffer, entity, new ArrayList<>());
+    }
+
     public ClientEntity generateMeshData(ClientEntity entity) {
         EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entity.getType().toString(), null);
         if (definition == null) {
             queuedEntityMeshData.add(entity.getType().toString());
 
-            EntityMeshData body = generate(entity, 1, 1.5f, 0.5f, 0, 0, 0);
+            if (entity.getType().type() == EntityType.Type.PLAYER) {
+                BoxTextureShape texture = new BoxTextureShape(256, 32);
 
-            EntityMeshData leftArm = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
-            EntityMeshData rightArm = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+                BoxTextureShape bodyTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 48, 0, 16, 8)
+                        .setCoords(BlockFace.BOTTOM, 64, 0, 16, 8)
+                        .setCoords(BlockFace.NORTH, 64, 8, 16, 24)
+                        .setCoords(BlockFace.SOUTH, 48, 8, 16, 24)
+                        .setCoords(BlockFace.EAST, 80, 8, 8, 24)
+                        .setCoords(BlockFace.WEST, 88, 8, 8, 24);
 
-            EntityMeshData leftLeg = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
-            EntityMeshData rightLeg = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+                BoxTextureShape headTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 0, 16, 16, 16)
+                        .setCoords(BlockFace.BOTTOM, 16, 16, 16, 16)
+                        .setCoords(BlockFace.NORTH, 0, 0, 16, 16)
+                        .setCoords(BlockFace.SOUTH, 32, 16, 16, 16)
+                        .setCoords(BlockFace.EAST, 32, 0, -16, 16)
+                        .setCoords(BlockFace.WEST, 32, 0, 16, 16);
 
-            EntityMeshData head = generate(entity, 1, 1, 1, 0, 1, 0);
+                BoxTextureShape leftArmTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 80, 0, 8, 8)
+                        .setCoords(BlockFace.BOTTOM, 88, 0, 8, 8)
+                        .setCoords(BlockFace.NORTH, 96, 8, 8, 24)
+                        .setCoords(BlockFace.SOUTH, 104, 8, 8, 24)
+                        .setCoords(BlockFace.EAST, 112, 8, 8, 24)
+                        .setCoords(BlockFace.WEST, 120, 8, 8, 24);
 
-            body.addChild(head);
-            body.addChild(leftArm);
-            body.addChild(rightArm);
-            body.addChild(leftLeg);
-            body.addChild(rightLeg);
+                BoxTextureShape rightArmTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 96, 0, 8, 8)
+                        .setCoords(BlockFace.BOTTOM, 104, 0, 8, 8)
+                        .setCoords(BlockFace.NORTH, 128, 8, 8, 24)
+                        .setCoords(BlockFace.SOUTH, 136, 8, 8, 24)
+                        .setCoords(BlockFace.EAST, 144, 8, 8, 24)
+                        .setCoords(BlockFace.WEST, 152, 8, 8, 24);
 
-            entity.setMeshData(body);
+                BoxTextureShape leftLegTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 112, 0, 8, 8)
+                        .setCoords(BlockFace.BOTTOM, 120, 0, 8, 8)
+                        .setCoords(BlockFace.NORTH, 160, 8, 8, 24)
+                        .setCoords(BlockFace.SOUTH, 168, 8, 8, 24)
+                        .setCoords(BlockFace.EAST, 176, 8, 8, 24)
+                        .setCoords(BlockFace.WEST, 184, 8, 8, 24);
+
+                BoxTextureShape rightLegTexture = texture.copy()
+                        .setCoords(BlockFace.TOP, 128, 0, 8, 8)
+                        .setCoords(BlockFace.BOTTOM, 136, 0, 8, 8)
+                        .setCoords(BlockFace.NORTH, 192, 8, 8, 24)
+                        .setCoords(BlockFace.SOUTH, 200, 8, 8, 24)
+                        .setCoords(BlockFace.EAST, 208, 8, 8, 24)
+                        .setCoords(BlockFace.WEST, 216, 8, 8, 24);
+
+                EntityMeshData body = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1.5f, 0.5f, bodyTexture)});
+
+                EntityMeshData head = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0.5f, 0, 1, 1, 1, headTexture)});
+
+                EntityMeshData leftArm = generate(entity, new MeshShape[]{new BoxMeshShape(-0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftArmTexture)});
+                EntityMeshData rightArm = generate(entity, new MeshShape[]{new BoxMeshShape(0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightArmTexture)});
+
+                EntityMeshData leftLeg = generate(entity, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftLegTexture)});
+                EntityMeshData rightLeg = generate(entity, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightLegTexture)});
+
+                body.addChild(head);
+                body.addChild(leftArm);
+                body.addChild(rightArm);
+                body.addChild(leftLeg);
+                body.addChild(rightLeg);
+
+                entity.setMeshData(body);
+            }
 
             entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entity.getMeshData()));
             return entity;
