@@ -83,7 +83,7 @@ public class EntityMeshDataGenerator {
         }
     }
 
-    private EntityMeshData generate(ClientEntity entity) {
+    private EntityMeshData generate(ClientEntity entity, float width, float height, float length, float x, float y, float z) {
         List<Float> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
@@ -144,7 +144,7 @@ public class EntityMeshDataGenerator {
             for (int i = 0; i < 6; i++) {
                 int index = faceIndices[f][i];
                 float[] offset = cubeOffsets[index];
-                Vertex position = new Vertex(offset[0], offset[1], offset[2]);
+                Vertex position = new Vertex(offset[0] * width + x, offset[1] * height + y, offset[2] * length + z);
 
                 float[] uv = uvMap[f][i];
 
@@ -162,8 +162,25 @@ public class EntityMeshDataGenerator {
         EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entity.getType().toString(), null);
         if (definition == null) {
             queuedEntityMeshData.add(entity.getType().toString());
-            entity.setMeshData(generate(entity));
-            entity.getMeshData().addChild(generate(entity));
+
+            EntityMeshData body = generate(entity, 1, 1.5f, 0.5f, 0, 0, 0);
+
+            EntityMeshData leftArm = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+            EntityMeshData rightArm = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+
+            EntityMeshData leftLeg = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+            EntityMeshData rightLeg = generate(entity, 0.5f, 1.5f, 0.5f, 0, 0, 0);
+
+            EntityMeshData head = generate(entity, 1, 1, 1, 0, 1, 0);
+
+            body.addChild(head);
+            body.addChild(leftArm);
+            body.addChild(rightArm);
+            body.addChild(leftLeg);
+            body.addChild(rightLeg);
+
+            entity.setMeshData(body);
+
             entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entity.getMeshData()));
             return entity;
         }

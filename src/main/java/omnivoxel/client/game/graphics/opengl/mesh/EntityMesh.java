@@ -8,7 +8,7 @@ import java.util.List;
 
 public final class EntityMesh implements Mesh {
     private final EntityMeshDataDefinition definition;
-    private Matrix4f model = new Matrix4f().translate(1, 1, 1);
+    private Matrix4f model = new Matrix4f();
     private final List<EntityMesh> children;
 
     public EntityMesh(
@@ -31,6 +31,7 @@ public final class EntityMesh implements Mesh {
     }
 
     public void setModel(Matrix4f model) {
+        System.out.println(this + " " + model);
         this.model = model;
     }
 

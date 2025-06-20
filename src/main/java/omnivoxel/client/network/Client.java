@@ -158,15 +158,17 @@ public final class Client {
             entity.setYaw(yaw);
             if (entity.getMesh() != null) {
                 Matrix4f model = new Matrix4f().identity()
-                        .translate(x, y, z)
-                        .rotateY(-yaw)
-                        .rotateX(-pitch);
+                        .translate(x, y - 3, z)
+                        .rotateY(-yaw);
 
-                if (!entity.getMesh().getChildren().isEmpty()) {
-                    entity.getMesh().getChildren().getFirst().getModel().rotateY(0.1f);
-                }
                 entity.getMesh().setModel(model);
-
+                if (!entity.getMesh().getChildren().isEmpty()) {
+                    entity.getMesh().getChildren().getFirst().setModel(new Matrix4f().translate(0, 1.5f, 0).rotateX(-pitch));
+                    entity.getMesh().getChildren().get(1).setModel(new Matrix4f().translate(-1.5f, 0, 0));
+                    entity.getMesh().getChildren().get(2).setModel(new Matrix4f().translate(1.5f, 0, 0));
+                    entity.getMesh().getChildren().get(3).setModel(new Matrix4f().translate(-0.5f, -3, 0));
+                    entity.getMesh().getChildren().get(4).setModel(new Matrix4f().translate(0.5f, -3, 0));
+                }
             }
         }
     }

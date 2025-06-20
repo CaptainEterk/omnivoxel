@@ -61,6 +61,7 @@ public class MeshGenerator {
                             mesh
                     )
             );
+            entityMesh.setModel(mesh.getModel());
             mesh.children().forEach(entityMeshData -> {
                 EntityMesh em = bufferizeEntityMesh(entityMeshData);
                 entityMesh.addChild(em);
