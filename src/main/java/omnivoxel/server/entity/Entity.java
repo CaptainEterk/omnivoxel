@@ -4,8 +4,11 @@ import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.hitbox.Hitbox;
 import omnivoxel.math.FloatPosition3D;
+import omnivoxel.server.client.ServerItem;
 
-public abstract class Entity {
+import java.security.SecureRandom;
+
+public abstract class Entity implements ServerItem {
     protected final float friction = getFriction();
     private final Hitbox hitbox;
     protected float x;
@@ -16,9 +19,12 @@ public abstract class Entity {
     protected float velocityZ;
     private MeshData meshData;
     protected EntityMesh mesh;
+    protected final byte[] entityID;
 
     protected Entity(Hitbox hitbox) {
         this.hitbox = hitbox;
+        entityID = new byte[32];
+        new SecureRandom().nextBytes(entityID);
     }
 
     protected float getFriction() {

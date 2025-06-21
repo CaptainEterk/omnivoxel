@@ -1,13 +1,12 @@
 package omnivoxel.client.game.player;
 
 import omnivoxel.client.game.camera.Camera;
-import omnivoxel.server.entity.mob.player.PlayerEntity;
-import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.client.game.settings.Settings;
-import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.graphics.opengl.input.KeyInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseButtonInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseInput;
+import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.client.game.settings.Settings;
+import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import org.lwjgl.glfw.GLFW;
@@ -17,7 +16,7 @@ import org.lwjgl.system.MemoryUtil;
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
-public class PlayerController extends PlayerEntity {
+public class PlayerController {
     private final Client client;
     private final Camera camera;
     private final Settings settings;
@@ -37,8 +36,18 @@ public class PlayerController extends PlayerEntity {
     private int oldWindowX;
     private int oldWindowY;
 
+    protected final float friction = 0.1f;
+
+    protected float x;
+    protected float y;
+    protected float z;
+    protected float velocityX;
+    protected float velocityY;
+    protected float velocityZ;
+    protected float yaw;
+    protected float pitch;
+
     public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Long>> contextTasks, GameState gameState) {
-        super("Test Player", new byte[0]);
         this.client = client;
         // TODO: Add settings for this in a menu
         this.camera = camera;
@@ -47,9 +56,16 @@ public class PlayerController extends PlayerEntity {
         this.gameState = gameState;
     }
 
-    @Override
     public void tick(float deltaTime) {
-        super.tick(deltaTime);
+        x += velocityX * deltaTime;
+        y += velocityY * deltaTime;
+        z += velocityZ * deltaTime;
+
+        float frictionFactor = (float) Math.pow(friction, deltaTime);
+        velocityX *= frictionFactor;
+        velocityY *= frictionFactor;
+        velocityZ *= frictionFactor;
+
         boolean changeRot = false;
         if (mouseButtonInput.isMouseLocked()) {
             float moveSpeed = speed * deltaTime * ConstantGameSettings.TARGET_FPS;
@@ -65,8 +81,8 @@ public class PlayerController extends PlayerEntity {
                 changeRot = true;
                 camera.rotateX(pitchChange);
                 camera.rotateY(yawChange);
-                setPitch(camera.getPitch());
-                setYaw(camera.getYaw());
+                this.pitch = camera.getPitch();
+                this.yaw = camera.getYaw();
             }
 
             // Movement
@@ -166,7 +182,7 @@ public class PlayerController extends PlayerEntity {
             gameState.setItem("shouldUpdateView", true);
             gameState.setItem("shouldUpdateVisibleMeshes", true);
 
-            client.sendRequest(new PlayerUpdateRequest(getX(), getY(), getZ(), pitch, yaw));
+            client.sendRequest(new PlayerUpdateRequest(x, y, z, pitch, yaw));
 
             camera.setPosition(x, y, z);
         }

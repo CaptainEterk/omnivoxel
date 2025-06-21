@@ -1,20 +1,21 @@
 package omnivoxel.client.game.graphics.opengl.mesh;
 
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
-import org.joml.Matrix4f;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class EntityMesh implements Mesh {
     private final EntityMeshDataDefinition definition;
-    private Matrix4f model = new Matrix4f();
     private final List<EntityMesh> children;
+    private final EntityMeshData entityMeshData;
 
     public EntityMesh(
-            EntityMeshDataDefinition definition
+            EntityMeshDataDefinition definition, EntityMeshData entityMeshData
     ) {
         this.definition = definition;
+        this.entityMeshData = entityMeshData;
         children = new ArrayList<>();
     }
 
@@ -26,15 +27,11 @@ public final class EntityMesh implements Mesh {
         return children;
     }
 
-    public Matrix4f getModel() {
-        return model;
-    }
-
-    public void setModel(Matrix4f model) {
-        this.model = model;
-    }
-
     public EntityMeshDataDefinition getDefinition() {
         return definition;
+    }
+
+    public EntityMeshData getMeshData() {
+        return entityMeshData;
     }
 }

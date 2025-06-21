@@ -5,6 +5,7 @@ import omnivoxel.client.game.graphics.opengl.mesh.chunk.*;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.GeneralEntityMeshDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
+import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 
@@ -59,13 +60,14 @@ public class MeshGenerator {
                             solid[2],
                             mesh.solidIndices().capacity() / Integer.BYTES,
                             mesh
-                    )
+                    ),
+                    mesh
             );
-            entityMesh.setModel(mesh.getModel());
             mesh.children().forEach(entityMeshData -> {
                 EntityMesh em = bufferizeEntityMesh(entityMeshData);
                 entityMesh.addChild(em);
             });
+            mesh.entity().getMeshData().setModel(new Matrix4f().translate(mesh.entity().getX(), mesh.entity().getY(), mesh.entity().getZ()).rotateY(mesh.entity().getYaw()).rotateX(mesh.entity().getX()));
             return entityMesh;
         }
         return mesh.entity().getMesh();

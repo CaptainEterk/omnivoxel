@@ -313,7 +313,7 @@ public final class GameLoop {
 
     private void renderEntityMesh(EntityMesh entityMesh, Matrix4f parentTransform) {
         if (entityMesh != null) {
-            Matrix4f currentTransform = new Matrix4f(parentTransform).mul(entityMesh.getModel());
+            Matrix4f currentTransform = new Matrix4f(parentTransform).mul(entityMesh.getMeshData().getModel());
             shaderProgram.setUniform("model", currentTransform);
             renderVAO(entityMesh.getDefinition().solidVAO(), entityMesh.getDefinition().solidIndexCount());
             entityMesh.getChildren().forEach(mesh -> renderEntityMesh(mesh, currentTransform));

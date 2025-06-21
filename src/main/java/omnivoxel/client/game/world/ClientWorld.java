@@ -4,7 +4,7 @@ import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.graphics.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ChunkMeshData;
-import omnivoxel.client.game.graphics.opengl.mesh.meshData.EntityMeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.GeneralEntityMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.settings.ConstantGameSettings;
@@ -104,7 +104,7 @@ public class ClientWorld {
     public boolean bufferize(MeshGenerator meshGenerator) {
         if (!nonBufferizedChunks.isEmpty()) {
             MeshData meshData = nonBufferizedChunks.remove();
-            if (meshData instanceof EntityMeshData entityMeshData) {
+            if (meshData instanceof GeneralEntityMeshData entityMeshData) {
                 entityMeshData.entity().setMesh(meshGenerator.bufferizeEntityMesh(entityMeshData));
                 entityMeshDefinitionCache.put(entityMeshData.entity().getType().toString(), entityMeshData.entity().getMesh().getDefinition());
             } else if (meshData instanceof ChunkMeshData chunkMeshData) {

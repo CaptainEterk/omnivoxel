@@ -6,6 +6,6 @@ public record EntityType(Type type, String uuid) {
     }
 
     public enum Type {
-        PLAYER
+        PIG, PLAYER
     }
 }

@@ -12,6 +12,7 @@ import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.opengl.mesh.meshData.ModelEntityMeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
@@ -23,6 +24,7 @@ import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.entity.EntityType;
+import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.thread.WorkerThreadPool;
@@ -129,19 +131,25 @@ public final class Client {
                 byteBuf.release();
                 break;
             case CLOSE:
-                String playerID = bytesToHex(getBytes(byteBuf, 8, 32));
+                String playerID = ByteUtils.bytesToHex(ByteUtils.getBytes(byteBuf, 8, 32));
                 entities.remove(playerID);
                 logger.info("Removed Player: " + playerID);
                 world.removeEntity(playerID);
                 byteBuf.release();
                 break;
+            case NEW_ENTITY:
+                newEntity(byteBuf);
+                byteBuf.release();
+                break;
             default:
                 System.err.println("Unexpected package id: " + packageID);
+                byteBuf.release();
+                break;
         }
     }
 
     private void updateEntity(ByteBuf byteBuf) {
-        String entityID = bytesToHex(getBytes(byteBuf, 8, 32));
+        String entityID = ByteUtils.bytesToHex(ByteUtils.getBytes(byteBuf, 8, 32));
         ClientEntity entity = entities.get(entityID);
         if (entity == null) {
             System.err.println("Received update for unknown player: " + entityID);
@@ -162,13 +170,13 @@ public final class Client {
                         .translate(x, y - 1, z)
                         .rotateY(-yaw);
 
-                entity.getMesh().setModel(model);
+                entity.getMesh().getMeshData().setModel(model);
                 if (!entity.getMesh().getChildren().isEmpty()) {
-                    entity.getMesh().getChildren().getFirst().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX(-pitch));
-                    entity.getMesh().getChildren().get(1).setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
-                    entity.getMesh().getChildren().get(2).setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
-                    entity.getMesh().getChildren().get(3).setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
-                    entity.getMesh().getChildren().get(4).setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+                    entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX(-pitch));
+                    entity.getMesh().getChildren().get(1).getMeshData().setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
+                    entity.getMesh().getChildren().get(2).getMeshData().setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
+                    entity.getMesh().getChildren().get(3).getMeshData().setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
+                    entity.getMesh().getChildren().get(4).getMeshData().setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
                 }
             }
         }
@@ -188,7 +196,7 @@ public final class Client {
     }
 
     private void loadPlayer(byte[] playerID, String name) throws InterruptedException {
-        String id = bytesToHex(playerID);
+        String id = ByteUtils.bytesToHex(playerID);
         ClientEntity playerEntity = new ClientEntity(name, id, new EntityType(EntityType.Type.PLAYER, name));
         entities.put(id, playerEntity);
 
@@ -199,34 +207,49 @@ public final class Client {
 
     private void newPlayer(ByteBuf byteBuf) throws InterruptedException {
         // TODO: Add more information to the player packet, such as name, position, etc...
-        loadPlayer(getBytes(byteBuf, 8, 32), "Other client!!");
+        loadPlayer(ByteUtils.getBytes(byteBuf, 8, 32), "Other client!!");
+    }
+
+    private void newEntity(ByteBuf byteBuf) throws InterruptedException {
+        // Data starts here
+        int entityIDLength = byteBuf.getInt(8); // [8-11]
+
+        byte[] entityID = new byte[entityIDLength];
+        byteBuf.getBytes(12, entityID); // [12 - 12+entityIDLength-1]
+
+        int floatStart = 8 + entityIDLength + 4; // starts after nameLength field
+        float x = byteBuf.getFloat(floatStart);
+        float y = byteBuf.getFloat(floatStart + 4);
+        float z = byteBuf.getFloat(floatStart + 8);
+        float pitch = byteBuf.getFloat(floatStart + 12);
+        float yaw = byteBuf.getFloat(floatStart + 16);
+
+        int nameLength = byteBuf.getInt(floatStart + 20);
+        int nameStart = floatStart + 20;
+        byte[] nameBytes = new byte[nameLength];
+        byteBuf.getBytes(nameStart, nameBytes); // name bytes
+        String name = new String(nameBytes); // assumes UTF-8 encoding
+
+        int typeOrdinal = byteBuf.getInt(nameStart + nameLength); // EntityType ordinal
+        EntityType.Type type = EntityType.Type.values()[typeOrdinal];
+
+        String id = ByteUtils.bytesToHex(entityID);
+        ClientEntity entity = new ClientEntity(name, id, new EntityType(type, name));
+        entity.set(x, y, z, pitch, yaw);
+        entity.setMeshData(new ModelEntityMeshData(entity).setModel(new Matrix4f().translate(x, y, z)));
+        entities.put(id, entity);
+
+        logger.info(String.format("Added entity: %s at (%.2f, %.2f, %.2f)", id, x, y, z));
+
+        meshDataGenerators.submit(new EntityMeshDataTask(entity));
     }
 
     private void registerPlayers(ByteBuf byteBuf) throws InterruptedException {
         int playerCount = Math.floorDiv(byteBuf.readableBytes(), 32);
         for (int i = 0; i < playerCount; i++) {
             // TODO: Add more information to the player packet, such as name, position, etc...
-            loadPlayer(getBytes(byteBuf, i * 32 + 8, 32), "Other client that was already here!!");
+            loadPlayer(ByteUtils.getBytes(byteBuf, i * 32 + 8, 32), "Other client that was already here!!");
         }
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder hex = new StringBuilder();
-        for (byte b : bytes) {
-            hex.append(String.format("%02X", b));
-        }
-        return hex.toString();
-    }
-
-    private String bytesToHex(ByteBuf byteBuf, int start, int length) {
-        byte[] bytes = getBytes(byteBuf, start, length);
-        return bytesToHex(bytes);
-    }
-
-    private byte[] getBytes(ByteBuf byteBuf, int start, int length) {
-        byte[] bytes = new byte[length];
-        byteBuf.getBytes(start, bytes);
-        return bytes;
     }
 
     public Map<String, ClientEntity> getEntities() {

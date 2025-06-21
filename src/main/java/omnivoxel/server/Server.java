@@ -1,6 +1,7 @@
 package omnivoxel.server;
 
 import core.biomes.*;
+import core.entities.PigEntity;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -13,6 +14,8 @@ import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
+import omnivoxel.server.entity.Entity;
+import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.thread.WorkerThreadPool;
 
 import java.io.IOException;
@@ -72,7 +75,7 @@ public class Server {
     }
 
     public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
-        String clientID = bytesToHex(byteBuf, 4, 32);
+        String clientID = ByteUtils.bytesToHex(byteBuf, 4, 32);
         switch (packageID) {
             case CHUNK_REQUEST:
                 int count = byteBuf.getInt(36);
@@ -118,20 +121,18 @@ public class Server {
 
     private void queueChunkTask(ChunkTask chunkTask) throws InterruptedException {
         workerThreadPool.submit(chunkTask);
-//        long requests = requestReceived.incrementAndGet();
-//        System.out.printf("%s queueChunkTask %s\n", new Date(), requests);
-//            // TODO: Actually generate entities
-//            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, ServerEntity.create(ServerEntity.));
-//            ServerEntity.create()
-//            byte[] entityID = new byte[32];
-//            new SecureRandom().nextBytes(entityID);
-//            sendBytes(chunkTask.ctx(), PackageID.NEW_ENTITY, new ServerEntity(entityID, chunkTask.x() * ConstantGameSettings.CHUNK_WIDTH, chunkTask.y() * ConstantGameSettings.CHUNK_HEIGHT, chunkTask.z() * ConstantGameSettings.CHUNK_LENGTH, 0, 0, 0).getBytes());
+
+        Entity entity = new PigEntity();
+        entity.set(chunkTask.x(), chunkTask.y(), chunkTask.z());
+        byte[] bytes = entity.getBytes();
+
+        clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.NEW_ENTITY, bytes));
     }
 
     private void registerClient(ChannelHandlerContext ctx, ByteBuf byteBuf) {
-        byte[] versionID = getBytes(byteBuf, 4, 8);
+        byte[] versionID = ByteUtils.getBytes(byteBuf, 4, 8);
         if (Arrays.equals(versionID, String.format("%-8s", VERSION_ID).getBytes())) {
-            String clientID = bytesToHex(byteBuf, 12, 32);
+            String clientID = ByteUtils.bytesToHex(byteBuf, 12, 32);
             ServerClient serverClient = new ServerClient(clientID, ctx);
             byte[] encodedServerPlayer = serverClient.getBytes();
 
@@ -139,7 +140,6 @@ public class Server {
 
             final int[] i = {0};
 
-            // Send the client all the player information
             clients.values().forEach(player -> {
                 sendBytes(player.getCTX(), PackageID.NEW_PLAYER, encodedServerPlayer);
                 byte[] playerBytes = player.getBytes();
@@ -150,35 +150,12 @@ public class Server {
 
             clients.put(clientID, serverClient);
 
-            System.out.println("Registered Client: " + clientID + " with playerID: " + bytesToHex(serverClient.getPlayerID()));
+            System.out.println("Registered Client: " + clientID + " with playerID: " + ByteUtils.bytesToHex(serverClient.getPlayerID()));
         } else {
             System.err.println("Client has different version, disconnecting...");
             System.err.println("\tClient: " + Arrays.toString(versionID));
             System.err.println("\tServer: " + Arrays.toString(String.format("%-8s", VERSION_ID).getBytes()));
             ctx.close();
         }
-    }
-
-    private String bytesToHex(ByteBuf byteBuf, int start, int length) {
-        StringBuilder hex = new StringBuilder();
-        byte[] clientIDBytes = getBytes(byteBuf, start, length);
-        for (int i = 0; i < 32; i++) {
-            hex.append(String.format("%02X", clientIDBytes[i]));
-        }
-        return hex.toString();
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder hex = new StringBuilder();
-        for (byte b : bytes) {
-            hex.append(String.format("%02X", b));
-        }
-        return hex.toString();
-    }
-
-    private byte[] getBytes(ByteBuf byteBuf, int i, int length) {
-        byte[] bytes = new byte[length];
-        byteBuf.getBytes(i, bytes);
-        return bytes;
     }
 }

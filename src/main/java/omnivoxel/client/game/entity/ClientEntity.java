@@ -22,6 +22,14 @@ public class ClientEntity {
         this.type = type;
     }
 
+    public void set(float x, float y, float z, float pitch, float yaw) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.pitch = pitch;
+        this.yaw = yaw;
+    }
+
     public String getName() {
         return name;
     }
