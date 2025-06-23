@@ -27,7 +27,7 @@ public class StructureService {
         int yOffset = (int) (climateVector2D.get(0) - y);
 
         if (biome instanceof ForestBiome && yOffset == 0 && y > BasicWorldDataService.WATER_LEVEL) {
-            double noiseValue = treeNoise.generate(x * 0.2, z * 0.2); // scale for smooth spacing
+            double noiseValue = treeNoise.generate(x * 0.2, z * 0.2);
             if (noiseValue > 0.2) {
                 return new StructureSeed(structures.getFirst(), null);
             }

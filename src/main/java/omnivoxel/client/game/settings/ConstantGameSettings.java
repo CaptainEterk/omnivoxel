@@ -1,17 +1,16 @@
 package omnivoxel.client.game.settings;
 
 public class ConstantGameSettings {
-    public static final int CHUNK_WIDTH = 32; // X
-    public static final int CHUNK_HEIGHT = 32; // Y
-    public static final int CHUNK_LENGTH = 32; // Z
+    public static final int CHUNK_WIDTH = 32;
+    public static final int CHUNK_HEIGHT = 32;
+    public static final int CHUNK_LENGTH = 32;
 
     public static final int PADDED_WIDTH = ConstantGameSettings.CHUNK_WIDTH + 2;
     public static final int PADDED_HEIGHT = ConstantGameSettings.CHUNK_HEIGHT + 2;
     public static final int PADDED_LENGTH = ConstantGameSettings.CHUNK_LENGTH + 2;
-    public static final int PADDED_LAYER = PADDED_WIDTH * PADDED_LENGTH;
 
     public static final int BLOCKS_IN_CHUNK = ((ConstantGameSettings.CHUNK_WIDTH) * (ConstantGameSettings.CHUNK_LENGTH) * (ConstantGameSettings.CHUNK_HEIGHT));
-    public static final int BLOCKS_IN_CHUNK_PADDED = ((ConstantGameSettings.CHUNK_WIDTH + 2) * (ConstantGameSettings.CHUNK_LENGTH + 2) * (ConstantGameSettings.CHUNK_HEIGHT + 2));
+    public static final int BLOCKS_IN_CHUNK_PADDED = PADDED_WIDTH*PADDED_HEIGHT*PADDED_LENGTH;
     // TODO: Move this to settings
     public static final int BLOCK_CACHE_SIZE = 1000;
     public static final int NON_GENERATED_QUEUE_OVERLOAD_LIMIT = 100;
@@ -20,10 +19,7 @@ public class ConstantGameSettings {
     public static final int TARGET_FPS = 120;
     public static final float FRAME_TIME = 1f / TARGET_FPS;
 
-    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.6-alpha";
-
-    public static final int TICKS_PER_SECOND = 1;
-    public static final float TICK_TIME = 1f / TICKS_PER_SECOND;
+    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.7-alpha";
 
     // TODO: Move this to settings
     public static final int MAX_MESH_GENERATOR_THREADS = Runtime.getRuntime().availableProcessors();
@@ -40,7 +36,6 @@ public class ConstantGameSettings {
     public static final long AUTO_RECALCULATE_CHUNKS_TIME = 5000;
     public static final String DATA_LOCATION = "";
     public static final String LOG_LOCATION = FILE_LOCATION + ".logs/";
-    public static final int MAX_WORLD_SIZE_CHUNKS = 2097152;
 
     private static String getRootFolder() {
         return System.getProperty("user.dir") + "/.omnivoxel/";
