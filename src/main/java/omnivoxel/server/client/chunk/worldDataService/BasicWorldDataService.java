@@ -62,7 +62,7 @@ public class BasicWorldDataService implements ServerWorldDataService {
         Position3D position3D = new Position3D(x, y, z);
 
         PriorityServerBlock priorityBlock = border ? queuedBlocks.get(position3D) : queuedBlocks.remove(position3D);
-        if (priorityBlock != null && priorityBlock.priority().canOverwrite(PriorityServerBlock.Priority.WORLD_TERRAIN)) {
+        if (priorityBlock != null && priorityBlock.priority().canOverwrite(PriorityServerBlock.Priority.WORLD_TERRAIN) && priorityBlock.serverBlock() != null) {
             return priorityBlock.serverBlock();
         }
 
@@ -71,12 +71,12 @@ public class BasicWorldDataService implements ServerWorldDataService {
 
         ServerBlock block;
         if (y <= height) {
-            block = biome.getBlock(x, y, z, height - y, blockService);
+            block = y <= WATER_LEVEL ? blockService.getBlock("core:sand_block", null) : biome.getBlock(x, y, z, height - y, blockService);
         } else {
             block = y <= WATER_LEVEL ? water : air;
         }
 
-        if (priorityBlock != null && block == air) {
+        if (priorityBlock != null && block == air && priorityBlock.serverBlock() != null) {
             return priorityBlock.serverBlock();
         }
         return block;

@@ -15,6 +15,7 @@ import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
 import omnivoxel.server.entity.Entity;
+import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.thread.WorkerThreadPool;
 
@@ -22,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -65,13 +67,14 @@ public class Server {
                         new TundraBiome(blockService),
                         new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
                         new TaigaBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
-                        new PlainsBiome(blockService),
+//                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
+//                        new PlainsBiome(blockService),
                         new ClimateVector(0.0, 0.0, 0.4, 0.5, 0.0),
                         new ForestBiome(blockService)
                 )
         );
-        workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(new BasicWorldDataService(new Random(seed), world, biomeService, blockService, queuedBlocks), blockService, biomeService, world)::generateChunk);
+        Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
+        workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(new BasicWorldDataService(new Random(seed), world, biomeService, blockService, queuedBlocks), blockService, biomeService, world, worldBoundingBoxes)::generateChunk);
     }
 
     private static void sendBytes(ChannelHandlerContext ctx, PackageID id, byte[]... bytes) {

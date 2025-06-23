@@ -20,6 +20,7 @@ import omnivoxel.server.client.structure.Structure;
 import omnivoxel.server.client.structure.StructureBoundingBox;
 import omnivoxel.server.client.structure.StructureSeed;
 import omnivoxel.server.client.structure.StructureService;
+import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.world.chunk.Chunk;
 
 import java.util.Map;
@@ -32,11 +33,13 @@ public class ChunkGenerator {
     private final StructureService structureService;
     private final BiomeService biomeService;
     private final ServerWorld world;
+    private final Set<WorldBoundingBox> worldBoundingBoxes;
 
-    public ChunkGenerator(ServerWorldDataService worldDataService, BlockService blockService, BiomeService biomeService, ServerWorld world) {
+    public ChunkGenerator(ServerWorldDataService worldDataService, BlockService blockService, BiomeService biomeService, ServerWorld world, Set<WorldBoundingBox> worldBoundingBoxes) {
         this.worldDataService = worldDataService;
         this.biomeService = biomeService;
         this.world = world;
+        this.worldBoundingBoxes = worldBoundingBoxes;
         structureService = new StructureService();
         structureService.register(new TreeStructure().initBlocks(blockService));
     }
@@ -140,24 +143,32 @@ public class ChunkGenerator {
                             Structure structure = structureSeed.structure();
                             Map<Position3D, PriorityServerBlock> blocks = structure.getBlocks();
                             StructureBoundingBox boundingBox = structure.getBoundingBox();
+
+                            // Convert bounding box to world-space bounds
+                            int minX = worldX;
+                            int maxX = worldX + boundingBox.getWidth();
+                            int minY = worldY;
+                            int maxY = worldY + boundingBox.getHeight();
+                            int minZ = worldZ;
+                            int maxZ = worldZ + boundingBox.getLength();
+
+                            WorldBoundingBox worldBoundingBox = new WorldBoundingBox(minX, minY, minZ, maxX, maxY, maxZ);
+
+                            boolean found = worldBoundingBoxes.stream().anyMatch(existing -> existing.intersects(worldBoundingBox));
+                            if (found) {
+                                continue;
+                            }
+
+                            worldBoundingBoxes.add(worldBoundingBox);
+
                             Position3D origin = structure.getOrigin();
                             if (structureSeed.offset() != null) {
                                 origin.add(structureSeed.offset());
                             }
-                            int xl = boundingBox.getWidth();
-                            int yl = boundingBox.getHeight();
-                            int zl = boundingBox.getLength();
-                            for (int X = 0; X < xl; X++) {
-                                for (int Z = 0; Z < zl; Z++) {
-                                    for (int Y = 0; Y < yl; Y++) {
-                                        PriorityServerBlock block = blocks.get(new Position3D(X, Y, Z));
-                                        if (block != null) {
-                                            Position3D pos = origin.add(X, Y, Z).add(worldX, worldY, worldZ);
-                                            worldDataService.queueBlock(pos, block);
-                                        }
-                                    }
-                                }
-                            }
+                            blocks.forEach((blockPosition, priorityServerBlock) -> {
+                                Position3D pos = origin.add(blockPosition).add(worldX, worldY, worldZ);
+                                worldDataService.queueBlock(pos, priorityServerBlock);
+                            });
                         }
                     }
                 }

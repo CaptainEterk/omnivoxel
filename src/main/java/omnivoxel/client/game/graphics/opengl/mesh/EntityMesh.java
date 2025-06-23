@@ -17,6 +17,9 @@ public final class EntityMesh implements Mesh {
         this.definition = definition;
         this.entityMeshData = entityMeshData;
         children = new ArrayList<>();
+        if (entityMeshData == null) {
+            System.out.println(definition);
+        }
     }
 
     public void addChild(EntityMesh child) {
@@ -33,5 +36,14 @@ public final class EntityMesh implements Mesh {
 
     public EntityMeshData getMeshData() {
         return entityMeshData;
+    }
+
+    @Override
+    public String toString() {
+        return "EntityMesh{" +
+                "definition=" + definition +
+                ", children=" + children +
+                ", entityMeshData=" + entityMeshData +
+                '}';
     }
 }

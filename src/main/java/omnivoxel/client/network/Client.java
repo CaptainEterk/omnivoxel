@@ -166,11 +166,12 @@ public final class Client {
             entity.setYaw(yaw);
             if (entity.getMesh() != null) {
                 Matrix4f model = new Matrix4f().identity()
-                        .scale(0.5f)
                         .translate(x, y - 1, z)
+                        .scale(0.5f)
                         .rotateY(-yaw);
 
-                entity.getMesh().getMeshData().setModel(model);
+                System.out.println(entity.getMesh());
+                entity.getMeshData().setModel(model);
                 if (!entity.getMesh().getChildren().isEmpty()) {
                     entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX(-pitch));
                     entity.getMesh().getChildren().get(1).getMeshData().setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));

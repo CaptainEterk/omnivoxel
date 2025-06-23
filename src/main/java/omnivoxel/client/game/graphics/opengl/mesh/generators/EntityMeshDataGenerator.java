@@ -269,10 +269,10 @@ public class EntityMeshDataGenerator {
                 entityMeshData = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1, 1, bodyTexture)});
             }
 
-            entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entity.getMeshData()));
+            entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entityMeshData));
         } else {
             entityMeshData = new ModelEntityMeshData(entity);
-            entity.setMesh(new EntityMesh(definition, entity.getMeshData()));
+            entity.setMesh(new EntityMesh(definition, entityMeshData));
         }
 
         if (entityMeshData != null) {

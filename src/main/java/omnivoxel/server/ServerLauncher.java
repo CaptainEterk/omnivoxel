@@ -21,7 +21,7 @@ public class ServerLauncher {
     }
 
     public static void main(String[] args) {
-        new ServerLauncher().run(0L);
+        new ServerLauncher().run(2L);
     }
 
     public void run(long seed) {

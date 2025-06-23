@@ -13,7 +13,7 @@ public class TreeStructure extends Structure {
     private final Map<Position3D, PriorityServerBlock> blocks = new HashMap<>();
 
     public TreeStructure() {
-        super(5, 10, 5, new Position3D(2, 0, 2));
+        super(3, 5, 3, new Position3D(2, 0, 2));
     }
 
     @Override
