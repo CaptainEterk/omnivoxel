@@ -14,7 +14,7 @@ public class ShapeHelper {
     private static final int BITMASK_8 = 0xFF; // 8-bit mask
     private static final int BITMASK_10 = 1023; // 8-bit mask
 
-    public static int[] packVertexData(Vertex vertex, int ao, float r, float g, float b, BlockFace blockFace, int u, int v) {
+    public static int[] packVertexData(Vertex vertex, int ao, float r, float g, float b, BlockFace blockFace, int u, int v, int type) {
         // Position calculations
 
         int ix = (int) (vertex.px() * (MAX_PACKED_VALUE / ConstantGameSettings.CHUNK_WIDTH));
@@ -48,6 +48,6 @@ public class ShapeHelper {
                 | (uPacked << 9)  // U in next 8 bits
                 | (vPacked << 1);  // V in lowest 8 bits
 
-        return new int[]{packedPosition, packedColorNormalUV};
+        return new int[]{packedPosition, packedColorNormalUV, type};
     }
 }

@@ -128,8 +128,10 @@ public class PlayerController {
                 speed -= 0.01f;
             }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F3)) {
+                if (!togglingDebug) {
+                    gameState.setItem("seeDebug", !gameState.getItem("seeDebug", Boolean.class));
+                }
                 togglingDebug = true;
-                gameState.setItem("seeDebug", !gameState.getItem("seeDebug", Boolean.class));
             } else {
                 togglingDebug = false;
             }

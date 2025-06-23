@@ -1,5 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.generators;
 
+import core.blocks.WaterSourceBlock;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
 import omnivoxel.client.game.graphics.opengl.mesh.block.BlockStateWrapper;
@@ -30,17 +31,17 @@ public class ChunkMeshDataGenerator {
         this.worldDataService = worldDataService;
     }
 
-    private void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, Vertex position, int tx, int ty, BlockFace normal, float r, float g, float b) {
+    private void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, Vertex position, int tx, int ty, BlockFace normal, float r, float g, float b, int type) {
         UniqueVertex vertex = new UniqueVertex(position, new TextureVertex(tx, ty), normal);
 
         if (!vertexIndexMap.containsKey(vertex)) {
-            int[] vertexData = ShapeHelper.packVertexData(position, 0, r, g, b, normal, tx, ty);
+            int[] vertexData = ShapeHelper.packVertexData(position, 0, r, g, b, normal, tx, ty, type);
             vertexIndexMap.put(vertex, vertices.size());
             for (int data : vertexData) {
                 vertices.add(data);
             }
         }
-        indices.add(vertexIndexMap.get(vertex) / 2);
+        indices.add(vertexIndexMap.get(vertex) / 3);
     }
 
     private MeshData generateChunkMeshData(Block[] blocks, Position3D position3D) {
@@ -152,7 +153,7 @@ public class ChunkMeshDataGenerator {
         for (int index : faceIndices) {
             Vertex pointPosition = faceVertices[index];
             Vertex position = pointPosition.add(x, y, z);
-            addPoint(vertices, indices, vertexIndexMap, position, uvCoordinates[index * 2], uvCoordinates[index * 2 + 1], blockFace, temp_r, temp_g, temp_b);
+            addPoint(vertices, indices, vertexIndexMap, position, uvCoordinates[index * 2], uvCoordinates[index * 2 + 1], blockFace, temp_r, temp_g, temp_b, block instanceof WaterSourceBlock ? 1 : 0);
         }
     }
 

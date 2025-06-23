@@ -4,8 +4,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3fc;
 import org.lwjgl.opengl.GL30C;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.lwjgl.opengl.GL20C.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20C.glUseProgram;
@@ -16,7 +16,7 @@ public class ShaderProgram {
 
     public ShaderProgram(int program) {
         this.program = program;
-        this.locationMap = new ConcurrentHashMap<>();
+        this.locationMap = new HashMap<>();
     }
 
     public int addUniformLocation(String name) {

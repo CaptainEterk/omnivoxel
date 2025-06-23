@@ -4,11 +4,11 @@ import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.blockService.BlockService;
 
-public class PlainsBiome extends Biome {
+public class ForestBiome extends Biome {
     private final ServerBlock grass;
     private final ServerBlock dirt;
 
-    public PlainsBiome(BlockService blockService) {
+    public ForestBiome(BlockService blockService) {
         super(blockService);
         grass = blockService.getBlock("core:grass_block", null);
         dirt = blockService.getBlock("core:dirt_block", null);

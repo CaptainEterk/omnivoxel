@@ -12,8 +12,9 @@
 
 layout(location = 0) in uint data1;
 layout(location = 1) in uint data2;
-layout(location = 2) in vec3 vPosition;
-layout(location = 3) in vec2 vUV;
+layout(location = 2) in uint data3;
+layout(location = 3) in vec3 vPosition;
+layout(location = 4) in vec2 vUV;
 
 out vec2 TexCoord;
 out float shadow;
@@ -21,6 +22,7 @@ out vec3 position;
 out vec3 lighting;
 out float ao;
 out vec3 vNormal;
+flat out uint type;
 
 uniform uint meshType;
 
@@ -32,6 +34,8 @@ uniform vec3 cameraPosition;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
+
+uniform float time;
 
 float simpleNoise(float x, float z) {
     float n = dot(vec2(x, z), vec2(127.1, 311.7));// Create a seed value
@@ -61,8 +65,6 @@ void main() {
         xyz *= 0.0625;
         xyz += chunkPosition*CHUNK_SIZE;
 
-        position = xyz;
-
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
 
         lighting = vec3(r, g, b);
@@ -70,6 +72,14 @@ void main() {
         vec3 toCameraVector = cameraPosition - xyz;
         vec3 viewVector = normalize(toCameraVector);
         vNormal = viewVector;
+
+        type = data3;
+
+        if (type == 1u) {
+            xyz.y += simpleNoise(xyz.x+time/1000, xyz.z+time/1000)/10;
+        }
+
+        position = xyz;
     } else if (meshType == 1u) {
         position = vPosition;
         TexCoord = vUV;

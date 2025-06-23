@@ -9,6 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import omnivoxel.server.client.chunk.blockService.BlockService;
 
 import java.io.IOException;
 
@@ -27,11 +28,12 @@ public class ServerLauncher {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
+        BlockService blockService = new BlockService();
 
-        ServerWorld world = new ServerWorld();
+        ServerWorld world = new ServerWorld(blockService.getBlock("omnivoxel:air", null));
 
         try {
-            ServerHandler serverHandler = new ServerHandler(new Server(seed, world));
+            ServerHandler serverHandler = new ServerHandler(new Server(seed, world, blockService));
 
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)

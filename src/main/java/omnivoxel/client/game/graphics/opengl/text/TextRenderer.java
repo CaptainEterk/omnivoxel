@@ -1,10 +1,7 @@
 package omnivoxel.client.game.graphics.opengl.text;
 
 import omnivoxel.client.game.graphics.opengl.text.font.Font;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15C;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30C;
+import org.lwjgl.opengl.*;
 import org.lwjgl.stb.STBTTBakedChar;
 
 import java.util.ArrayList;
@@ -42,6 +39,7 @@ public class TextRenderer {
 
     public void renderText(Font font, String text, float x, float y, float scale, Alignment alignment) {
         // Bind the font texture
+        GL30C.glActiveTexture(GL13C.GL_TEXTURE0);
         GL30C.glBindTexture(GL30C.GL_TEXTURE_2D, font.textureID());
 
         // Prepare to accumulate the vertices and texture coordinates for all characters
@@ -59,13 +57,11 @@ public class TextRenderer {
             verticesArray[i] = verticesList.get(i);
         }
 
-        // Update VBO with the accumulated vertices data
+        GL30C.glBindVertexArray(vaoID);
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
         GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, verticesArray, GL15C.GL_DYNAMIC_DRAW);
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
 
-        // Render the accumulated text
-        GL30C.glBindVertexArray(vaoID);
         GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, verticesArray.length / 4);
         GL30C.glBindVertexArray(0);
     }

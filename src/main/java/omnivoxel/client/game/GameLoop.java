@@ -92,14 +92,17 @@ public final class GameLoop {
 
             textShaderProgram.bind();
 
-            textShaderProgram.addUniformLocation("textColor");
             textShaderProgram.setUniform("textColor", 1f, 1f, 1f);
+            textShaderProgram.setUniform("textTexture", 0);
 
             textShaderProgram.addUniformLocation("projection");
 
             textShaderProgram.unbind();
 
-            window.addMatrixListener(w -> textShaderProgram.setUniform("projection", new Matrix4f().ortho(0.0f, w.getWidth(), w.getHeight(), 0.0f, -1.0f, 1.0f)));
+            window.addMatrixListener(w -> {
+                textShaderProgram.setUniform("projection", new Matrix4f().ortho(0.0f, w.getWidth(), w.getHeight(), 0.0f, -1.0f, 1.0f));
+                gameState.setItem("shouldUpdateView", true);
+            });
 
             gameState.setItem("shouldUpdateView", true);
             gameState.setItem("shouldUpdateVisibleMeshes", true);
@@ -171,7 +174,11 @@ public final class GameLoop {
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
                 shaderProgram.setUniform("meshType", 1);
                 Map<String, ClientEntity> entityMeshes = world.getEntities();
-                entityMeshes.forEach((id, clientEntity) -> renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX));
+                entityMeshes.forEach((id, clientEntity) -> {
+                    if (camera.getFrustum().isEntityInFrustum(clientEntity)) {
+                        renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
+                    }
+                });
 
                 List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>((int) (solidRenderedChunks.size() * (camera.getFOV() / 360.0)));
                 for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
@@ -225,8 +232,6 @@ public final class GameLoop {
                     PositionedChunk positionedChunk = transparentRenderedChunksInFrustum.get(i);
                     renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), true);
                 }
-                GL11C.glDisable(GL11C.GL_BLEND);
-                GL11C.glEnable(GL11C.GL_CULL_FACE);
 
                 // Bufferize chunks
                 // TODO: Make the bufferizer actually use the endTime
@@ -241,6 +246,8 @@ public final class GameLoop {
                 double fps = 1000d * timeHistory.length / (timeHistory[timeIndex % timeHistory.length] - timeHistory[(timeIndex + 1) % timeHistory.length]);
 
                 time = GLFW.glfwGetTime();
+
+                shaderProgram.setUniform("time", (float) time);
                 if (time - secondTime > 0.5) {
                     secondTime += 0.5;
 
@@ -257,12 +264,41 @@ public final class GameLoop {
                 }
 
                 if (gameState.getItem("seeDebug", Boolean.class)) {
-                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format("FPS: %d\nPosition: %.2f %.2f %.2f\nChunks:\n\t- Rendered: %d/%d/%d\n\t- Loaded: %d\n\t- Should be loaded: %d\n\t- Bufferized Chunks: %d\n\t- Missing Chunks: %d\nNetwork:\n\t- Inflight Requests: %d\n\t- Chunk Requests Sent: %d\n\t- Chunk Requests Received: %d\n", (int) fps, camera.getX(), camera.getY(), camera.getZ(), solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(), solidRenderedChunksInFrustum.size(), transparentRenderedChunksInFrustum.size(), world.size(), totalRenderedChunks, bufferizedChunkCount, gameState.getItem("missing_chunks", Integer.class), gameState.getItem("inflight_requests", Integer.class), gameState.getItem("chunk_requests_sent", Integer.class), gameState.getItem("chunk_requests_received", Integer.class));
+                    String leftDebugText = ConstantGameSettings.DEFAULT_WINDOW_TITLE + "\n" + String.format(
+                            """
+                                    FPS: %d
+                                    Position: %.2f %.2f %.2f
+                                    Chunks:
+                                    \t- Rendered: %d/%d/%d
+                                    \t- Loaded: %d
+                                    \t- Should be loaded: %d
+                                    \t- Bufferized Chunks: %d
+                                    \t- Missing Chunks: %d
+                                    Network:
+                                    \t- Inflight Requests: %d
+                                    \t- Chunk Requests Sent: %d
+                                    \t- Chunk Requests Received: %d
+                                    Entities:
+                                    \t- Rendered: %d
+                                    """,
+                            (int) fps,
+                            camera.getX(),
+                            camera.getY(),
+                            camera.getZ(),
+                            solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(),
+                            solidRenderedChunksInFrustum.size(),
+                            transparentRenderedChunksInFrustum.size(),
+                            world.size(),
+                            totalRenderedChunks,
+                            bufferizedChunkCount,
+                            gameState.getItem("missing_chunks", Integer.class),
+                            gameState.getItem("inflight_requests", Integer.class),
+                            gameState.getItem("chunk_requests_sent", Integer.class),
+                            gameState.getItem("chunk_requests_received", Integer.class),
+                            entityMeshes.size()
+                    );
 
                     textShaderProgram.bind();
-
-                    GL11.glEnable(GL11.GL_BLEND);
-                    GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
 
@@ -270,12 +306,9 @@ public final class GameLoop {
                     textRenderer.renderText(font, rightDebugText, window.getWidth() - 4, 4, 0.6f, Alignment.RIGHT);
 
                     GL30C.glBindVertexArray(0);
-
-                    GL11.glEnable(GL11.GL_DEPTH_TEST);
-
-                    GL11.glDisable(GL30C.GL_BLEND);
                 }
 
+                GL11C.glDisable(GL11C.GL_BLEND);
                 GL11C.glDepthMask(true);
 
                 client.tick();

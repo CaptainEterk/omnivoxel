@@ -8,18 +8,19 @@ import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.math.Position3D;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.ServerWorld;
-import omnivoxel.server.client.chunk.result.ChunkResult;
-import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.block.PriorityServerBlock;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.biome.Biome;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
 import omnivoxel.server.client.chunk.blockService.BlockService;
+import omnivoxel.server.client.chunk.result.ChunkResult;
+import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.structure.Structure;
 import omnivoxel.server.client.structure.StructureBoundingBox;
 import omnivoxel.server.client.structure.StructureSeed;
 import omnivoxel.server.client.structure.StructureService;
+import omnivoxel.world.chunk.Chunk;
 
 import java.util.Map;
 import java.util.Set;
@@ -55,34 +56,54 @@ public class ChunkGenerator {
     public void generateChunk(ChunkTask task) {
         Position3D position3D = new Position3D(task.x(), task.y(), task.z());
 
+        ChunkResult chunkResult;
+        Chunk c = world.get(position3D);
         GeneratedChunk chunk = new EmptyGeneratedChunk();
-
-        if (worldDataService.shouldGenerateChunk(position3D)) {
-            generateSurroundingChunks(position3D, 1);
-
+        if (c != null) {
             for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
-                int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
                 for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
-                    int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
-
-                    ClimateVector climateVector2D = worldDataService.getClimateVector2D(worldX, worldZ);
                     for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
-                        int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
 
                         boolean border =
                                 x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
                                         y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
                                         z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
 
-                        chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, worldX, worldY, worldZ, border, climateVector2D));
+                        chunk = chunk.setBlock(x, y, z, border ? world.getBlock(position3D, x, y, z) : c.getBlock(x, y, z));
                     }
                 }
             }
+
+            chunkResult = GeneratedChunk.getResult(chunk);
+        } else {
+            if (worldDataService.shouldGenerateChunk(position3D)) {
+                generateSurroundingChunks(position3D, 1);
+
+                for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
+                    int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
+                    for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
+                        int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
+
+                        ClimateVector climateVector2D = worldDataService.getClimateVector2D(worldX, worldZ);
+                        for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
+                            int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
+
+                            boolean border =
+                                    x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
+                                            y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
+                                            z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
+
+                            chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, worldX, worldY, worldZ, border, climateVector2D));
+                        }
+                    }
+                }
+            }
+
+            chunkResult = GeneratedChunk.getResult(chunk);
+            world.add(position3D, chunkResult.chunk());
         }
 
-        ChunkResult chunkResult = GeneratedChunk.getResult(chunk);
         sendChunkBytes(task.ctx(), task.x(), task.y(), task.z(), chunkResult.bytes());
-        world.add(position3D, chunkResult.chunk());
     }
 
     private void generateSurroundingChunks(Position3D position3D, int size) {

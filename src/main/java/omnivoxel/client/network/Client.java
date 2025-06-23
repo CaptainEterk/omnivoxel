@@ -239,8 +239,6 @@ public final class Client {
         entity.setMeshData(new ModelEntityMeshData(entity).setModel(new Matrix4f().translate(x, y, z)));
         entities.put(id, entity);
 
-        logger.info(String.format("Added entity: %s at (%.2f, %.2f, %.2f)", id, x, y, z));
-
         meshDataGenerators.submit(new EntityMeshDataTask(entity));
     }
 

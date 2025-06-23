@@ -1,21 +1,21 @@
 package omnivoxel.world.chunk;
 
-import omnivoxel.world.block.Block;
+import omnivoxel.server.client.block.ServerBlock;
 
 public class SingleBlockChunk implements Chunk {
-    private final Block block;
+    private final ServerBlock block;
 
-    public SingleBlockChunk(Block block) {
+    public SingleBlockChunk(ServerBlock block) {
         this.block = block;
     }
 
     @Override
-    public Block getBlock(int x, int y, int z) {
+    public ServerBlock getBlock(int x, int y, int z) {
         return block;
     }
 
     @Override
-    public Chunk setBlock(int x, int y, int z, Block block) {
+    public Chunk setBlock(int x, int y, int z, ServerBlock block) {
         return new ModifiedChunk(x, y, z, block, this);
     }
 }

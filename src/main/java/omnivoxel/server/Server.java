@@ -34,7 +34,7 @@ public class Server {
 
     private final WorkerThreadPool<ChunkTask> workerThreadPool;
 
-    public Server(long seed, ServerWorld world) throws IOException {
+    public Server(long seed, ServerWorld world, BlockService blockService) throws IOException {
         this.clients = new ConcurrentHashMap<>();
 
 //        Path worldPath = Paths.get("run/.worlds");
@@ -54,9 +54,23 @@ public class Server {
 //        }
 
         Map<Position3D, PriorityServerBlock> queuedBlocks = new ConcurrentHashMap<>();
-        BlockService blockService = new BlockService();
 
-        BiomeService biomeService = new BiomeService(Map.of(new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0), new DesertBiome(blockService), new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0), new JungleBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0), new TundraBiome(blockService), new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0), new TaigaBiome(blockService), new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0), new PlainsBiome(blockService)));
+        BiomeService biomeService = new BiomeService(
+                Map.of(
+                        new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0),
+                        new DesertBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0),
+                        new JungleBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0),
+                        new TundraBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
+                        new TaigaBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
+                        new PlainsBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.4, 0.5, 0.0),
+                        new ForestBiome(blockService)
+                )
+        );
         workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(new BasicWorldDataService(new Random(seed), world, biomeService, blockService, queuedBlocks), blockService, biomeService, world)::generateChunk);
     }
 

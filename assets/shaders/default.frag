@@ -11,6 +11,7 @@ in vec3 position;
 in vec3 lighting;
 in float ao;
 in vec3 vNormal;
+flat in uint type;
 
 out vec4 FragColor;
 
@@ -28,14 +29,14 @@ uniform sampler2D texture1;
 void main() {
     if (meshType == 0u) {
         FragColor = texture(texture1, TexCoord / TEXTURE_SIZE);
-        if (FragColor.a == 0) discard;
+                if (FragColor.a == 0) discard;
 
         float distance = length(position-cameraPosition);
         float fogFactor = (fogFar - distance) / (fogFar - fogNear);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
 
         // TODO: Make this take in maybe a block type?
-        if (FragColor.a < 1) {
+        if (type == 1u) {
             vec3 faceNormal = vec3(0.0, 1.0, 0.0);
 
             float fresnel = abs(dot(vNormal, faceNormal));
