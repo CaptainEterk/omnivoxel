@@ -67,8 +67,8 @@ public class Server {
                         new TundraBiome(blockService),
                         new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
                         new TaigaBiome(blockService),
-//                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
-//                        new PlainsBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
+                        new PlainsBiome(blockService),
                         new ClimateVector(0.0, 0.0, 0.4, 0.5, 0.0),
                         new ForestBiome(blockService)
                 )

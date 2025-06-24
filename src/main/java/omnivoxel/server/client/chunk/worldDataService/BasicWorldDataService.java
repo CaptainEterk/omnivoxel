@@ -38,8 +38,8 @@ public class BasicWorldDataService implements ServerWorldDataService {
 
     public BasicWorldDataService(Random random, ServerWorld world, BiomeService biomeService, BlockService blockService, Map<Position3D, PriorityServerBlock> queuedBlocks) {
         this.continentalnessNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
-        this.temperatureNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.0001);
-        this.humidityNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
+        this.temperatureNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.01);
+        this.humidityNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.01);
         this.erosionNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 2, 0.25, 2.5, 0.001);
         this.ridgesNoise = new FractionalBrownianNoise2D(new PerlinNoise(random.nextLong()), 5, 0.4, 2.5, 0.0025);
         this.depthNoise = new FractionalBrownianNoise3D(new PerlinNoise3D(random.nextLong()), 1, 100, 2, 0.01);
