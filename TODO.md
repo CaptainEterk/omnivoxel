@@ -3,11 +3,14 @@
   - [ ] Custom textures
   - [ ] Custom blocks
   - [ ] Custom entities
+  - [ ] World Generation
+    - [X] Structures
+    - [ ] More restriction options
 - [ ] Rendering
   - [ ] Basic Rendering
     - [X] World Renderer
     - [X] Text Renderer
-    - [ ] Model Renderer
+    - [X] Entity Renderer
     - [ ] Particle Renderer
   - [ ] Advanced Rendering
     - [ ] Abstract Rendering Pipeline
