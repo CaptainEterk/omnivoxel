@@ -1,17 +1,16 @@
 package omnivoxel.world.chunk;
 
 import omnivoxel.server.ConstantServerSettings;
-import omnivoxel.server.client.block.ServerBlock;
 
-public class ModifiedChunk implements Chunk {
+public class ModifiedChunk<B> implements Chunk<B> {
     private final int x;
     private final int y;
     private final int z;
-    private final ServerBlock block;
-    private final Chunk chunk;
+    private final B block;
+    private final Chunk<B> chunk;
     private final int modificationCount;
 
-    public ModifiedChunk(int x, int y, int z, ServerBlock block, Chunk chunk, int modificationCount) {
+    public ModifiedChunk(int x, int y, int z, B block, Chunk<B> chunk, int modificationCount) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -20,12 +19,12 @@ public class ModifiedChunk implements Chunk {
         this.modificationCount = modificationCount;
     }
 
-    public ModifiedChunk(int x, int y, int z, ServerBlock block, Chunk chunk) {
+    public ModifiedChunk(int x, int y, int z, B block, Chunk<B> chunk) {
         this(x, y, z, block, chunk, 1);
     }
 
     @Override
-    public ServerBlock getBlock(int x, int y, int z) {
+    public B getBlock(int x, int y, int z) {
         if (x == this.x && y == this.y && z == this.z) {
             return block;
         }
@@ -33,10 +32,10 @@ public class ModifiedChunk implements Chunk {
     }
 
     @Override
-    public Chunk setBlock(int x, int y, int z, ServerBlock block) {
+    public Chunk<B> setBlock(int x, int y, int z, B block) {
         if (modificationCount > ConstantServerSettings.CHUNK_MODIFICATION_GENERALIZATION_LIMIT) {
-            return new GeneralChunk(this);
+            return new GeneralChunk<>(this);
         }
-        return new ModifiedChunk(x, y, z, block, this, modificationCount + 1);
+        return new ModifiedChunk<>(x, y, z, block, this, modificationCount + 1);
     }
 }

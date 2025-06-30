@@ -9,7 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import omnivoxel.server.client.chunk.blockService.BlockService;
+import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 
 import java.io.IOException;
 
@@ -21,16 +21,16 @@ public class ServerLauncher {
     }
 
     public static void main(String[] args) {
-        new ServerLauncher().run(2L);
+        new ServerLauncher().run(100L);
     }
 
     public void run(long seed) {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-        BlockService blockService = new BlockService();
+        ServerBlockService blockService = new ServerBlockService();
 
-        ServerWorld world = new ServerWorld(blockService.getBlock("omnivoxel:air", null));
+        ServerWorld world = new ServerWorld(blockService.getBlock("omnivoxel:air"));
 
         try {
             ServerHandler serverHandler = new ServerHandler(new Server(seed, world, blockService));

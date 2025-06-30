@@ -6,7 +6,7 @@ import omnivoxel.server.entity.mob.MobEntity;
 import omnivoxel.util.bytes.ByteUtils;
 
 public class PigEntity extends MobEntity {
-    private final static Hitbox hitbox = new Hitbox(0, 0, 0, 1, 1, 2);
+    private final static Hitbox hitbox = new Hitbox(0, 0, 0, 1, 1, 2, 2, 2, 3);
 
     public PigEntity(String name) {
         super(name, hitbox);

@@ -1,6 +1,6 @@
 package omnivoxel.client.game.position;
 
-import omnivoxel.math.Position3D;
+import omnivoxel.util.math.Position3D;
 
 import java.util.Objects;
 

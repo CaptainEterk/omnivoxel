@@ -1,8 +1,8 @@
 package omnivoxel.server.client.structure;
 
-import omnivoxel.math.Position3D;
 import omnivoxel.server.client.block.PriorityServerBlock;
-import omnivoxel.server.client.chunk.blockService.BlockService;
+import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.util.math.Position3D;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -24,7 +24,7 @@ public abstract class Structure {
         return origin;
     }
 
-    abstract public @NotNull Structure initBlocks(BlockService blockService);
+    abstract public @NotNull Structure initBlocks(ServerBlockService blockService);
 
     abstract public @NotNull Map<Position3D, PriorityServerBlock> getBlocks();
 }

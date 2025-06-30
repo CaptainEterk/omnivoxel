@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ModelEntityMeshData implements EntityMeshData {
-    private Matrix4f model = new Matrix4f();
     private final ClientEntity entity;
     private final List<EntityMeshData> children;
+    private Matrix4f model = new Matrix4f();
 
     public ModelEntityMeshData(ClientEntity entity) {
         this.entity = entity;

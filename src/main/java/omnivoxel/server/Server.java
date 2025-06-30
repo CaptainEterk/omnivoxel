@@ -1,22 +1,20 @@
 package omnivoxel.server;
 
 import core.biomes.*;
-import core.entities.PigEntity;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.math.Position3D;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.PriorityServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.biomeService.BiomeService;
 import omnivoxel.server.client.chunk.biomeService.climate.ClimateVector;
-import omnivoxel.server.client.chunk.blockService.BlockService;
+import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.BasicWorldDataService;
-import omnivoxel.server.entity.Entity;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
+import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 
 import java.io.IOException;
@@ -36,7 +34,7 @@ public class Server {
 
     private final WorkerThreadPool<ChunkTask> workerThreadPool;
 
-    public Server(long seed, ServerWorld world, BlockService blockService) throws IOException {
+    public Server(long seed, ServerWorld world, ServerBlockService blockService) throws IOException {
         this.clients = new ConcurrentHashMap<>();
 
 //        Path worldPath = Paths.get("run/.worlds");
@@ -59,18 +57,20 @@ public class Server {
 
         BiomeService biomeService = new BiomeService(
                 Map.of(
-                        new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0),
-                        new DesertBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0),
-                        new JungleBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0),
-                        new TundraBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0),
-                        new TaigaBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0),
-                        new PlainsBiome(blockService),
-                        new ClimateVector(0.0, 0.0, 0.4, 0.5, 0.0),
-                        new ForestBiome(blockService)
+//                        new ClimateVector(0.0, 0.0, 0.7, 0.3, 0.0, 0.0),
+//                        new DesertBiome(blockService),
+//                        new ClimateVector(0.0, 0.0, 0.7, 0.7, 0.0, 0.0),
+//                        new JungleBiome(blockService),
+//                        new ClimateVector(0.0, 0.0, 0.3, 0.3, 0.0, 0.0),
+//                        new TundraBiome(blockService),
+//                        new ClimateVector(0.0, 0.0, 0.3, 0.7, 0.0, 0.0),
+//                        new TaigaBiome(blockService),
+//                        new ClimateVector(0.0, 0.0, 0.5, 0.5, 0.0, 0.0),
+//                        new PlainsBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.4, 0.5, 0.0, 0.0),
+                        new ForestBiome(blockService),
+                        new ClimateVector(0.0, 0.0, 0.0, 0.0, 0.0, 0.5),
+                        new TempCaveBiome(blockService)
                 )
         );
         Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
@@ -138,12 +138,6 @@ public class Server {
 
     private void queueChunkTask(ChunkTask chunkTask) throws InterruptedException {
         workerThreadPool.submit(chunkTask);
-
-        Entity entity = new PigEntity();
-        entity.set(chunkTask.x(), chunkTask.y(), chunkTask.z());
-        byte[] bytes = entity.getBytes();
-
-        clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.NEW_ENTITY, bytes));
     }
 
     private void registerClient(ChannelHandlerContext ctx, ByteBuf byteBuf) {

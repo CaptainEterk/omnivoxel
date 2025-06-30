@@ -48,4 +48,15 @@ public class ClimateVector {
     public double[] getArray() {
         return pos;
     }
+
+    public ClimateVector copyAndAdd(ClimateVector climateVector, int... indexes) {
+        double[] values = new double[indexes.length + climateVector.size()];
+        for (int i = 0; i < indexes.length; i++) {
+            values[i] = pos[indexes[i]];
+        }
+        for (int i = 0; i < climateVector.size(); i++) {
+            values[i + indexes.length] = climateVector.get(i);
+        }
+        return new ClimateVector(values);
+    }
 }

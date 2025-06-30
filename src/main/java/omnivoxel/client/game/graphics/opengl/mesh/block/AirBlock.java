@@ -1,8 +1,8 @@
 package omnivoxel.client.game.graphics.opengl.mesh.block;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
+import omnivoxel.client.game.graphics.opengl.shape.Shape;
 
 public final class AirBlock extends Block {
     private final Shape shape = new Shape() {

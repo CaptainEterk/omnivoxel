@@ -11,7 +11,6 @@ import omnivoxel.client.game.graphics.opengl.mesh.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
-import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ModelEntityMeshData;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.world.ClientWorld;
@@ -20,21 +19,22 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.client.network.request.Request;
-import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
+import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public final class Client {
     private final Map<String, ClientEntity> entities;
@@ -43,11 +43,11 @@ public final class Client {
     private final Logger logger;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
     private final Queue<Position3D> queuedChunkTasks = new ArrayDeque<>();
+    private final ClientWorld world;
     private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
     private long lastFlushedTime = System.currentTimeMillis();
-    private final ClientWorld world;
 
     public Client(byte[] clientID, ClientWorldDataService worldDataService, Logger logger, ClientWorld world) {
         this.clientID = clientID;
@@ -321,7 +321,8 @@ public final class Client {
         logger.info("Client shutdown");
     }
 
-    public void setListeners(BiConsumer<Position3D, MeshData> loadChunk, Consumer<ClientEntity> loadEntity, IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData) {
-        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(loadChunk, loadEntity, worldDataService, entityMeshDefinitionCache, queuedEntityMeshData)::generateMeshData);
+    // TODO: This is messy. Fix it
+    public void setListeners(IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData) {
+        meshDataGenerators = new WorkerThreadPool<>(ConstantGameSettings.MAX_MESH_GENERATOR_THREADS, new MeshDataGenerator(worldDataService, entityMeshDefinitionCache, queuedEntityMeshData, world)::generateMeshData);
     }
 }

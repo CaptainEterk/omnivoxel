@@ -14,10 +14,10 @@ public class ClimateBlock extends Block {
     public ClimateBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
-                2, 0,
-                3, 0,
-                3, 1,
-                2, 1
+                15, 0,
+                16, 0,
+                16, 1,
+                15, 1
         };
     }
 

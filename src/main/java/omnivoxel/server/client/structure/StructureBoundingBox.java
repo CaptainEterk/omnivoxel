@@ -1,7 +1,7 @@
 package omnivoxel.server.client.structure;
 
-import omnivoxel.math.Position3D;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
+import omnivoxel.util.math.Position3D;
 
 public class StructureBoundingBox {
     protected final int width;

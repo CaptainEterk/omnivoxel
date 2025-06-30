@@ -14,10 +14,10 @@ public class SnowBlock extends Block {
     public SnowBlock(IDCache<String, Shape> shapeCache) {
         this.shape = shapeCache.get("omnivoxel:block_shape", BlockShape.class);
         this.uvCoords = new int[]{
-                4, 2,
                 4, 3,
                 3, 3,
-                3, 2
+                3, 2,
+                4, 2
         };
     }
 

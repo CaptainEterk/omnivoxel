@@ -1,4 +1,4 @@
-package omnivoxel.math;
+package omnivoxel.util.math;
 
 public record Position3D(int x, int y, int z) {
     @Override

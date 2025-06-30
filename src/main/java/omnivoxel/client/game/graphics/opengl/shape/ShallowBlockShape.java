@@ -1,8 +1,8 @@
 package omnivoxel.client.game.graphics.opengl.shape;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
-import omnivoxel.client.game.graphics.opengl.shape.util.ShapeHelper;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
+import omnivoxel.client.game.graphics.opengl.shape.util.ShapeHelper;
 
 public class ShallowBlockShape implements Shape {
     private final Vertex[] topFace;

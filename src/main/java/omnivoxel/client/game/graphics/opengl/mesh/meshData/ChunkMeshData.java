@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.meshData;
 
-import omnivoxel.math.Position3D;
+import omnivoxel.util.math.Position3D;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;

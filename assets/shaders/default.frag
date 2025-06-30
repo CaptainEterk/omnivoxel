@@ -29,7 +29,7 @@ uniform sampler2D texture1;
 void main() {
     if (meshType == 0u) {
         FragColor = texture(texture1, TexCoord / TEXTURE_SIZE);
-                if (FragColor.a == 0) discard;
+        if (FragColor.a == 0) discard;
 
         float distance = length(position-cameraPosition);
         float fogFactor = (fogFar - distance) / (fogFar - fogNear);

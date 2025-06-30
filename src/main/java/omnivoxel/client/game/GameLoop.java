@@ -22,10 +22,11 @@ import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
-import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.util.log.Logger;
+import omnivoxel.util.math.Position3D;
 import omnivoxel.util.time.Timer;
+import omnivoxel.world.block.Block;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.*;
@@ -280,6 +281,8 @@ public final class GameLoop {
                                     \t- Chunk Requests Received: %d
                                     Entities:
                                     \t- Rendered: %d
+                                    Collision detection:
+                                    \t- Block: %s
                                     """,
                             (int) fps,
                             camera.getX(),
@@ -295,7 +298,8 @@ public final class GameLoop {
                             gameState.getItem("inflight_requests", Integer.class),
                             gameState.getItem("chunk_requests_sent", Integer.class),
                             gameState.getItem("chunk_requests_received", Integer.class),
-                            entityMeshes.size()
+                            entityMeshes.size(),
+                            gameState.getItem("current_block", Block.class)
                     );
 
                     textShaderProgram.bind();
@@ -475,7 +479,8 @@ public final class GameLoop {
             int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
 
             int renderDistance = settings.getIntSetting("render_distance", 100);
-            int squaredRenderDistance = renderDistance * renderDistance;
+            int rdChunks = renderDistance / ConstantGameSettings.CHUNK_SIZE;
+            int squaredRenderDistance = rdChunks * rdChunks;
 
             List<DistanceChunk> chunks = calculateRenderedChunks(renderDistance);
             world.freeAllChunksNotIn(position3D -> {

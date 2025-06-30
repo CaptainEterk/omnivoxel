@@ -56,7 +56,7 @@ public class Launcher {
         clientWorldDataService.addBlock(new SnowBlock(shapeCache));
         clientWorldDataService.addBlock(new GlassBlock(shapeCache));
         clientWorldDataService.addBlock(new IceBlock(shapeCache));
-        clientWorldDataService.addBlock(new SnowDirtBlock(shapeCache));
+        clientWorldDataService.addBlock(new SnowGrassBlock(shapeCache));
         clientWorldDataService.addBlock(new LogBlock(shapeCache));
         clientWorldDataService.addBlock(new LeafBlock(shapeCache));
 
@@ -82,11 +82,11 @@ public class Launcher {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            client.setListeners(world::add, world::addEntity, world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData());
+            client.setListeners(world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData());
             AtomicBoolean gameRunning = new AtomicBoolean(true);
             BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingDeque<>();
 
-            PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState);
+            PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), gameState), settings, contextTasks, gameState, world);
 
             GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, gameState, settings, new TextRenderer());
 

@@ -1,7 +1,7 @@
 package omnivoxel.client.game.graphics.opengl.mesh.meshData;
 
 import omnivoxel.client.game.graphics.opengl.mesh.util.PriorityUtils;
-import omnivoxel.math.Position3D;
+import omnivoxel.util.math.Position3D;
 import org.jetbrains.annotations.NotNull;
 
 public record PriorityMeshData(Position3D position, MeshData meshData) implements Comparable<PriorityMeshData> {

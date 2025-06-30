@@ -11,9 +11,11 @@ import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.state.GameState;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.request.ChunkRequest;
-import omnivoxel.math.Position3D;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.util.cache.IDCache;
+import omnivoxel.util.math.Position3D;
+import omnivoxel.world.block.Block;
+import omnivoxel.world.chunk.Chunk;
 import org.lwjgl.opengl.GL30C;
 
 import java.util.Map;
@@ -32,11 +34,11 @@ public class ClientWorld {
     private final Set<Position3D> newChunks;
     private final GameState gameState;
     private final Map<Position3D, ClientWorldChunk> chunks;
-    private Client client;
-    private boolean requesting = true;
     private final Map<String, ClientEntity> entities;
     private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
     private final Set<String> queuedEntityMeshData;
+    private Client client;
+    private boolean requesting = true;
 
     public ClientWorld(GameState gameState) {
         this.gameState = gameState;
@@ -166,7 +168,7 @@ public class ClientWorld {
         Position3D[] positions = getKeys();
         for (Position3D position : positions) {
             if (!predicate.test(position)) {
-                ChunkMesh mesh = get(position, false).getMesh();
+                ChunkMesh mesh = chunks.remove(position).getMesh();
                 if (mesh != null) {
                     GL30C.glDeleteVertexArrays(mesh.solidVAO());
                     GL30C.glDeleteBuffers(mesh.solidVBO());
@@ -201,5 +203,14 @@ public class ClientWorld {
 
     public void removeEntity(String entityID) {
         entities.remove(entityID);
+    }
+
+    public void addChunkData(Position3D position3D, Chunk<Block> chunk) {
+        ClientWorldChunk clientWorldChunk = chunks.get(position3D);
+        if (clientWorldChunk == null) {
+            chunks.put(position3D, new ClientWorldChunk(chunk));
+        } else {
+            clientWorldChunk.setChunkData(chunk);
+        }
     }
 }

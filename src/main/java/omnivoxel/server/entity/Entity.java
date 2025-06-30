@@ -3,13 +3,14 @@ package omnivoxel.server.entity;
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.hitbox.Hitbox;
-import omnivoxel.math.FloatPosition3D;
 import omnivoxel.server.client.ServerItem;
+import omnivoxel.util.math.FloatPosition3D;
 
 import java.security.SecureRandom;
 
 public abstract class Entity implements ServerItem {
     protected final float friction = getFriction();
+    protected final byte[] entityID;
     private final Hitbox hitbox;
     protected float x;
     protected float y;
@@ -17,9 +18,8 @@ public abstract class Entity implements ServerItem {
     protected float velocityX;
     protected float velocityY;
     protected float velocityZ;
-    private MeshData meshData;
     protected EntityMesh mesh;
-    protected final byte[] entityID;
+    private MeshData meshData;
 
     protected Entity(Hitbox hitbox) {
         this.hitbox = hitbox;
@@ -100,6 +100,10 @@ public abstract class Entity implements ServerItem {
         return meshData;
     }
 
+    public void setMeshData(MeshData meshData) {
+        this.meshData = meshData;
+    }
+
     public Hitbox getHitbox() {
         return hitbox;
     }
@@ -110,10 +114,6 @@ public abstract class Entity implements ServerItem {
 
     public void setMesh(EntityMesh mesh) {
         this.mesh = mesh;
-    }
-
-    public void setMeshData(MeshData meshData) {
-        this.meshData = meshData;
     }
 
     public FloatPosition3D getPosition() {

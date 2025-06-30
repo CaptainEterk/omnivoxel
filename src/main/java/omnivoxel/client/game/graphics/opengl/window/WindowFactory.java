@@ -45,7 +45,7 @@ public final class WindowFactory {
         GLFW.glfwMakeContextCurrent(window);
 
         // Enable v-sync
-        GLFW.glfwSwapInterval(0);
+        GLFW.glfwSwapInterval(1);
 
         /*
          This line is critical for LWJGL's interoperation with GLFW's OpenGL context,

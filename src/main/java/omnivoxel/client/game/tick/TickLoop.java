@@ -1,10 +1,10 @@
 package omnivoxel.client.game.tick;
 
-import omnivoxel.client.game.player.PlayerController;
-import omnivoxel.client.game.graphics.opengl.mesh.util.PriorityUtils;
 import omnivoxel.client.game.graphics.opengl.input.KeyInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseButtonInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseInput;
+import omnivoxel.client.game.graphics.opengl.mesh.util.PriorityUtils;
+import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.network.Client;
 
 import java.util.concurrent.BlockingQueue;

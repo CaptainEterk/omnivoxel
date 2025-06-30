@@ -26,7 +26,12 @@ public class ClientWorldDataService {
             if (state == null) {
                 return block;
             }
-            return blocks.computeIfAbsent(state, s -> new BlockStateWrapper(block, s));
+            Block b = blocks.get(state);
+            if (b == null) {
+                b = new BlockStateWrapper(block, state);
+                blocks.put(state, b);
+            }
+            return b;
         }
     }
 }

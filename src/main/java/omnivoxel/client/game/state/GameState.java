@@ -3,8 +3,7 @@ package omnivoxel.client.game.state;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class
-GameState {
+public class GameState {
     private final Map<String, Object> state = new ConcurrentHashMap<>();
 
     public <T> void setItem(String key, T value) {
@@ -15,6 +14,9 @@ GameState {
         Object value = state.get(key);
         if (valueType.isInstance(value)) {
             return valueType.cast(value);
+        }
+        if (value == null) {
+            return null;
         }
         throw new IllegalArgumentException("Invalid type for key: " + key);
     }

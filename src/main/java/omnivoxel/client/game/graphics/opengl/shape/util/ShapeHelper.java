@@ -1,8 +1,8 @@
 package omnivoxel.client.game.graphics.opengl.shape.util;
 
-import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
+import omnivoxel.client.game.settings.ConstantGameSettings;
 
 public class ShapeHelper {
     public static final float PIXEL = 0.0625f;         // Precision of 0.0625 (1/16)

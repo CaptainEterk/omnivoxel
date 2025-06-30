@@ -1,9 +1,7 @@
 package omnivoxel.world.chunk;
 
-import omnivoxel.server.client.block.ServerBlock;
+public interface Chunk<B> {
+    B getBlock(int x, int y, int z);
 
-public interface Chunk {
-    ServerBlock getBlock(int x, int y, int z);
-
-    Chunk setBlock(int x, int y, int z, ServerBlock block);
+    Chunk<B> setBlock(int x, int y, int z, B block);
 }

@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class GeneratedChunk {
-    private static final ChunkResult emptyChunk = new ChunkResult(new byte[]{0, 1, 0, 13, 111, 109, 110, 105, 118, 111, 120, 101, 108, 58, 97, 105, 114, 0, 0, 0, 0, 0, 0, 0, 0, -103, -120}, new SingleBlockChunk(new ServerBlock("omnivoxel:air")));
+    private static final ChunkResult emptyChunk = new ChunkResult(new byte[]{0, 1, 0, 13, 111, 109, 110, 105, 118, 111, 120, 101, 108, 58, 97, 105, 114, 0, 0, 0, 0, 0, 0, 0, 0, -103, -120}, new SingleBlockChunk<>(new ServerBlock("omnivoxel:air")));
 
     public static ChunkResult getResult(GeneratedChunk generatedChunk) {
         if (generatedChunk instanceof EmptyGeneratedChunk) {
@@ -36,11 +36,11 @@ public abstract class GeneratedChunk {
             }
         }
 
-        Chunk chunkOut;
+        Chunk<ServerBlock> chunkOut;
         if (palette.size() == 1) {
-            chunkOut = new SingleBlockChunk(palette.getFirst());
+            chunkOut = new SingleBlockChunk<>(palette.getFirst());
         } else {
-            chunkOut = new GeneralChunk();
+            chunkOut = new GeneralChunk<>();
             for (int x = 0; x < ConstantGameSettings.CHUNK_WIDTH; x++) {
                 for (int z = 0; z < ConstantGameSettings.CHUNK_LENGTH; z++) {
                     for (int y = 0; y < ConstantGameSettings.CHUNK_HEIGHT; y++) {

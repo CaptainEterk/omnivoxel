@@ -1,7 +1,7 @@
 package omnivoxel.server.client.block;
 
-import omnivoxel.world.block.Block;
 import omnivoxel.server.client.ServerItem;
+import omnivoxel.world.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;

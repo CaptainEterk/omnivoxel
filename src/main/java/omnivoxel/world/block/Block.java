@@ -20,4 +20,9 @@ public final class Block {
     public int[] blockState() {
         return blockState;
     }
+
+    @Override
+    public String toString() {
+        return id;
+    }
 }

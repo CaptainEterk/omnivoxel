@@ -7,8 +7,12 @@ import java.util.List;
 
 public interface EntityMeshData extends MeshData {
     Matrix4f getModel();
+
     EntityMeshData setModel(Matrix4f model);
+
     void addChild(EntityMeshData entityMeshData);
+
     ClientEntity entity();
+
     List<EntityMeshData> children();
 }

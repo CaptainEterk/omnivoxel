@@ -1,24 +1,26 @@
 # TODO:
+
 - [ ] Mod support
-  - [ ] Custom textures
-  - [ ] Custom blocks
-  - [ ] Custom entities
-  - [ ] World Generation
-    - [X] Structures
-    - [ ] More restriction options
+    - [ ] Custom textures
+    - [ ] Custom blocks
+    - [ ] Custom entities
+    - [ ] World Generation
+        - [X] Structures
+        - [ ] More restriction options
 - [ ] Rendering
-  - [ ] Basic Rendering
-    - [X] World Renderer
-    - [X] Text Renderer
-    - [X] Entity Renderer
-    - [ ] Particle Renderer
-  - [ ] Advanced Rendering
-    - [ ] Abstract Rendering Pipeline
-      - [ ] World Renderer
-      - [ ] Text Renderer
-      - [ ] Model Renderer
-    - [ ] Custom Shaders
-      - [ ] Custom Shader Syntax so you can have multiple shaders for different things?
+    - [ ] Basic Rendering
+        - [X] World Renderer
+        - [X] Text Renderer
+        - [X] Entity Renderer
+        - [ ] Particle Renderer
+    - [ ] Advanced Rendering
+        - [ ] Abstract Rendering Pipeline
+            - [ ] World Renderer
+            - [ ] Text Renderer
+            - [ ] Entity Renderer
+        - [ ] Custom Shaders
+            - [ ] Custom Shader Syntax so you can have multiple shaders for different things?
 - [ ] Gameplay
-  - [ ] Collision Detection
-    - [ ] __\[HELPER\]__ Outlining blocks/chunks
+    - [X] Collision Detection (player)
+    - [ ] Collision Detection (entities)
+- [ ] __\[HELPER\]__ Outlining blocks/chunks

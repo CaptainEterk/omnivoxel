@@ -2,7 +2,7 @@ package omnivoxel.client.game.graphics.opengl.mesh.util;
 
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.math.Position3D;
+import omnivoxel.util.math.Position3D;
 
 public final class PriorityUtils {
     private static Camera camera;

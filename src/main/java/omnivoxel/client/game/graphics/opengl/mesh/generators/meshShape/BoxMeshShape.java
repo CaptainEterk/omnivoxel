@@ -9,7 +9,8 @@ import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
 import java.util.List;
 import java.util.Map;
 
-public record BoxMeshShape(float x, float y, float z, float width, float height, float length, BoxTextureShape textureShape) implements MeshShape {
+public record BoxMeshShape(float x, float y, float z, float width, float height, float length,
+                           BoxTextureShape textureShape) implements MeshShape {
     @Override
     public void generate(List<Float> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
         float hx = width / 2f;
@@ -25,27 +26,27 @@ public record BoxMeshShape(float x, float y, float z, float width, float height,
                 BlockFace.WEST
         };
 
-        int[] quadIndices = { 0, 2, 1, 0, 3, 2 }; // counter-clockwise
+        int[] quadIndices = {0, 2, 1, 0, 3, 2}; // counter-clockwise
 
         for (BlockFace face : faces) {
             float[][] corners = switch (face) {
-                case NORTH -> new float[][] {
-                        {-hx, -hy, -hz}, { hx, -hy, -hz}, { hx,  hy, -hz}, {-hx,  hy, -hz}
+                case NORTH -> new float[][]{
+                        {-hx, -hy, -hz}, {hx, -hy, -hz}, {hx, hy, -hz}, {-hx, hy, -hz}
                 };
-                case SOUTH -> new float[][] {
-                        { hx, -hy,  hz}, {-hx, -hy,  hz}, {-hx,  hy,  hz}, { hx,  hy,  hz}
+                case SOUTH -> new float[][]{
+                        {hx, -hy, hz}, {-hx, -hy, hz}, {-hx, hy, hz}, {hx, hy, hz}
                 };
-                case WEST -> new float[][] {
-                        {-hx, -hy,  hz}, {-hx, -hy, -hz}, {-hx,  hy, -hz}, {-hx,  hy,  hz}
+                case WEST -> new float[][]{
+                        {-hx, -hy, hz}, {-hx, -hy, -hz}, {-hx, hy, -hz}, {-hx, hy, hz}
                 };
-                case EAST -> new float[][] {
-                        { hx, -hy, -hz}, { hx, -hy,  hz}, { hx,  hy,  hz}, { hx,  hy, -hz}
+                case EAST -> new float[][]{
+                        {hx, -hy, -hz}, {hx, -hy, hz}, {hx, hy, hz}, {hx, hy, -hz}
                 };
-                case TOP -> new float[][] {
-                        {-hx,  hy, -hz}, { hx,  hy, -hz}, { hx,  hy,  hz}, {-hx,  hy,  hz}
+                case TOP -> new float[][]{
+                        {-hx, hy, -hz}, {hx, hy, -hz}, {hx, hy, hz}, {-hx, hy, hz}
                 };
-                case BOTTOM -> new float[][] {
-                        {-hx, -hy,  hz}, { hx, -hy,  hz}, { hx, -hy, -hz}, {-hx, -hy, -hz}
+                case BOTTOM -> new float[][]{
+                        {-hx, -hy, hz}, {hx, -hy, hz}, {hx, -hy, -hz}, {-hx, -hy, -hz}
                 };
                 default -> new float[][]{};
             };

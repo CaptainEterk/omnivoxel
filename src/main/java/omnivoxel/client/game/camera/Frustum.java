@@ -2,7 +2,7 @@ package omnivoxel.client.game.camera;
 
 import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.math.Position3D;
+import omnivoxel.util.math.Position3D;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 

@@ -13,9 +13,13 @@ import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.graphics.opengl.shape.Shape;
 import omnivoxel.client.game.graphics.opengl.shape.util.ShapeHelper;
 import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
-import omnivoxel.math.Position3D;
 import omnivoxel.util.IndexCalculator;
+import omnivoxel.util.math.Position3D;
+import omnivoxel.world.block.BlockService;
+import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.SingleBlockChunk;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -26,9 +30,12 @@ import java.util.Map;
 
 public class ChunkMeshDataGenerator {
     private final ClientWorldDataService worldDataService;
+    private final BlockService blockService;
+    private static final omnivoxel.world.block.Block air = new omnivoxel.world.block.Block("omnivoxel:air");
 
     public ChunkMeshDataGenerator(ClientWorldDataService worldDataService) {
         this.worldDataService = worldDataService;
+        blockService = new BlockService();
     }
 
     private void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, Vertex position, int tx, int ty, BlockFace normal, float r, float g, float b, int type) {
@@ -140,15 +147,24 @@ public class ChunkMeshDataGenerator {
 
         float temp_r, temp_g, temp_b;
 
-        if (block.getState() == null || block.getState().length != 3) {
+        if (block.getState() == null) {
             temp_r = 0;
             temp_g = 0;
             temp_b = 0;
-        } else {
+        } else if (block.getState().length == 1) {
+            temp_r = block.getState()[0] / 32f;
+            temp_g = block.getState()[0] / 32f;
+            temp_b = block.getState()[0] / 32f;
+        } else if (block.getState().length == 3) {
             temp_r = block.getState()[0] / 32f;
             temp_g = block.getState()[1] / 32f;
             temp_b = block.getState()[2] / 32f;
+        } else {
+            temp_r = 0;
+            temp_g = 0;
+            temp_b = 0;
         }
+
 
         for (int index : faceIndices) {
             Vertex pointPosition = faceVertices[index];
@@ -174,7 +190,7 @@ public class ChunkMeshDataGenerator {
         }
     }
 
-    private Block[] unpackChunk(ByteBuf byteBuf) {
+    private ChunkBlockData unpackChunk(ByteBuf byteBuf) {
         omnivoxel.world.block.Block[] palette = new omnivoxel.world.block.Block[byteBuf.getShort(20)];
         int index = 22;
         for (int i = 0; i < palette.length; i++) {
@@ -196,27 +212,53 @@ public class ChunkMeshDataGenerator {
             index += j;
         }
 
+        Chunk<omnivoxel.world.block.Block> chunk = new SingleBlockChunk<>(air);
         Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
-        for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED && index < byteBuf.readableBytes(); ) {
+        int x = 0, y = 0, z = 0;
+
+        for (int i = 0; i < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED; ) {
             int blockID = byteBuf.getInt(index);
             int blockCount = byteBuf.getInt(index + 4);
-            int oi = i;
-            for (; i < blockCount + oi; i++) {
-                blocks[i] = worldDataService.getBlock(palette[blockID].id(), palette[blockID].blockState());
-                if (palette[blockID].blockState() != null && !(blocks[i] instanceof BlockStateWrapper)) {
-                    blocks[i] = new BlockStateWrapper(blocks[i], palette[blockID].blockState());
-                    worldDataService.addBlock(blocks[i]);
+            index += 8;
+
+            for (int j = 0; j < blockCount && i + j < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED; j++) {
+                int blockIndex = i + j;
+
+                blocks[blockIndex] = worldDataService.getBlock(palette[blockID].id(), palette[blockID].blockState());
+                if (palette[blockID].blockState() != null && !(blocks[blockIndex] instanceof BlockStateWrapper)) {
+                    blocks[blockIndex] = new BlockStateWrapper(blocks[blockIndex], palette[blockID].blockState());
+                    worldDataService.addBlock(blocks[blockIndex]);
+                }
+
+                if (x < ConstantGameSettings.CHUNK_WIDTH &&
+                        y < ConstantGameSettings.CHUNK_HEIGHT &&
+                        z < ConstantGameSettings.CHUNK_LENGTH) {
+                    chunk = chunk.setBlock(x, y, z, blockService.getBlock(palette[blockID].id(), palette[blockID].blockState()));
+                }
+
+                y++;
+                if (y >= ConstantGameSettings.PADDED_HEIGHT) {
+                    y = 0;
+                    z++;
+                    if (z >= ConstantGameSettings.PADDED_LENGTH) {
+                        z = 0;
+                        x++;
+                    }
                 }
             }
-            index += 8;
+
+            i += blockCount;
         }
+
 
         byteBuf.release();
 
-        return blocks;
+        return new ChunkBlockData(chunk, blocks);
     }
 
-    public MeshData generateMeshData(ByteBuf blocks, Position3D position3D) {
-        return generateChunkMeshData(unpackChunk(blocks), position3D);
+    public MeshData generateMeshData(ByteBuf blocks, Position3D position3D, ClientWorld world) {
+        ChunkBlockData chunk = unpackChunk(blocks);
+        world.addChunkData(position3D, chunk.chunk());
+        return generateChunkMeshData(chunk.blocks(), position3D);
     }
 }
