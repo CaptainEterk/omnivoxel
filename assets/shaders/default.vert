@@ -63,7 +63,7 @@ void main() {
         TexCoord = vec2(u, v);
 
         xyz *= 0.0625;
-        xyz += chunkPosition*CHUNK_SIZE;
+        xyz += chunkPosition*CHUNK_SIZE-cameraPosition;
 
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
 

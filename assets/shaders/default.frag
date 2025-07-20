@@ -31,11 +31,10 @@ void main() {
         FragColor = texture(texture1, TexCoord / TEXTURE_SIZE);
         if (FragColor.a == 0) discard;
 
-        float distance = length(position-cameraPosition);
+        float distance = length(position);
         float fogFactor = (fogFar - distance) / (fogFar - fogNear);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
 
-        // TODO: Make this take in maybe a block type?
         if (type == 1u) {
             vec3 faceNormal = vec3(0.0, 1.0, 0.0);
 
@@ -49,9 +48,10 @@ void main() {
         FragColor = vec4(FragColor.rgb * shadow, FragColor.a);
 
         FragColor = mix(fogColor, FragColor, fogFactor);
-        // TODO: Mix with filter color too.
+        // TODO: Mix with filter color too for water and things.
     } else if (meshType == 1u) {
         FragColor = texture(texture1, TexCoord);
-        if (FragColor.a == 0) FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    } else if (meshType == 2u) {
+
     }
 }
