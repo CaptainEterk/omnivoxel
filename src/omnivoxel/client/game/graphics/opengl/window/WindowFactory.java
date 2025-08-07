@@ -33,7 +33,7 @@ public final class WindowFactory {
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
-        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GL11C.GL_TRUE); // Required for macOS
+        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GL11C.GL_TRUE);
 
         // Create the window
         long window = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL);
@@ -44,8 +44,9 @@ public final class WindowFactory {
         // Make the OpenGL context current
         GLFW.glfwMakeContextCurrent(window);
 
+        // TODO: Make it so you can turn V-Sync on and off in Settings
         // Enable v-sync
-        GLFW.glfwSwapInterval(1);
+        GLFW.glfwSwapInterval(0);
 
         /*
          This line is critical for LWJGL's interoperation with GLFW's OpenGL context,

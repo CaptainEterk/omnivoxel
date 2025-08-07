@@ -47,4 +47,11 @@ public class ByteUtils {
             addFloat(bytes, floats[j], i + j * Float.BYTES);
         }
     }
+
+    public static void addDouble(byte[] bytes, double d, int index) {
+        long l = Double.doubleToLongBits(d);
+        for (int i = 0; i < 8; i++) {
+            bytes[index + i] = (byte) (l >>> (56 - (i * 8)));
+        }
+    }
 }

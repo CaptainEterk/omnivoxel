@@ -3,167 +3,160 @@ package omnivoxel.client.game.graphics.opengl.text;
 import omnivoxel.client.game.graphics.opengl.text.font.Font;
 import org.lwjgl.opengl.*;
 import org.lwjgl.stb.STBTTBakedChar;
+import org.lwjgl.system.MemoryUtil;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.FloatBuffer;
 
 public class TextRenderer {
-    private static final float TAB_SIZE = 40;
+    private static final float TAB_SIZE = 40f;
+
     private int vaoID;
     private int vboID;
 
+    // Tunable: maximum characters per frame
+    private static final int MAX_CHARS = 2048;
+    private static final int VERTICES_PER_QUAD = 6;
+    private static final int FLOATS_PER_VERTEX = 4; // x, y, s, t
+
+    private final FloatBuffer vertexBuffer =
+            MemoryUtil.memAllocFloat(MAX_CHARS * VERTICES_PER_QUAD * FLOATS_PER_VERTEX);
+
+    private int drawCount = 0;   // number of vertices in current batch
+    private Font currentFont;    // font used for batching
+
     public void init() {
-        // Create and bind a VAO
         vaoID = GL30C.glGenVertexArrays();
         GL30C.glBindVertexArray(vaoID);
 
-        // Create a VBO for the vertices
         vboID = GL15C.glGenBuffers();
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
 
-        // Define the vertex positions and texture coordinates for the characters (initially empty)
-        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, 0, GL15C.GL_DYNAMIC_DRAW);
+        // Allocate GPU memory once
+        GL15C.glBufferData(
+                GL15C.GL_ARRAY_BUFFER,
+                (long) MAX_CHARS * VERTICES_PER_QUAD * FLOATS_PER_VERTEX * Float.BYTES,
+                GL15C.GL_DYNAMIC_DRAW
+        );
 
-        // Define vertex position attribute (location = 0)
-        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 4 * 4, 0);
+        // Position attribute
+        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, FLOATS_PER_VERTEX * Float.BYTES, 0);
         GL20.glEnableVertexAttribArray(0);
 
-        // Define texture coordinate attribute (location = 1)
-        GL30C.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, 4 * 4, 2 * 4);
+        // UV attribute
+        GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, FLOATS_PER_VERTEX * Float.BYTES, 2 * Float.BYTES);
         GL20.glEnableVertexAttribArray(1);
 
-        // Unbind VAO and VBO
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
         GL30C.glBindVertexArray(0);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
     }
 
-    public void renderText(Font font, String text, float x, float y, float scale, Alignment alignment) {
-        // Bind the font texture
-        GL30C.glActiveTexture(GL13C.GL_TEXTURE0);
-        GL30C.glBindTexture(GL30C.GL_TEXTURE_2D, font.textureID());
-
-        // Prepare to accumulate the vertices and texture coordinates for all characters
-        List<Float> verticesList = new ArrayList<>();
+    /**
+     * Queue text to be rendered this frame.
+     * Must call flush() after queuing all text.
+     */
+    public void queueText(Font font, String text, float x, float y, float scale, Alignment alignment) {
+        if (currentFont == null) {
+            currentFont = font;
+        } else if (currentFont != font) {
+            flush();
+            currentFont = font;
+        }
 
         String[] lines = text.split("[\r\n]");
         for (int i = 0; i < lines.length; i++) {
-            // Render a line of text and accumulate the vertex data
-            accumulateLine(font, lines[i], x, y + 32 * (i + 2) * scale, scale, alignment, verticesList);
+            accumulateLine(font, lines[i], x, y + 32 * (i + 2) * scale, scale, alignment);
         }
-
-        // Convert accumulated vertices to array
-        float[] verticesArray = new float[verticesList.size()];
-        for (int i = 0; i < verticesArray.length; i++) {
-            verticesArray[i] = verticesList.get(i);
-        }
-
-        GL30C.glBindVertexArray(vaoID);
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
-        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, verticesArray, GL15C.GL_DYNAMIC_DRAW);
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
-
-        GL11.glDrawArrays(GL30C.GL_TRIANGLES, 0, verticesArray.length / 4);
-        GL30C.glBindVertexArray(0);
     }
 
-    private void accumulateLine(Font font, String text, float x, float y, float scale, Alignment alignment, List<Float> verticesList) {
+    private void accumulateLine(Font font, String text, float x, float y, float scale, Alignment alignment) {
         float startX = x;
 
         if (alignment != Alignment.LEFT) {
-            // Calculate total width of the text
             float totalWidth = 0;
             for (char c : text.toCharArray()) {
-                if (c < 32 || c > 126) continue;
-                STBTTBakedChar charInfo = font.charData().get(c - 32);
-                totalWidth += getCharWidth(charInfo, scale);
+                if (c >= 32 && c <= 126) {
+                    STBTTBakedChar charInfo = font.charData().get(c - 32);
+                    totalWidth += getCharWidth(charInfo, scale);
+                }
             }
-
-            // Adjust startX based on alignment
             if (alignment == Alignment.CENTER) {
-                startX -= totalWidth / 2;
+                startX -= totalWidth / 2f;
             } else if (alignment == Alignment.RIGHT) {
                 startX -= totalWidth;
             }
         }
 
-        // Now accumulate the vertices for each character
         for (char c : text.toCharArray()) {
             if (c == '\t') {
                 startX += TAB_SIZE * scale;
+                continue;
             }
-            if (c < 32 || c > 126) {
-                continue; // Skip non-printable characters
-            }
+            if (c < 32 || c > 126) continue;
 
             STBTTBakedChar charInfo = font.charData().get(c - 32);
 
-            // Calculate position and size
-            float xPos = startX + getCharOffset(charInfo, scale);
-            // Correct the vertical position for each character
+            float xPos = startX + charInfo.xoff() * scale;
             float yPos = y - 32 * scale + charInfo.yoff() * scale;
-
-            // Apply the correct scale for height and width based on font metrics
             float w = (charInfo.x1() - charInfo.x0()) * scale;
             float h = (charInfo.y1() - charInfo.y0()) * scale;
 
-            // Add the character quad to the vertex list
-            addQuadVertices(verticesList, xPos, yPos, w, h, font, charInfo);
-
-            // Move startX to the right for the next character
+            addQuadVertices(xPos, yPos, w, h, font, charInfo);
             startX += getCharWidth(charInfo, scale);
         }
-    }
-
-    private float getCharOffset(STBTTBakedChar charInfo, float scale) {
-        return charInfo.xoff() * scale;
     }
 
     private float getCharWidth(STBTTBakedChar charInfo, float scale) {
         return charInfo.xadvance() * scale;
     }
 
-    private void addQuadVertices(List<Float> verticesList, float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
-        // Adjust texture coordinates to account for OpenGL's origin being at the bottom-left
+    private void addQuadVertices(float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
         float sMin = (float) charInfo.x0() / font.bitmapWidth();
-        float tMax = (float) charInfo.y0() / font.bitmapHeight(); // Bottom of the texture
+        float tMax = (float) charInfo.y0() / font.bitmapHeight();
         float sMax = (float) charInfo.x1() / font.bitmapWidth();
-        float tMin = (float) charInfo.y1() / font.bitmapHeight(); // Top of the texture
+        float tMin = (float) charInfo.y1() / font.bitmapHeight();
 
-        // Add vertices for the quad
-        verticesList.add(x);
-        verticesList.add(y);
-        verticesList.add(sMin);
-        verticesList.add(tMax);  // Top-left
+        putVertex(x, y, sMin, tMax);
+        putVertex(x + w, y, sMax, tMax);
+        putVertex(x + w, y + h, sMax, tMin);
 
-        verticesList.add(x + w);
-        verticesList.add(y);
-        verticesList.add(sMax);
-        verticesList.add(tMax);  // Top-right
+        putVertex(x, y, sMin, tMax);
+        putVertex(x + w, y + h, sMax, tMin);
+        putVertex(x, y + h, sMin, tMin);
+    }
 
-        verticesList.add(x + w);
-        verticesList.add(y + h);
-        verticesList.add(sMax);
-        verticesList.add(tMin);  // Bottom-right
+    private void putVertex(float x, float y, float s, float t) {
+        if (drawCount >= MAX_CHARS * VERTICES_PER_QUAD) return; // prevent overflow
+        vertexBuffer.put(x).put(y).put(s).put(t);
+        drawCount++;
+    }
 
-        verticesList.add(x);
-        verticesList.add(y);
-        verticesList.add(sMin);
-        verticesList.add(tMax);  // Top-left
+    /**
+     * Upload all queued text to GPU and render in one draw call.
+     */
+    public void flush() {
+        if (drawCount == 0 || currentFont == null) return;
 
-        verticesList.add(x + w);
-        verticesList.add(y + h);
-        verticesList.add(sMax);
-        verticesList.add(tMin);  // Bottom-right
+        vertexBuffer.flip();
 
-        verticesList.add(x);
-        verticesList.add(y + h);
-        verticesList.add(sMin);
-        verticesList.add(tMin);  // Bottom-left
+        GL30C.glActiveTexture(GL13C.GL_TEXTURE0);
+        GL30C.glBindTexture(GL30C.GL_TEXTURE_2D, currentFont.textureID());
+
+        GL30C.glBindVertexArray(vaoID);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
+
+        GL15C.glBufferSubData(GL15C.GL_ARRAY_BUFFER, 0, vertexBuffer);
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, drawCount);
+
+        GL30C.glBindVertexArray(0);
+
+        vertexBuffer.clear();
+        drawCount = 0;
+        currentFont = null;
     }
 
     public void cleanup() {
-        // Cleanup VBO and VAO
         GL30C.glDeleteBuffers(vboID);
         GL30C.glDeleteVertexArrays(vaoID);
+        MemoryUtil.memFree(vertexBuffer);
     }
 }

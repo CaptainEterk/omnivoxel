@@ -27,14 +27,14 @@ public class ServerClient extends MobEntity implements ServerItem {
 
     @Override
     public byte[] getBytes() {
-        byte[] out = new byte[playerID.length + 24];
+        byte[] out = new byte[playerID.length + Integer.BYTES + Double.BYTES * 5];
         System.arraycopy(playerID, 0, out, 0, playerID.length);
         ByteUtils.addInt(out, EntityType.Type.PLAYER.ordinal(), playerID.length);
-        ByteUtils.addFloat(out, x, playerID.length + 4);
-        ByteUtils.addFloat(out, y, playerID.length + 8);
-        ByteUtils.addFloat(out, z, playerID.length + 12);
-        ByteUtils.addFloat(out, pitch, playerID.length + 16);
-        ByteUtils.addFloat(out, yaw, playerID.length + 20);
+        ByteUtils.addDouble(out, x, playerID.length + Integer.BYTES);
+        ByteUtils.addDouble(out, y, playerID.length + Integer.BYTES + Double.BYTES);
+        ByteUtils.addDouble(out, z, playerID.length + Integer.BYTES + Double.BYTES * 2);
+        ByteUtils.addDouble(out, pitch, playerID.length + Integer.BYTES + Double.BYTES * 3);
+        ByteUtils.addDouble(out, yaw, playerID.length + Integer.BYTES + Double.BYTES * 4);
         return out;
     }
 

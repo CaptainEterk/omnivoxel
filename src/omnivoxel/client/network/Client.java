@@ -63,6 +63,34 @@ public final class Client {
         shapeCache = new IDCache<>();
     }
 
+    private static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {
+        if (channel == null) {
+            System.err.println("[ERROR] Channel is null! Client may not be connected.");
+            return;
+        }
+        if (!channel.isActive()) {
+            System.out.println("[ERROR] Channel is closed! Cannot send data.");
+            return;
+        }
+
+        ByteBuf buffer = Unpooled.buffer();
+        buffer.writeInt(id.ordinal());
+        buffer.writeBytes(clientID);
+        for (double i : numbers) {
+            buffer.writeDouble(i);
+        }
+        flush(channel, buffer);
+    }
+
+    private static void flush(Channel channel, ByteBuf byteBuf) {
+        channel.writeAndFlush(byteBuf).addListener(f -> {
+            if (!f.isSuccess()) {
+                System.err.println("[ERROR] Failed: " + f.cause());
+                f.cause().printStackTrace();
+            }
+        });
+    }
+
     public boolean isClientRunning() {
         return clientRunning.get();
     }
@@ -93,34 +121,6 @@ public final class Client {
             buffer.writeInt(i);
         }
         flush(channel, buffer);
-    }
-
-    private void sendFloats(Channel channel, PackageID id, byte[] clientID, float... numbers) {
-        if (channel == null) {
-            System.err.println("[ERROR] Channel is null! Client may not be connected.");
-            return;
-        }
-        if (!channel.isActive()) {
-            System.out.println("[ERROR] Channel is closed! Cannot send data.");
-            return;
-        }
-
-        ByteBuf buffer = Unpooled.buffer();
-        buffer.writeInt(id.ordinal());
-        buffer.writeBytes(clientID);
-        for (float i : numbers) {
-            buffer.writeFloat(i);
-        }
-        flush(channel, buffer);
-    }
-
-    private void flush(Channel channel, ByteBuf byteBuf) {
-        channel.writeAndFlush(byteBuf).addListener(f -> {
-            if (!f.isSuccess()) {
-                System.err.println("[ERROR] Failed: " + f.cause());
-                f.cause().printStackTrace();
-            }
-        });
     }
 
     void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
@@ -203,24 +203,20 @@ public final class Client {
         if (entity == null) {
             System.err.println("Received update for unknown player: " + entityID);
         } else {
-            float x = Float.intBitsToFloat(byteBuf.getInt(44));
-            float y = Float.intBitsToFloat(byteBuf.getInt(48));
-            float z = Float.intBitsToFloat(byteBuf.getInt(52));
-            float pitch = Float.intBitsToFloat(byteBuf.getInt(56));
-            float yaw = Float.intBitsToFloat(byteBuf.getInt(60));
-            entity.setX(x);
-            entity.setY(y);
-            entity.setZ(z);
-            entity.setPitch(pitch);
-            entity.setYaw(yaw);
+            double x = byteBuf.getDouble(44);
+            double y = byteBuf.getDouble(52);
+            double z = byteBuf.getDouble(60);
+            double pitch = byteBuf.getDouble(68);
+            double yaw = byteBuf.getDouble(76);
+
             if (entity.getMesh() != null) {
                 Matrix4f model = new Matrix4f().identity()
-                        .translate(x, y - 1, z)
+                        .translate((float) x, (float) (y - 1), (float) z)
                         .scale(0.5f)
-                        .rotateY(-yaw);
+                        .rotateY((float) -yaw);
                 entity.getMeshData().setModel(model);
                 if (!entity.getMesh().getChildren().isEmpty()) {
-                    entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX(-pitch));
+                    entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX((float) -pitch));
                     entity.getMesh().getChildren().get(1).getMeshData().setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
                     entity.getMesh().getChildren().get(2).getMeshData().setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
                     entity.getMesh().getChildren().get(3).getMeshData().setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
@@ -262,17 +258,17 @@ public final class Client {
         int entityIDLength = byteBuf.getInt(8); // [8-11]
 
         byte[] entityID = new byte[entityIDLength];
-        byteBuf.getBytes(12, entityID); // [12 - 12+entityIDLength-1]
+        byteBuf.getBytes(12, entityID);
 
-        int floatStart = 8 + entityIDLength + 4; // starts after nameLength field
-        float x = byteBuf.getFloat(floatStart);
-        float y = byteBuf.getFloat(floatStart + 4);
-        float z = byteBuf.getFloat(floatStart + 8);
-        float pitch = byteBuf.getFloat(floatStart + 12);
-        float yaw = byteBuf.getFloat(floatStart + 16);
+        int doubleStart = 12 + entityIDLength;
+        double x = byteBuf.getDouble(doubleStart);
+        double y = byteBuf.getDouble(doubleStart + Double.BYTES);
+        double z = byteBuf.getDouble(doubleStart + Double.BYTES * 2);
+        double pitch = byteBuf.getDouble(doubleStart + Double.BYTES * 3);
+        double yaw = byteBuf.getDouble(doubleStart + Double.BYTES * 4);
 
-        int nameLength = byteBuf.getInt(floatStart + 20);
-        int nameStart = floatStart + 20;
+        int nameLength = byteBuf.getInt(doubleStart + Double.BYTES * 5);
+        int nameStart = doubleStart + Double.BYTES * 5;
         byte[] nameBytes = new byte[nameLength];
         byteBuf.getBytes(nameStart, nameBytes); // name bytes
         String name = new String(nameBytes); // assumes UTF-8 encoding
@@ -283,7 +279,7 @@ public final class Client {
         String id = ByteUtils.bytesToHex(entityID);
         ClientEntity entity = new ClientEntity(name, id, new EntityType(type, name));
         entity.set(x, y, z, pitch, yaw);
-        entity.setMeshData(new ModelEntityMeshData(entity).setModel(new Matrix4f().translate(x, y, z)));
+        entity.setMeshData(new ModelEntityMeshData(entity).setModel(new Matrix4f().translate((float) x, (float) y, (float) z)));
         entities.put(id, entity);
 
         meshDataGenerators.submit(new EntityMeshDataTask(entity));
@@ -327,7 +323,7 @@ public final class Client {
                 break;
             case PLAYER_UPDATE:
                 PlayerUpdateRequest r = (PlayerUpdateRequest) request;
-                sendFloats(channel, PackageID.PLAYER_UPDATE, clientID, r.x(), r.y(), r.z(), r.pitch(), r.yaw());
+                sendDoubles(channel, PackageID.PLAYER_UPDATE, clientID, r.x(), r.y(), r.z(), r.pitch(), r.yaw());
                 break;
             default:
                 System.err.println("Unexpected request type: " + request.getType());

@@ -10,20 +10,23 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.util.log.Logger;
 
 public class ServerLauncher {
     // TODO: Use a config file
     private static final int PORT = 5000;
     private static final String IP = "192.168.14.162";
+    private final Logger logger;
 
     public ServerLauncher() {
+        logger = new Logger("server", true);
     }
 
     public static void main(String[] args) {
-        new ServerLauncher().run(100L);
+        new ServerLauncher().run(100);
     }
 
-    public void run(long seed) {
+    public void run(int seed) {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
@@ -32,7 +35,7 @@ public class ServerLauncher {
         ServerWorld world = new ServerWorld();
 
         try {
-            Server server = new Server(seed, world, blockService);
+            Server server = new Server(seed, world, blockService, logger);
             Thread thread = new Thread(server::run, "Server Tick Loop");
             thread.start();
             ServerHandler serverHandler = new ServerHandler(server);
@@ -48,7 +51,7 @@ public class ServerLauncher {
                     });
 
             ChannelFuture future = serverBootstrap.bind(IP, PORT).sync();
-            System.out.println("Server started at " + IP + ":" + PORT);
+            logger.info("Server started at " + IP + ":" + PORT);
 
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {

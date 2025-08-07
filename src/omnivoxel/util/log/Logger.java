@@ -13,18 +13,23 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class Logger {
     private final String logName;
+    private final boolean showLogs;
     private final Queue<String> logs;
     private final Queue<String> debugLogs;
     private final Map<String, Timer> timers;
 
-    public Logger(String logName) {
+    public Logger(String logName, boolean showLogs) {
         this.logName = logName;
+        this.showLogs = showLogs;
         this.logs = new ConcurrentLinkedDeque<>();
         this.debugLogs = new ConcurrentLinkedDeque<>();
         timers = new HashMap<>();
     }
 
     public void error(String error) {
+        if (showLogs) {
+            System.err.println(error);
+        }
         logs.add(error);
         debugLogs.add(error);
         try {
@@ -35,6 +40,9 @@ public class Logger {
     }
 
     public void warn(String warn) {
+        if (showLogs) {
+            System.err.println("\u001B[33m" + warn + "\u001B[0m");
+        }
         debugLogs.add(warn);
         try {
             write();
@@ -44,6 +52,9 @@ public class Logger {
     }
 
     public void debug(String debug) {
+        if (showLogs) {
+            System.out.println("\u001B[34m" + debug + "\u001B[0m");
+        }
         debugLogs.add(debug);
         try {
             write();
@@ -53,6 +64,9 @@ public class Logger {
     }
 
     public void info(String info) {
+        if (showLogs) {
+            System.out.println("\u001B[32m" + info + "\u001B[0m");
+        }
         logs.add(info);
         debugLogs.add(info);
         try {

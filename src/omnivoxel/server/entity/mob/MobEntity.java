@@ -4,8 +4,8 @@ import omnivoxel.client.game.hitbox.Hitbox;
 
 public abstract class MobEntity extends GravityEntity {
     private final String name;
-    protected float yaw;
-    protected float pitch;
+    protected double yaw;
+    protected double pitch;
 
     protected MobEntity(String name, Hitbox hitbox) {
         super(hitbox);
@@ -16,13 +16,13 @@ public abstract class MobEntity extends GravityEntity {
         return name;
     }
 
-    public void set(float x, float y, float z, float pitch, float yaw) {
+    public void set(double x, double y, double z, double pitch, double yaw) {
         super.set(x, y, z);
         this.pitch = pitch;
         this.yaw = yaw;
     }
 
-    public float getYaw() {
+    public double getYaw() {
         return yaw;
     }
 
@@ -30,7 +30,7 @@ public abstract class MobEntity extends GravityEntity {
         this.yaw = yaw;
     }
 
-    public float getPitch() {
+    public double getPitch() {
         return pitch;
     }
 

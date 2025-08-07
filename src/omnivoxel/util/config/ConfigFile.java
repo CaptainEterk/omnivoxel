@@ -2,9 +2,14 @@ package omnivoxel.util.config;
 
 import omnivoxel.client.game.settings.ConstantGameSettings;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 public class ConfigFile {
     private final String configName;
@@ -20,7 +25,6 @@ public class ConfigFile {
     public Map<String, Object> load() {
         Path path = getConfigPath();
         Map<String, Object> result = new HashMap<>();
-        System.out.println(path);
 
         if (!Files.exists(path)) {
             return result;

@@ -12,6 +12,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import omnivoxel.server.PackageID;
+import omnivoxel.util.bytes.ByteUtils;
+import omnivoxel.util.log.Logger;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -19,13 +21,15 @@ public class ClientLauncher implements Runnable {
     private static final int VERSION_ID = 0;
     private static final String HOST = "192.168.14.162";
     private static final int PORT = 5000;
+    private final Logger logger;
 
     private final CountDownLatch connected;
     private final byte[] clientID;
 
     private final Client client;
 
-    public ClientLauncher(CountDownLatch connected, Client client) {
+    public ClientLauncher(Logger logger, CountDownLatch connected, Client client) {
+        this.logger = logger;
         this.connected = connected;
         this.client = client;
         clientID = client.getClientID();
@@ -69,6 +73,8 @@ public class ClientLauncher implements Runnable {
             client.setChannel(future.channel());
             client.setGroup(group);
             connected.countDown();
+
+            logger.info("Connected to server at " + HOST + ":" + PORT + " with clientID " + ByteUtils.bytesToHex(clientID));
 
             sendBytes(future, PackageID.REGISTER_CLIENT, String.format("%-8s", VERSION_ID).getBytes(), clientID);
 

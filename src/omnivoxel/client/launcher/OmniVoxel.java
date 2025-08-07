@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class OmniVoxel {
+    public static boolean SHOW_LOGS;
+
     public static void init() throws IOException {
         createFileLocations();
     }

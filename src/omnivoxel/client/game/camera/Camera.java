@@ -9,12 +9,12 @@ public class Camera {
     // State
     private final State state;
     // Position
-    protected float x = 0f;
-    protected float y = 0f;
-    protected float z = 0f;
+    protected double x = 0f;
+    protected double y = 0f;
+    protected double z = 0f;
     // Rotation
-    protected float pitch = 0f; // Up-down
-    protected float yaw = 0f; // Left-right
+    protected double pitch = 0f; // Up-down
+    protected double yaw = 0f; // Left-right
 
     // TODO: Move this to settings
     protected double fov = 90d;
@@ -41,23 +41,23 @@ public class Camera {
         }
     }
 
-    public float getX() {
+    public double getX() {
         return x;
     }
 
-    public float getY() {
+    public double getY() {
         return y;
     }
 
-    public float getZ() {
+    public double getZ() {
         return z;
     }
 
-    public float getPitch() {
+    public double getPitch() {
         return pitch;
     }
 
-    public float getYaw() {
+    public double getYaw() {
         return yaw;
     }
 
@@ -90,7 +90,7 @@ public class Camera {
         return frustum;
     }
 
-    public void setPosition(float x, float y, float z) {
+    public void setPosition(double x, double y, double z) {
         if (x != this.x || y != this.y || z != this.z) {
             this.x = x;
             this.y = y;

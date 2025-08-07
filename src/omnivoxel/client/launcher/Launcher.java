@@ -18,6 +18,9 @@ import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -26,7 +29,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class Launcher {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] a) throws IOException, InterruptedException {
+        Set<String> args = new HashSet<>(Arrays.asList(a));
+
+        OmniVoxel.SHOW_LOGS = !args.contains("--no-logs");
         OmniVoxel.init();
 
         SecureRandom secureRandom = new SecureRandom();
@@ -45,8 +51,10 @@ public class Launcher {
 
         ClientWorld world = new ClientWorld(state);
 
-        Client client = new Client(clientID, clientWorldDataService, new Logger("client"), world);
-        ClientLauncher clientLauncher = new ClientLauncher(connected, client);
+        Logger logger = new Logger("client", OmniVoxel.SHOW_LOGS);
+
+        Client client = new Client(clientID, clientWorldDataService, logger, world);
+        ClientLauncher clientLauncher = new ClientLauncher(logger, connected, client);
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
 

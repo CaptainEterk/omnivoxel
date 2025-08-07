@@ -39,6 +39,10 @@ public class ShaderProgram {
         GL30C.glUniform3f(getLocation(name), vector.x(), vector.y(), vector.z());
     }
 
+    public void setUniform(String name, double x, double y, double z) {
+        GL30C.glUniform3f(getLocation(name), (float) x, (float) y, (float) z);
+    }
+
     public void setUniform(String name, float v) {
         GL30C.glUniform1f(getLocation(name), v);
     }

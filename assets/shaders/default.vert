@@ -8,7 +8,7 @@
 #define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
 
 // TODO: Make this a uniform
-#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)// Array of shadow levels
+#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)
 
 layout(location = 0) in uint data1;
 layout(location = 1) in uint data2;
@@ -38,8 +38,8 @@ uniform mat4 model;
 uniform float time;
 
 float simpleNoise(float x, float z) {
-    float n = dot(vec2(x, z), vec2(127.1, 311.7));// Create a seed value
-    return cos(sin(n) * 13.71632);// Fractal noise using sine function
+    float n = dot(vec2(x, z), vec2(127.1, 311.7));
+    return cos(sin(n) * 13.71632);
 }
 
 void main() {
@@ -81,7 +81,7 @@ void main() {
 
         position = xyz;
     } else if (meshType == 1u) {
-        position = vPosition;
+        position = vPosition - cameraPosition;
         TexCoord = vUV;
     }
 

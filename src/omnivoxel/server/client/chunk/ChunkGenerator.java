@@ -78,28 +78,28 @@ public final class ChunkGenerator {
 
             chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());
         } else {
-//            if (worldDataService.shouldGenerateChunk(position3D)) {
+            if (worldDataService.shouldGenerateChunk(position3D)) {
 //                generateSurroundingChunks(position3D, 1);
 
-                chunkInfo = world.getChunkInfo(position3D);
-                chunkInfo = chunkInfo == null ? worldDataService.getChunkInfo(position3D) : chunkInfo;
-                for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
-                    int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
-                    for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
-                        int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
+            chunkInfo = world.getChunkInfo(position3D);
+            chunkInfo = chunkInfo == null ? worldDataService.getChunkInfo(position3D) : chunkInfo;
+            for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
+                int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
+                for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
+                    int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
 
-                        for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
-                            int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
+                    for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
+                        int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
 
-                            boolean border =
-                                    x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
-                                            y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
-                                            z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
+                        boolean border =
+                                x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
+                                        y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
+                                        z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
 
-                            chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, x, y, z, worldX, worldY, worldZ, border, chunkInfo));
-                        }
+                        chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, x, y, z, worldX, worldY, worldZ, border, chunkInfo));
                     }
-//                }
+                }
+                }
             }
 
             chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());

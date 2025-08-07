@@ -18,20 +18,21 @@ import omnivoxel.world.block.Block;
 import omnivoxel.world.block.hitbox.BlockHitbox;
 import omnivoxel.world.block.hitbox.FullBlockHitbox;
 import omnivoxel.world.chunk.Chunk;
+import org.jetbrains.annotations.NotNull;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.system.MemoryUtil;
 
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
 
 public class PlayerController {
-    private static final float GRAVITY = 0.08f;
-    private static final float JUMP_VELOCITY = 1f * ConstantGameSettings.TARGET_TPS;
-    private static final float SPRINT_SPEED = 2.6f * ConstantGameSettings.TARGET_TPS; // Optional
-    private static final float AIR_RESISTANCE = 0.91f * ConstantGameSettings.TARGET_TPS; // Multiplied every frame
-    private static final float GROUND_FRICTION = 0.546f; // Like stone in Minecraft
-
+    private static final double GRAVITY = 0.8f;
+    private static final double JUMP_VELOCITY = 12f * ConstantGameSettings.TARGET_TPS;
+    private static final double SPRINT_SPEED = 2.6f * ConstantGameSettings.TARGET_TPS; // Optional
+    private static final double AIR_RESISTANCE = 0.91f * ConstantGameSettings.TARGET_TPS; // Multiplied every frame
+    private static final double GROUND_FRICTION = 0.546f * ConstantGameSettings.TARGET_TPS; // Like stone in Minecraft
     private static final byte COLLISION_X = 0b001;
     private static final byte COLLISION_Y = 2;
     private static final byte COLLISION_Z = 4;
@@ -46,18 +47,19 @@ public class PlayerController {
     private final IDCache<String, String> blockHitbox;
     private final IDCache<String, BlockHitbox> blockHitboxCache;
     private final Hitbox hitbox;
+    private final double speed = 4.317f * ConstantGameSettings.TARGET_TPS;
 
-    private float x;
-    private float y = -40;
-    private float z;
+    @NotNull
+    private MovementMode movementMode = MovementMode.FLY_COLLIDE;
 
-    private float velocityX;
-    private float velocityY;
-    private float velocityZ;
-
-    private float yaw;
-    private float pitch;
-    private float speed = 0.098f / 3;
+    private double x;
+    private double y = 128;
+    private double z;
+    private double velocityX;
+    private double velocityY;
+    private double velocityZ;
+    private double yaw;
+    private double pitch;
     private KeyInput keyInput;
     private MouseButtonInput mouseButtonInput;
     private MouseInput mouseInput;
@@ -69,7 +71,6 @@ public class PlayerController {
     private int oldWindowHeight;
     private int oldWindowX;
     private int oldWindowY;
-
     private Position3D cachedChunkPos = new Position3D(0, 0, 0);
     private Chunk<Block> cachedChunk;
     private boolean onGround = false;
@@ -81,8 +82,8 @@ public class PlayerController {
         this.contextTasks = contextTasks;
         this.state = state;
         this.world = world;
-        blockHitbox = new IDCache<>();
-        blockHitboxCache = new IDCache<>();
+        blockHitbox = new IDCache<>(new HashMap<>());
+        blockHitboxCache = new IDCache<>(new HashMap<>());
         hitbox = new Hitbox(-0.4f, -0.5f, -0.4f, 0.4f, 1.4f, 0.4f, 2, 2, 3);
     }
 
@@ -152,7 +153,7 @@ public class PlayerController {
 
         BooleanRef changeRot = new BooleanRef(false);
         if (mouseButtonInput.isMouseLocked()) {
-            handleInput(deltaTime, deltaTime * ConstantGameSettings.TARGET_TPS, changeRot);
+            handleInput(deltaTime, deltaTime * ConstantGameSettings.TARGET_TPS, changeRot, movementMode != MovementMode.FALL_COLLIDE);
 
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
                 contextTasks.add(mouseButtonInput::unlockMouse);
@@ -162,18 +163,27 @@ public class PlayerController {
         }
         mouseInput.clearDelta();
 
-        velocityY -= (float) (GRAVITY * tickDelta);
-
-        float frictionFactor = (float) ((onGround ? GROUND_FRICTION : AIR_RESISTANCE) * deltaTime);
-        velocityX *= frictionFactor;
-        velocityZ *= frictionFactor;
-        if (!onGround) {
-            velocityY *= 0.98f;
+        if (movementMode == MovementMode.FALL_COLLIDE) {
+            velocityY -= (float) (GRAVITY * tickDelta);
         }
 
-        state.setItem("friction_factor", frictionFactor);
+        if (movementMode == MovementMode.FALL_COLLIDE) {
+            float frictionFactor = (float) ((onGround ? GROUND_FRICTION : AIR_RESISTANCE) * deltaTime);
+            velocityX *= frictionFactor;
+            velocityZ *= frictionFactor;
+            if (!onGround) {
+                velocityY *= 0.98f;
+            }
+            state.setItem("friction_factor", frictionFactor);
+        } else {
+            float frictionFactor = (float) (AIR_RESISTANCE * deltaTime);
+            velocityX *= frictionFactor;
+            velocityY *= frictionFactor;
+            velocityZ *= frictionFactor;
+            state.setItem("friction_factor", frictionFactor);
+        }
 
-        handleCollision(deltaTime / ConstantGameSettings.COLLISION_STEPS);
+        handleMovement(deltaTime, movementMode != MovementMode.FLY);
 
         state.setItem("velocity_x", velocityX);
         state.setItem("velocity_y", velocityY);
@@ -190,43 +200,89 @@ public class PlayerController {
         }
     }
 
-    private void handleCollision(double stepDeltaTime) {
+    private void handleMovement(double deltaTime, boolean collide) {
+        if (!collide) {
+            x += (float) (velocityX * deltaTime);
+            y += (float) (velocityY * deltaTime);
+            z += (float) (velocityZ * deltaTime);
+            return;
+        }
+
+        double stepDeltaTime = deltaTime / ConstantGameSettings.COLLISION_STEPS;
         byte collisionDone = 0;
 
         for (int i = 0; i < ConstantGameSettings.COLLISION_STEPS; i++) {
+
+            // ---- Y axis ----
             if ((collisionDone & COLLISION_Y) == 0) {
-                double nextY = y + velocityY * stepDeltaTime;
-                if (isSolidAt(x, nextY, z)) {
+                double targetY = y + velocityY * stepDeltaTime;
+                if (isSolidAt(x, targetY, z)) {
+                    // Binary search between current and target
+                    double low = y;
+                    double high = targetY;
+                    for (int iter = 0; iter < ConstantGameSettings.COLLISION_COUNT; iter++) {
+                        double mid = (low + high) * 0.5;
+                        if (isSolidAt(x, mid, z)) {
+                            high = mid;
+                        } else {
+                            low = mid;
+                        }
+                    }
+                    y = low; // set to last non-solid
                     if (velocityY < 0) {
                         onGround = true;
                     }
                     velocityY = 0;
                     collisionDone |= COLLISION_Y;
                 } else {
-                    y += (float) (velocityY * stepDeltaTime);
+                    y = targetY;
                     onGround = false;
                     collisionDone &= ~COLLISION_Y;
                 }
             }
 
+            // ---- X axis ----
             if ((collisionDone & COLLISION_X) == 0) {
-                double nextX = x + velocityX * stepDeltaTime;
-                if (isSolidAt(nextX, y, z)) {
+                double targetX = x + velocityX * stepDeltaTime;
+                if (isSolidAt(targetX, y, z)) {
+                    double low = x;
+                    double high = targetX;
+                    for (int iter = 0; iter < ConstantGameSettings.COLLISION_COUNT; iter++) {
+                        double mid = (low + high) * 0.5;
+                        if (isSolidAt(mid, y, z)) {
+                            high = mid;
+                        } else {
+                            low = mid;
+                        }
+                    }
+                    x = low;
                     velocityX = 0;
                     collisionDone |= COLLISION_X;
                 } else {
-                    x += (float) (velocityX * stepDeltaTime);
+                    x = targetX;
                     collisionDone &= ~COLLISION_X;
                 }
             }
 
+            // ---- Z axis ----
             if ((collisionDone & COLLISION_Z) == 0) {
-                double nextZ = z + velocityZ * stepDeltaTime;
-                if (isSolidAt(x, y, nextZ)) {
+                double targetZ = z + velocityZ * stepDeltaTime;
+                if (isSolidAt(x, y, targetZ)) {
+                    double low = z;
+                    double high = targetZ;
+                    for (int iter = 0; iter < ConstantGameSettings.COLLISION_COUNT; iter++) {
+                        double mid = (low + high) * 0.5;
+                        if (isSolidAt(x, y, mid)) {
+                            high = mid;
+                        } else {
+                            low = mid;
+                        }
+                    }
+                    z = low;
                     velocityZ = 0;
                     collisionDone |= COLLISION_Z;
                 } else {
-                    z += (float) (velocityZ * stepDeltaTime);
+                    z = targetZ;
                     collisionDone &= ~COLLISION_Z;
                 }
             }
@@ -237,7 +293,7 @@ public class PlayerController {
         }
     }
 
-    private void handleInput(double deltaTime, double tickDelta, BooleanRef changeRot) {
+    private void handleInput(double deltaTime, double tickDelta, BooleanRef changeRot, boolean fly) {
         double deltaX = mouseInput.getDeltaX();
         double deltaY = mouseInput.getDeltaY();
 
@@ -252,29 +308,32 @@ public class PlayerController {
             this.yaw = camera.getYaw();
         }
 
-        if (onGround && keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE)) {
-            velocityY = (float) (JUMP_VELOCITY * deltaTime);
-            onGround = false;
+        if (!fly) {
+            if (onGround && keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE)) {
+                velocityY = (float) (JUMP_VELOCITY * deltaTime);
+                onGround = false;
+            }
+        } else {
+            velocityY += (float) (((keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE) ? 1 : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) ? 1 : 0)) * (JUMP_VELOCITY * deltaTime));
         }
-
-        float moveRelativeX = (keyInput.isKeyPressed(GLFW.GLFW_KEY_D) ? 1 : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_A) ? 1 : 0);
-        float moveRelativeZ = (keyInput.isKeyPressed(GLFW.GLFW_KEY_W) ? 1 : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_S) ? 1 : 0);
+        double moveRelativeX = (keyInput.isKeyPressed(GLFW.GLFW_KEY_D) ? 1 : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_A) ? 1 : 0);
+        double moveRelativeZ = (keyInput.isKeyPressed(GLFW.GLFW_KEY_W) ? 1 : 0) - (keyInput.isKeyPressed(GLFW.GLFW_KEY_S) ? 1 : 0);
         if (moveRelativeX != 0 || moveRelativeZ != 0) {
-            float length = (float) Math.sqrt(moveRelativeX * moveRelativeX + moveRelativeZ * moveRelativeZ);
+            double length = Math.sqrt(moveRelativeX * moveRelativeX + moveRelativeZ * moveRelativeZ);
             if (length != 0) {
                 moveRelativeX /= length;
                 moveRelativeZ /= length;
             }
 
-            float moveSpeed = (float) (speed * tickDelta);
+            double moveSpeed = speed * deltaTime * (onGround ? 1 : 0.3);
             moveRelativeX *= moveSpeed;
             moveRelativeZ *= moveSpeed;
 
-            float sinYaw = org.joml.Math.sin(-yaw);
-            float cosYaw = org.joml.Math.cos(-yaw);
+            double sinYaw = org.joml.Math.sin(-yaw);
+            double cosYaw = org.joml.Math.cos(-yaw);
 
-            float moveX = -moveRelativeZ * sinYaw + moveRelativeX * cosYaw;
-            float moveZ = -moveRelativeZ * cosYaw - moveRelativeX * sinYaw;
+            double moveX = -moveRelativeZ * sinYaw + moveRelativeX * cosYaw;
+            double moveZ = -moveRelativeZ * cosYaw - moveRelativeX * sinYaw;
 
             velocityX += moveX;
             velocityZ += moveZ;
@@ -352,6 +411,12 @@ public class PlayerController {
 
     public void setMouseInput(MouseInput mouseInput) {
         this.mouseInput = mouseInput;
+    }
+
+    private enum MovementMode {
+        FALL_COLLIDE,
+        FLY_COLLIDE,
+        FLY
     }
 
     private static class BooleanRef {

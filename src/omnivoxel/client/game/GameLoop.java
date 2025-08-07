@@ -21,6 +21,7 @@ import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
+import omnivoxel.client.launcher.OmniVoxel;
 import omnivoxel.client.network.Client;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.util.log.Logger;
@@ -62,7 +63,7 @@ public final class GameLoop {
         this.state = state;
         this.settings = settings;
         this.textRenderer = textRenderer;
-        this.logger = new Logger("game_loop");
+        this.logger = new Logger("game_loop", OmniVoxel.SHOW_LOGS);
         logger.addTimer("shouldUpdateVisibleMeshes", new Timer(50));
         logger.addTimer("shouldUpdateView", new Timer(50));
         logger.addTimer("other", new Timer(50));
@@ -94,8 +95,6 @@ public final class GameLoop {
             textShaderProgram.setUniform("textColor", 1f, 1f, 1f);
             textShaderProgram.setUniform("textTexture", 0);
 
-            textShaderProgram.addUniformLocation("projection");
-
             textShaderProgram.unbind();
 
             window.addMatrixListener(w -> {
@@ -106,6 +105,8 @@ public final class GameLoop {
             state.setItem("shouldUpdateView", true);
             state.setItem("shouldUpdateVisibleMeshes", true);
             state.setItem("shouldCheckNewChunks", false);
+            state.setItem("shouldAttemptFreeChunks", false);
+
             state.setItem("shouldRenderWireframe", false);
             state.setItem("seeDebug", true);
             state.setItem("bufferizingQueueSize", 0);
@@ -142,7 +143,8 @@ public final class GameLoop {
             double time = GLFW.glfwGetTime();
 
             String rightDebugText = "";
-            double secondTime = time;
+            double updateRightDebugTextTime = time;
+            double attemptFreeChunksTime = time;
 
             timer.start();
 
@@ -245,8 +247,8 @@ public final class GameLoop {
                 GL11C.glPolygonMode(GL11C.GL_FRONT, GL11C.GL_FILL);
 
                 shaderProgram.setUniform("time", (float) time);
-                if (time - secondTime > 0.5) {
-                    secondTime += 0.5;
+                if (time - updateRightDebugTextTime > 0.5) {
+                    updateRightDebugTextTime += 0.5;
 
                     Runtime runtime = Runtime.getRuntime();
                     long totalMemory = runtime.totalMemory();
@@ -258,6 +260,10 @@ public final class GameLoop {
                     rightDebugText += String.format("OpenGL Version: %s\n", window.getVersion());
                     rightDebugText += String.format("Operating System: %s %s\n", System.getProperty("os.name"), System.getProperty("os.version"));
                     rightDebugText += String.format("Memory Usage: %,d/%,d (%.2f%%)\n", usedMemory, totalMemory, (double) usedMemory * 100d / totalMemory);
+                }
+                if (time - attemptFreeChunksTime > 2) {
+                    attemptFreeChunksTime += 2;
+                    state.setItem("attemptFreeChunksTime", true);
                 }
 
                 textShaderProgram.bind();
@@ -310,9 +316,9 @@ public final class GameLoop {
                             state.getItem("chunk_requests_sent", Integer.class),
                             state.getItem("chunk_requests_received", Integer.class),
                             entityMeshes.size(),
-                            state.getItem("velocity_x", Float.class),
-                            state.getItem("velocity_y", Float.class),
-                            state.getItem("velocity_z", Float.class),
+                            state.getItem("velocity_x", Double.class),
+                            state.getItem("velocity_y", Double.class),
+                            state.getItem("velocity_z", Double.class),
                             state.getItem("on_ground", Boolean.class),
                             state.getItem("friction_factor", Float.class)
                     );
@@ -321,8 +327,10 @@ public final class GameLoop {
 
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
 
-                    textRenderer.renderText(font, leftDebugText, 4, 4, 0.6f, Alignment.LEFT);
-                    textRenderer.renderText(font, rightDebugText, window.getWidth() - 4, 4, 0.6f, Alignment.RIGHT);
+                    textRenderer.queueText(font, leftDebugText, 4, 4, 0.6f, Alignment.LEFT);
+                    textRenderer.queueText(font, rightDebugText, window.getWidth() - 4, 4, 0.6f, Alignment.RIGHT);
+
+                    textRenderer.flush();
 
                     GL30C.glBindVertexArray(0);
                 }
@@ -401,15 +409,15 @@ public final class GameLoop {
         int chunkY = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_HEIGHT) + 1;
         int chunkZ = Math.round((float) renderDistance / ConstantGameSettings.CHUNK_LENGTH) + 1;
 
-        Map<Integer, Queue<DistanceChunk>> positionedChunks = new HashMap<>();
+        int rdChunks = renderDistance / ConstantGameSettings.CHUNK_SIZE + 1;
+        int squaredRenderDistance = rdChunks * rdChunks;
+        Map<Integer, Set<DistanceChunk>> positionedChunks = new HashMap<>();
         int highestBucketDistance = 0;
 
         int ccx = (int) -Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
         int ccy = (int) -Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
         int ccz = (int) -Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
         int count = 0;
-
-//        System.out.println(ccx + " " + ccy + " " + ccz);
 
         for (int x = -chunkX; x <= chunkX; x++) {
             for (int y = -chunkY; y <= chunkY; y++) {
@@ -419,13 +427,13 @@ public final class GameLoop {
                     int dz = z - ccz;
                     int distance = x * x + y * y + z * z;
 
-                    if (distance > highestBucketDistance) {
-                        highestBucketDistance = distance;
-                    }
+                    if (distance < squaredRenderDistance) {
+                        if (distance > highestBucketDistance) {
+                            highestBucketDistance = distance;
+                        }
 
-                    if (distance < renderDistance) {
                         Position3D position3D = new Position3D(dx, dy, dz);
-                        positionedChunks.computeIfAbsent(distance, i -> new ArrayDeque<>()).add(new DistanceChunk(distance, position3D));
+                        positionedChunks.computeIfAbsent(distance, i -> new HashSet<>()).add(new DistanceChunk(distance, position3D));
                         count++;
                     }
                 }
@@ -435,7 +443,7 @@ public final class GameLoop {
         List<DistanceChunk> out = new ArrayList<>(count);
 
         for (int i = 0; i < highestBucketDistance; i++) {
-            Queue<DistanceChunk> posChunks = positionedChunks.get(i);
+            Set<DistanceChunk> posChunks = positionedChunks.get(i);
             if (posChunks != null) {
                 out.addAll(posChunks);
             }
@@ -453,22 +461,19 @@ public final class GameLoop {
     }
 
     private int update(Window window, List<DistanceChunk> solidRenderedChunks, List<DistanceChunk> transparentRenderedChunks, boolean completeRenderDistance) {
-        int totalRenderedChunks = -1;
-        // Render wireframe or not
         if (state.getItem("shouldRenderWireframe", Boolean.class)) {
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
         } else {
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_FILL);
         }
 
-        // Set camera position uniforms
         shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
 
         if (state.getItem("shouldUpdateView", Boolean.class)) {
             Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.aspectRatio(), camera.getNear(), camera.getFar());
-            Matrix4f viewMatrix = new Matrix4f().rotate(camera.getPitch(), 1, 0, 0).rotate(camera.getYaw(), 0, 1, 0);
+            Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
 
-            camera.updateFrustum(projectionMatrix, new Matrix4f(viewMatrix).translate(-camera.getX(), -camera.getY(), -camera.getZ()));
+            camera.updateFrustum(projectionMatrix, new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ()));
             shaderProgram.setUniform("projection", projectionMatrix);
             shaderProgram.setUniform("view", viewMatrix);
 
@@ -479,34 +484,22 @@ public final class GameLoop {
 
             state.setItem("shouldUpdateView", false);
         }
+
         if (world.totalQueuedChunks() < ConstantServerSettings.QUEUED_CHUNKS_MINIMUM && !completeRenderDistance) {
             state.setItem("shouldUpdateVisibleMeshes", true);
         }
+
+        List<DistanceChunk> chunks = null;
         if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
             solidRenderedChunks.clear();
             transparentRenderedChunks.clear();
 
-            int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
-            int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
-            int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
-
             int renderDistance = settings.getIntSetting("render_distance", 100);
-            int rdChunks = renderDistance / ConstantGameSettings.CHUNK_SIZE;
-            int squaredRenderDistance = rdChunks * rdChunks;
 
-            List<DistanceChunk> chunks = calculateRenderedChunks(renderDistance);
-            world.freeAllChunksNotIn(position3D -> {
-                int dx = position3D.x() - ccx;
-                int dy = position3D.y() - ccy;
-                int dz = position3D.z() - ccz;
-                int distance = dx * dx + dy * dy + dz * dz;
+            chunks = calculateRenderedChunks(renderDistance);
 
-                return distance < squaredRenderDistance;
-            });
+            attemptFreeChunks();
 
-            totalRenderedChunks = chunks.size();
-
-            // Filter chunks
             for (DistanceChunk chunk : chunks) {
                 ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true);
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
@@ -524,6 +517,30 @@ public final class GameLoop {
             state.setItem("shouldUpdateVisibleMeshes", false);
         }
 
-        return totalRenderedChunks;
+        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
+            attemptFreeChunks();
+        }
+
+        return chunks == null ? -1 : chunks.size();
+    }
+
+    private void attemptFreeChunks() {
+        int ccx = (int) Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
+        int ccy = (int) Math.floor(camera.getY() / ConstantGameSettings.CHUNK_HEIGHT);
+        int ccz = (int) Math.floor(camera.getZ() / ConstantGameSettings.CHUNK_LENGTH);
+
+        int renderDistance = settings.getIntSetting("render_distance", 100);
+        int rdChunks = renderDistance / ConstantGameSettings.CHUNK_SIZE + 1;
+        int squaredRenderDistance = rdChunks * rdChunks;
+
+        world.freeAllChunksNotIn(position3D -> {
+            int dx = position3D.x() - ccx;
+            int dy = position3D.y() - ccy;
+            int dz = position3D.z() - ccz;
+            int distance = dx * dx + dy * dy + dz * dz;
+
+            return distance < squaredRenderDistance;
+        });
+        state.setItem("shouldAttemptFreeChunks", false);
     }
 }

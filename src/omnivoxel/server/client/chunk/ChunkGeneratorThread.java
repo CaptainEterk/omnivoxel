@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ChunkGeneratorThread implements Runnable {
     private static final AtomicReference<String> oldDate = new AtomicReference<>();
-    private static AtomicLong responseCount = new AtomicLong();
-    private static AtomicLong oldCount = new AtomicLong();
+    private static final AtomicLong responseCount = new AtomicLong();
+    private static final AtomicLong oldCount = new AtomicLong();
 
     private final ChunkGenerator chunkGenerator;
     private final BlockingQueue<ChunkTask> chunkTasks;

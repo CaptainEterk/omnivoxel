@@ -36,10 +36,10 @@ public class Frustum {
     }
 
     public boolean isEntityInFrustum(ClientEntity clientEntity) {
-        float x = clientEntity.getX();
-        float y = clientEntity.getY();
-        float z = clientEntity.getZ();
+        double x = clientEntity.getX();
+        double y = clientEntity.getY();
+        double z = clientEntity.getZ();
 
-        return frustumIntersection.testPoint(x, y, z);
+        return frustumIntersection.testPoint((float) x, (float) y, (float) z);
     }
 }

@@ -149,6 +149,7 @@ public class ChunkMeshDataGenerator {
         Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
         int[] faceIndices = shape.getIndicesOnFace(blockFace);
 
+        // TODO: Add lighting
         float temp_r, temp_g, temp_b;
 
         if (block.getState() == null) {

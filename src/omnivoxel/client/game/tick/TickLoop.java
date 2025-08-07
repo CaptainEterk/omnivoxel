@@ -10,6 +10,7 @@ import omnivoxel.client.network.Client;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 
 public class TickLoop implements Runnable {
@@ -49,22 +50,18 @@ public class TickLoop implements Runnable {
 
             while (gameRunning.get()) {
                 long now = System.nanoTime();
-
                 if (now >= nextTickTime) {
                     playerController.tick(deltaTime / 1_000_000_000.0);
                     nextTickTime += deltaTime;
-
-                    if (now > nextTickTime + deltaTime) {
-                        nextTickTime = now + deltaTime;
-                    }
                 } else {
                     long sleepTime = nextTickTime - now;
-                    if (sleepTime > 0) {
-                        try {
-                            Thread.sleep(sleepTime / 1_000_000, (int)(sleepTime % 1_000_000));
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
+                    if (sleepTime > 1_000_000) {
+                        // Sleep most of the time
+                        LockSupport.parkNanos(sleepTime - 500_000);
+                    }
+                    // Short busy-wait for precision
+                    while (System.nanoTime() < nextTickTime) {
+                        Thread.onSpinWait();
                     }
                 }
             }

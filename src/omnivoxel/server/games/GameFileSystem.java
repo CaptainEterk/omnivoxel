@@ -21,20 +21,28 @@ public class GameFileSystem implements FileSystem {
 
     private Path resolve(Path path) throws IOException {
         Path resolved = root.resolve(path).normalize();
-        if (!resolved.startsWith(root)) {
-            throw new SecurityException("Access outside the sandbox is not allowed: " + path);
+        if (resolved.startsWith(root)) {
+            return resolved;
         }
-        return resolved;
+        Path graalLib = Path.of("/home/peter/Documents/omnivoxel/lib/graalvm").toAbsolutePath().normalize();
+        if (resolved.startsWith(graalLib)) {
+            return resolved;
+        }
+        throw new SecurityException("Access outside the sandbox is not allowed: " + path);
     }
 
     @Override
     public Path parsePath(URI uri) {
-        return Paths.get(uri.getPath());
+        return parsePath(uri.getPath());
     }
 
     @Override
     public Path parsePath(String path) {
-        return Paths.get(path);
+        try {
+            return resolve(Path.of(path));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -44,13 +52,13 @@ public class GameFileSystem implements FileSystem {
     }
 
     @Override
-    public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-        Files.createDirectory(resolve(dir), attrs);
+    public void createDirectory(Path dir, FileAttribute<?>... attrs) {
+        throw new UnsupportedOperationException("Mods cannot create directories.");
     }
 
     @Override
-    public void delete(Path path) throws IOException {
-        Files.delete(resolve(path));
+    public void delete(Path path) {
+        throw new UnsupportedOperationException("Mods cannot delete files.");
     }
 
     @Override
@@ -65,7 +73,11 @@ public class GameFileSystem implements FileSystem {
 
     @Override
     public Path toAbsolutePath(Path path) {
-        return root.resolve(path).normalize();
+        try {
+            return resolve(path);
+        } catch (IOException e) {
+            throw new RuntimeException("Invalid path: " + path, e);
+        }
     }
 
     @Override
@@ -129,14 +141,13 @@ public class GameFileSystem implements FileSystem {
         return resolve(path1).equals(resolve(path2));
     }
 
-    // Optional: basic copy/move
     @Override
-    public void copy(Path source, Path target, CopyOption... options) throws IOException {
-        Files.copy(resolve(source), resolve(target), options);
+    public void copy(Path source, Path target, CopyOption... options) {
+        throw new UnsupportedOperationException("Mods cannot copy files.");
     }
 
     @Override
-    public void move(Path source, Path target, CopyOption... options) throws IOException {
-        Files.move(resolve(source), resolve(target), options);
+    public void move(Path source, Path target, CopyOption... options) {
+        throw new UnsupportedOperationException("Mods cannot move files.");
     }
 }

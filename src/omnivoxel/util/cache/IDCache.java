@@ -6,7 +6,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class IDCache<K, V> {
-    private final Map<K, V> cache = new ConcurrentHashMap<>();
+    private final Map<K, V> cache;
+
+    public IDCache(Map<K, V> cache) {
+        this.cache = cache;
+    }
+
+    public IDCache() {
+        this(new ConcurrentHashMap<>());
+    }
 
     public void add(K key, V value) {
         cache.put(key, value);

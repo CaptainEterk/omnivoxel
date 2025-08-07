@@ -1,6 +1,8 @@
 package omnivoxel.server.games.mods;
 
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 import java.io.File;
 

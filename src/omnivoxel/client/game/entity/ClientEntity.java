@@ -8,11 +8,11 @@ public class ClientEntity {
     private final String name;
     private final String uuid;
     private final EntityType type;
-    private float x;
-    private float y;
-    private float z;
-    private float yaw;
-    private float pitch;
+    private double x;
+    private double y = 200;
+    private double z;
+    private double yaw;
+    private double pitch;
     private EntityMesh mesh;
     private EntityMeshData meshData;
 
@@ -22,7 +22,7 @@ public class ClientEntity {
         this.type = type;
     }
 
-    public void set(float x, float y, float z, float pitch, float yaw) {
+    public void set(double x, double y, double z, double pitch, double yaw) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -38,43 +38,43 @@ public class ClientEntity {
         return uuid;
     }
 
-    public float getX() {
+    public double getX() {
         return x;
     }
 
-    public void setX(float x) {
+    public void setX(double x) {
         this.x = x;
     }
 
-    public float getY() {
+    public double getY() {
         return y;
     }
 
-    public void setY(float y) {
+    public void setY(double y) {
         this.y = y;
     }
 
-    public float getZ() {
+    public double getZ() {
         return z;
     }
 
-    public void setZ(float z) {
+    public void setZ(double z) {
         this.z = z;
     }
 
-    public float getYaw() {
+    public double getYaw() {
         return yaw;
     }
 
-    public void setYaw(float yaw) {
+    public void setYaw(double yaw) {
         this.yaw = yaw;
     }
 
-    public float getPitch() {
+    public double getPitch() {
         return pitch;
     }
 
-    public void setPitch(float pitch) {
+    public void setPitch(double pitch) {
         this.pitch = pitch;
     }
 

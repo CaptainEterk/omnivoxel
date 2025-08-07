@@ -23,7 +23,7 @@ public abstract class GeneratedChunk {
     private static void sendBlock(ChannelHandlerContext ctx, ServerBlock block) {
         ByteBuf buffer = Unpooled.buffer();
         byte[] bytes = block.getBytes();
-        buffer.writeInt(4+bytes.length);
+        buffer.writeInt(4 + bytes.length);
         buffer.writeInt(PackageID.REGISTER_BLOCK.ordinal());
         buffer.writeBytes(bytes);
         ctx.channel().writeAndFlush(buffer);

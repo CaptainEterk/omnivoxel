@@ -67,7 +67,12 @@ public class MeshGenerator {
                 EntityMesh em = bufferizeEntityMesh(entityMeshData);
                 entityMesh.addChild(em);
             });
-            mesh.entity().getMeshData().setModel(new Matrix4f().translate(mesh.entity().getX(), mesh.entity().getY(), mesh.entity().getZ()).rotateY(mesh.entity().getYaw()).rotateX(mesh.entity().getX()));
+            mesh.entity().getMeshData().setModel(
+                    new Matrix4f()
+                            .translate((float) mesh.entity().getX(), (float) mesh.entity().getY(), (float) mesh.entity().getZ())
+                            .rotateY((float) mesh.entity().getYaw())
+                            .rotateX((float) mesh.entity().getPitch())
+            );
             return entityMesh;
         }
         return mesh.entity().getMesh();
