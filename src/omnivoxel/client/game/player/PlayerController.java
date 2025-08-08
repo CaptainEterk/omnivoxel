@@ -50,7 +50,7 @@ public class PlayerController {
     private final double speed = 4.317f * ConstantGameSettings.TARGET_TPS;
 
     @NotNull
-    private MovementMode movementMode = MovementMode.FLY_COLLIDE;
+    private MovementMode movementMode = MovementMode.FALL_COLLIDE;
 
     private double x;
     private double y = 128;

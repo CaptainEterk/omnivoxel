@@ -24,7 +24,7 @@ public class GameFileSystem implements FileSystem {
         if (resolved.startsWith(root)) {
             return resolved;
         }
-        Path graalLib = Path.of("/home/peter/Documents/omnivoxel/lib/graalvm").toAbsolutePath().normalize();
+        Path graalLib = Path.of("./lib/graalvm").toAbsolutePath().normalize();
         if (resolved.startsWith(graalLib)) {
             return resolved;
         }

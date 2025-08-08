@@ -4,6 +4,7 @@ import omnivoxel.client.game.graphics.opengl.image.Image;
 import omnivoxel.client.game.graphics.opengl.image.ImageLoader;
 import omnivoxel.util.log.Logger;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
@@ -14,8 +15,10 @@ import org.lwjgl.system.MemoryUtil;
 public final class WindowFactory {
     public static Window createWindow(int width, int height, String title, Logger logger) throws RuntimeException {
         // Set up an error callback. The default implementation will print the error message in System.err.
-        GLFW.glfwSetErrorCallback(((error, description) -> logger.error(error + ": " + description)));
-
+        GLFW.glfwSetErrorCallback((error, description) -> {
+            String msg = GLFWErrorCallback.getDescription(description);
+            logger.error(String.format("GLFW Error %d: %s", error, msg));
+        });
         // Initialize GLFW. Most GLFW functions will not work before doing this.
         if (!GLFW.glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
@@ -65,16 +68,21 @@ public final class WindowFactory {
             logger.info("Window created successfully!");
         }
 
-        // Add a favicon
-        Image img = ImageLoader.load("assets/icons/favicon.png");
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (!osName.contains("mac")) {
+            Image img = ImageLoader.load("assets/icons/favicon.png");
 
-        GLFWImage image = GLFWImage.malloc();
-        GLFWImage.Buffer imagebf = GLFWImage.malloc(1);
-        image.set(img.width(), img.height(), img.image());
-        imagebf.put(0, image);
-        GLFW.glfwSetWindowIcon(window, imagebf);
+            GLFWImage image = GLFWImage.malloc();
+            GLFWImage.Buffer imagebf = GLFWImage.malloc(1);
+            image.set(img.width(), img.height(), img.image());
+            imagebf.put(0, image);
 
-        // Get the version
+            GLFW.glfwSetWindowIcon(window, imagebf);
+
+            imagebf.free();
+            image.free();
+        }
+
         String version = GL11.glGetString(GL11.GL_VERSION);
 
         return new Window(window, version);
