@@ -206,12 +206,13 @@ public final class Client {
             double pitch = byteBuf.getDouble(68);
             double yaw = byteBuf.getDouble(76);
 
+            entity.set(x, y, z, pitch, yaw);
+
             if (entity.getMesh() != null) {
-                Matrix4f model = new Matrix4f().identity()
-                        .translate((float) x, (float) (y - 1), (float) z)
+                entity.getMeshData().setModel(new Matrix4f().identity()
+                        .translate((float) x, (float) (y - 0.75f/2), (float) z)
                         .scale(0.5f)
-                        .rotateY((float) -yaw);
-                entity.getMeshData().setModel(model);
+                        .rotateY((float) -yaw));
                 if (!entity.getMesh().getChildren().isEmpty()) {
                     entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX((float) -pitch));
                     entity.getMesh().getChildren().get(1).getMeshData().setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
@@ -251,8 +252,7 @@ public final class Client {
     }
 
     private void newEntity(ByteBuf byteBuf) throws InterruptedException {
-        // Data starts here
-        int entityIDLength = byteBuf.getInt(8); // [8-11]
+        int entityIDLength = byteBuf.getInt(8);
 
         byte[] entityID = new byte[entityIDLength];
         byteBuf.getBytes(12, entityID);
@@ -267,10 +267,10 @@ public final class Client {
         int nameLength = byteBuf.getInt(doubleStart + Double.BYTES * 5);
         int nameStart = doubleStart + Double.BYTES * 5;
         byte[] nameBytes = new byte[nameLength];
-        byteBuf.getBytes(nameStart, nameBytes); // name bytes
-        String name = new String(nameBytes); // assumes UTF-8 encoding
+        byteBuf.getBytes(nameStart, nameBytes);
+        String name = new String(nameBytes);
 
-        int typeOrdinal = byteBuf.getInt(nameStart + nameLength); // EntityType ordinal
+        int typeOrdinal = byteBuf.getInt(nameStart + nameLength);
         EntityType.Type type = EntityType.Type.values()[typeOrdinal];
 
         String id = ByteUtils.bytesToHex(entityID);

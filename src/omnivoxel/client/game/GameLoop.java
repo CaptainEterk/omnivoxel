@@ -172,7 +172,7 @@ public final class GameLoop {
                 shaderProgram.setUniform("meshType", 1);
                 Map<String, ClientEntity> entityMeshes = world.getEntities();
                 entityMeshes.forEach((id, clientEntity) -> {
-                    if (camera.getFrustum().isEntityInFrustum(clientEntity)) {
+                    if (camera.getFrustum().isEntityInFrustum(clientEntity, camera)) {
                         renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
                     }
                 });
@@ -476,10 +476,12 @@ public final class GameLoop {
         if (state.getItem("shouldUpdateView", Boolean.class)) {
             Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.aspectRatio(), camera.getNear(), camera.getFar());
             Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
+            Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
 
             camera.updateFrustum(projectionMatrix, new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ()));
             shaderProgram.setUniform("projection", projectionMatrix);
             shaderProgram.setUniform("view", viewMatrix);
+            shaderProgram.setUniform("cameraView", cameraViewMatrix);
 
             zppShaderProgram.bind();
             zppShaderProgram.setUniform("projection", projectionMatrix);

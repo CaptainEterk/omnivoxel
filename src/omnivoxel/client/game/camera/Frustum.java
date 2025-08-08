@@ -10,7 +10,6 @@ public class Frustum {
     private final FrustumIntersection frustumIntersection = new FrustumIntersection();
 
     public void updateFrustum(Matrix4f projectionMatrix, Matrix4f viewMatrix) {
-        // Create the combined view-projection matrix and pass it to the frustum
         Matrix4f viewProjMatrix = new Matrix4f(projectionMatrix).mul(viewMatrix);
         frustumIntersection.set(viewProjMatrix);
     }
@@ -20,7 +19,6 @@ public class Frustum {
         int y = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT;
         int z = position3D.z() * ConstantGameSettings.CHUNK_LENGTH;
 
-        // Test the AABB of the chunk in world space against the frustum
         return frustumIntersection.testAab(
                 x,
                 y,
@@ -35,7 +33,7 @@ public class Frustum {
         return isChunkInFrustum(position3D);
     }
 
-    public boolean isEntityInFrustum(ClientEntity clientEntity) {
+    public boolean isEntityInFrustum(ClientEntity clientEntity, Camera camera) {
         double x = clientEntity.getX();
         double y = clientEntity.getY();
         double z = clientEntity.getZ();

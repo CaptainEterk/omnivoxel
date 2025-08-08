@@ -97,4 +97,20 @@ public class ClientEntity {
     public EntityType getType() {
         return type;
     }
+
+    @Override
+    public String toString() {
+        return "ClientEntity{" +
+                "name='" + name + '\'' +
+                ", uuid='" + uuid + '\'' +
+                ", type=" + type +
+                ", x=" + x +
+                ", y=" + y +
+                ", z=" + z +
+                ", yaw=" + yaw +
+                ", pitch=" + pitch +
+                ", mesh=" + mesh +
+                ", meshData=" + meshData +
+                '}';
+    }
 }

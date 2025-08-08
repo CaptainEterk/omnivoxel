@@ -150,7 +150,7 @@ public class EntityMeshDataGenerator {
             for (int i = 0; i < 6; i++) {
                 int index = faceIndices[f][i];
                 float[] offset = cubeOffsets[index];
-                Vertex position = new Vertex(offset[0] * width + x, offset[1] * height + y, offset[2] * length + z);
+                Vertex position = new Vertex(offset[0] * width, offset[1] * height, offset[2] * length);
 
                 float[] uv = uvMap[f][i];
 

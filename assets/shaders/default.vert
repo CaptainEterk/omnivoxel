@@ -8,7 +8,7 @@
 #define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
 
 // TODO: Make this a uniform
-#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)
+#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)// Array of shadow levels
 
 layout(location = 0) in uint data1;
 layout(location = 1) in uint data2;
@@ -27,10 +27,10 @@ flat out uint type;
 uniform uint meshType;
 
 uniform ivec3 chunkPosition;
-uniform vec3 exactPosition;
 
 uniform vec3 cameraPosition;
 
+uniform mat4 cameraView;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
@@ -38,8 +38,8 @@ uniform mat4 model;
 uniform float time;
 
 float simpleNoise(float x, float z) {
-    float n = dot(vec2(x, z), vec2(127.1, 311.7));
-    return cos(sin(n) * 13.71632);
+    float n = dot(vec2(x, z), vec2(127.1, 311.7));// Create a seed value
+    return cos(sin(n) * 13.71632);// Fractal noise using sine function
 }
 
 void main() {
@@ -80,10 +80,12 @@ void main() {
         }
 
         position = xyz;
-    } else if (meshType == 1u) {
-        position = vPosition - cameraPosition;
-        TexCoord = vUV;
-    }
 
-    gl_Position = projection * view * model * vec4(position, 1.0);
+        gl_Position = projection * view * vec4(position, 1.0);
+    } else if (meshType == 1u) {
+        position = vPosition;
+        TexCoord = vUV;
+
+        gl_Position = projection * cameraView * model * vec4(position, 1.0);
+    }
 }

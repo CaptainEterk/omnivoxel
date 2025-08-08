@@ -15,7 +15,7 @@ import omnivoxel.util.log.Logger;
 public class ServerLauncher {
     // TODO: Use a config file
     private static final int PORT = 5000;
-    private static final String IP = "localhost";
+    private static final String IP = "192.168.14.162";
     private final Logger logger;
 
     public ServerLauncher() {
