@@ -343,7 +343,7 @@ public final class Client {
     }
 
     public void close() {
-        logger.info("Client shutting down...");
+        logger.debug("Disconnecting from server...");
         sendRequest(new CloseRequest());
         try {
             if (channel != null) {
@@ -359,7 +359,7 @@ public final class Client {
             meshDataGenerators.shutdown();
             meshDataGenerators.awaitTermination();
         }
-        logger.info("Client shutdown");
+        logger.info("Client disconnected");
     }
 
     // TODO: This is messy. Fix it

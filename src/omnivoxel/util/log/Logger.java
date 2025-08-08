@@ -28,7 +28,7 @@ public class Logger {
 
     public void error(String error) {
         if (showLogs) {
-            System.err.println(error);
+            System.err.println("[" + logName + "] " + error);
         }
         logs.add(error);
         debugLogs.add(error);
@@ -41,7 +41,7 @@ public class Logger {
 
     public void warn(String warn) {
         if (showLogs) {
-            System.err.println("\u001B[33m" + warn + "\u001B[0m");
+            System.err.println("\u001B[33m" + "[" + logName + "] " + warn + "\u001B[0m");
         }
         debugLogs.add(warn);
         try {
@@ -53,7 +53,7 @@ public class Logger {
 
     public void debug(String debug) {
         if (showLogs) {
-            System.out.println("\u001B[34m" + debug + "\u001B[0m");
+            System.out.println("\u001B[34m" + "[" + logName + "] " + debug + "\u001B[0m");
         }
         debugLogs.add(debug);
         try {
@@ -65,7 +65,7 @@ public class Logger {
 
     public void info(String info) {
         if (showLogs) {
-            System.out.println("\u001B[32m" + info + "\u001B[0m");
+            System.out.println("\u001B[32m" + "[" + logName + "] " + info + "\u001B[0m");
         }
         logs.add(info);
         debugLogs.add(info);

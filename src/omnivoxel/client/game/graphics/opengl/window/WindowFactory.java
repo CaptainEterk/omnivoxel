@@ -19,6 +19,7 @@ public final class WindowFactory {
             String msg = GLFWErrorCallback.getDescription(description);
             logger.error(String.format("GLFW Error %d: %s", error, msg));
         });
+
         // Initialize GLFW. Most GLFW functions will not work before doing this.
         if (!GLFW.glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
@@ -28,11 +29,14 @@ public final class WindowFactory {
         GLFWVidMode vidmode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
         assert vidmode != null;
 
+        int x = (vidmode.width() - width) / 2;
+        int y = (vidmode.height() - height) / 2;
+
         // Set window hints before window creation
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_POSITION_X, (vidmode.width() - width) / 2);
-        GLFW.glfwWindowHint(GLFW.GLFW_POSITION_Y, (vidmode.height() - height) / 2);
+        GLFW.glfwWindowHint(GLFW.GLFW_POSITION_X, x);
+        GLFW.glfwWindowHint(GLFW.GLFW_POSITION_Y, y);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
@@ -65,7 +69,7 @@ public final class WindowFactory {
         }
 
         if (logger != null) {
-            logger.info("Window created successfully!");
+            logger.debug(String.format("OpenGL/GLFW window created - title \"%s\" - position (%d, %d) - size (%d, %d) - id %d", title, x, y, width, height, window));
         }
 
         String osName = System.getProperty("os.name").toLowerCase();
