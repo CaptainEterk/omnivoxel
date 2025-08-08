@@ -3,8 +3,8 @@ package omnivoxel.server.client.chunk.worldDataService.noise;
 import java.util.Random;
 
 public class MinecraftPerlinNoise {
-    private final int[] permutations;
     private static final int PERM_SIZE = 512;
+    private final int[] permutations;
 
     public MinecraftPerlinNoise(long seed) {
         this.permutations = new int[PERM_SIZE];
@@ -42,7 +42,7 @@ public class MinecraftPerlinNoise {
         double u = h < 8 ? x : y;
         double v = h < 4 ? y : (h == 12 || h == 14 ? x : z);
         return ((h & 1) == 0 ? u : -u) +
-               ((h & 2) == 0 ? v : -v);
+                ((h & 2) == 0 ? v : -v);
     }
 
     public double sample(double x, double y, double z) {
@@ -58,10 +58,10 @@ public class MinecraftPerlinNoise {
         double v = fade(y);
         double w = fade(z);
 
-        int A  = permutations[X] + Y;
+        int A = permutations[X] + Y;
         int AA = permutations[A] + Z;
         int AB = permutations[A + 1] + Z;
-        int B  = permutations[X + 1] + Y;
+        int B = permutations[X + 1] + Y;
         int BA = permutations[B] + Z;
         int BB = permutations[B + 1] + Z;
 

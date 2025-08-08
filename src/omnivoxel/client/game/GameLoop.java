@@ -86,7 +86,7 @@ public final class GameLoop {
             shaderProgram.bind();
             shaderProgram.setUniform("fogColor", 0.0f, 0.61568627451f, 1.0f, 1.0f);
             shaderProgram.setUniform("fogFar", settings.getFloatSetting("render_distance", 100) - ConstantGameSettings.CHUNK_SIZE);
-            shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100)-ConstantGameSettings.CHUNK_SIZE) / 10 * 9);
+            shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantGameSettings.CHUNK_SIZE) / 10 * 9);
             shaderProgram.setUniform("texture1", 0);
             shaderProgram.unbind();
 

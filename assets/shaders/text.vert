@@ -12,7 +12,7 @@ out vec2 TexCoord;
 uniform mat4 projection;
 
 void main() {
-    
+
     vec2 worldPos = pos + quadPos * size;
 
     TexCoord = mix(vec2(uvBounds.x, uvBounds.w), vec2(uvBounds.z, uvBounds.y), quadUV);

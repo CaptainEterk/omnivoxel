@@ -13,14 +13,11 @@ public class TextRenderer {
     private static final int MAX_CHARS = 2048;
 
     private static final int INSTANCE_FLOATS = 8;
-
+    private final FloatBuffer instanceBuffer =
+            MemoryUtil.memAllocFloat(MAX_CHARS * INSTANCE_FLOATS);
     private int vaoID;
     private int quadVboID;
     private int instanceVboID;
-
-    private final FloatBuffer instanceBuffer =
-            MemoryUtil.memAllocFloat(MAX_CHARS * INSTANCE_FLOATS);
-
     private int drawCount = 0;
     private Font currentFont;
 
