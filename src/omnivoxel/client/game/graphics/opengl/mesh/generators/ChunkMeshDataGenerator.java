@@ -107,24 +107,77 @@ public class ChunkMeshDataGenerator {
         return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, position3D);
     }
 
-    private void generateBlockMeshData(int x, int y, int z, Block block, Block top, Block bottom, Block north, Block south, Block east, Block west, List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
-        if (shouldRenderFace(block, top, BlockFace.TOP, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.TOP, vertices, indices, vertexIndexMap);
+    private void generateBlockMeshData(
+            int x, int y, int z,
+            Block block, Block top, Block bottom, Block north, Block south, Block east, Block west,
+            List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
+
+        Shape shape = block.getShape(top, bottom, north, south, east, west); // compute once
+
+        boolean renderTop = shouldRenderFaceCached(block, shape, top, BlockFace.TOP, top, bottom, north, south, east, west);
+        boolean renderBottom = shouldRenderFaceCached(block, shape, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west);
+        boolean renderNorth = shouldRenderFaceCached(block, shape, north, BlockFace.NORTH, top, bottom, north, south, east, west);
+        boolean renderSouth = shouldRenderFaceCached(block, shape, south, BlockFace.SOUTH, top, bottom, north, south, east, west);
+        boolean renderEast = shouldRenderFaceCached(block, shape, east, BlockFace.EAST, top, bottom, north, south, east, west);
+        boolean renderWest = shouldRenderFaceCached(block, shape, west, BlockFace.WEST, top, bottom, north, south, east, west);
+
+        if (renderTop) addFacePrecomputedShape(x, y, z, block, shape, BlockFace.TOP, vertices, indices, vertexIndexMap);
+        if (renderBottom)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.BOTTOM, vertices, indices, vertexIndexMap);
+        if (renderNorth)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.NORTH, vertices, indices, vertexIndexMap);
+        if (renderSouth)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.SOUTH, vertices, indices, vertexIndexMap);
+        if (renderEast)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.EAST, vertices, indices, vertexIndexMap);
+        if (renderWest)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.WEST, vertices, indices, vertexIndexMap);
+    }
+
+    private boolean shouldRenderFaceCached(Block originalBlock, Shape originalShape, Block adjacentBlock, BlockFace face,
+                                           Block top, Block bottom, Block north, Block south, Block east, Block west) {
+        if (adjacentBlock == null) {
+            return true;
         }
-        if (shouldRenderFace(block, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.BOTTOM, vertices, indices, vertexIndexMap);
+        if (Objects.equals(adjacentBlock.getModID(), "omnivoxel:air") &&
+                !Objects.equals(originalBlock.getModID(), "omnivoxel:air")) {
+            return true;
         }
-        if (shouldRenderFace(block, north, BlockFace.NORTH, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.NORTH, vertices, indices, vertexIndexMap);
+        Shape adjShape = adjacentBlock.getShape(top, bottom, north, south, east, west);
+        return !(originalShape.isFaceSolid(face) && adjShape.isFaceSolid(face))
+                && originalBlock.shouldRenderFace(face, adjacentBlock);
+    }
+
+    private void addFacePrecomputedShape(int x, int y, int z, Block block, Shape shape, BlockFace blockFace,
+                                         List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
+        int[] uvCoordinates = block.getUVCoordinates(blockFace);
+        Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
+        int[] faceIndices = shape.getIndicesOnFace(blockFace);
+
+        // Same color logic as before
+        float temp_r, temp_g, temp_b;
+        if (block.getState() == null) {
+            temp_r = temp_g = temp_b = 0;
+        } else if (block.getState().length == 1) {
+            temp_r = temp_g = temp_b = block.getState()[0] / 32f;
+        } else if (block.getState().length == 3) {
+            temp_r = block.getState()[0] / 32f;
+            temp_g = block.getState()[1] / 32f;
+            temp_b = block.getState()[2] / 32f;
+        } else {
+            temp_r = temp_g = temp_b = 0;
         }
-        if (shouldRenderFace(block, south, BlockFace.SOUTH, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.SOUTH, vertices, indices, vertexIndexMap);
-        }
-        if (shouldRenderFace(block, east, BlockFace.EAST, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.EAST, vertices, indices, vertexIndexMap);
-        }
-        if (shouldRenderFace(block, west, BlockFace.WEST, top, bottom, north, south, east, west)) {
-            addFace(x, y, z, block, top, bottom, north, south, east, west, BlockFace.WEST, vertices, indices, vertexIndexMap);
+
+        int blockType = Objects.equals(block.getModID(), "core:water_source_block") ? 1 : 0;
+
+        for (int idx : faceIndices) {
+            Vertex pointPosition = faceVertices[idx];
+            Vertex position = pointPosition.add(x, y, z);
+            addPoint(vertices, indices, vertexIndexMap,
+                    position,
+                    uvCoordinates[idx * 2],
+                    uvCoordinates[idx * 2 + 1],
+                    blockFace, temp_r, temp_g, temp_b, blockType);
         }
     }
 

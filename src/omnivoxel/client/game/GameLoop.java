@@ -202,11 +202,13 @@ public final class GameLoop {
 
                     GL11C.glDepthFunc(GL11C.GL_LESS);
                     GL11C.glColorMask(false, false, false, false);
-//
-                    solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
-//
+
+                    for (PositionedChunk positionedChunk : solidRenderedChunksInFrustum) {
+                        renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false);
+                    }
+
                     GL11C.glDepthFunc(GL11C.GL_EQUAL);
-//
+
                     GL11C.glColorMask(true, true, true, true);
 
                     shaderProgram.bind();
@@ -216,7 +218,9 @@ public final class GameLoop {
 
                 GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
 
-                solidRenderedChunksInFrustum.forEach(positionedChunk -> renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false));
+                for (PositionedChunk positionedChunk : solidRenderedChunksInFrustum) {
+                    renderMesh(positionedChunk.pos(), positionedChunk.chunk().getMesh(), false);
+                }
 
                 // Transparent Chunk Meshes
                 GL11C.glDepthFunc(GL11C.GL_LESS);

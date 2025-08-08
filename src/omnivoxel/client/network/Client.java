@@ -33,10 +33,7 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
 
-import java.util.ArrayDeque;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -60,7 +57,7 @@ public final class Client {
         this.logger = logger;
         this.world = world;
         entities = new ConcurrentHashMap<>();
-        shapeCache = new IDCache<>();
+        shapeCache = new IDCache<>(new HashMap<>());
     }
 
     private static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {

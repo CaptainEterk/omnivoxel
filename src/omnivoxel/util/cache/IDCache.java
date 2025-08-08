@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class IDCache<K, V> {
     private final Map<K, V> cache;
+    private final Map<Class<?>, Constructor<?>> constructorCache = new ConcurrentHashMap<>();
 
     public IDCache(Map<K, V> cache) {
         this.cache = cache;
@@ -16,38 +17,86 @@ public final class IDCache<K, V> {
         this(new ConcurrentHashMap<>());
     }
 
-    public void add(K key, V value) {
+    public void put(K key, V value) {
         cache.put(key, value);
+    }
+
+    // alias for put (optional)
+    public void add(K key, V value) {
+        put(key, value);
     }
 
     public V get(K key, Class<? extends V> clazz) {
-        return cache.computeIfAbsent(key, k -> {
-            if (clazz == null) {
-                return null;
-            }
+        V existing = cache.get(key);
+        if (existing != null) return existing;
+
+        if (clazz == null) return null; // no caching nulls
+
+        Constructor<?> ctor = constructorCache.computeIfAbsent(clazz, c -> {
             try {
-                return clazz.getConstructor().newInstance();
-            } catch (NoSuchMethodException | InvocationTargetException |
-                     InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException("Failed to instantiate " + clazz.getName(), e);
+                Constructor<?> constructor = c.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor;
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException("No default constructor for " + c.getName(), e);
             }
         });
+
+        try {
+            @SuppressWarnings("unchecked")
+            V instance = (V) ctor.newInstance();
+            cache.put(key, instance);
+            return instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Failed to instantiate " + clazz.getName(), e);
+        }
     }
 
     public V get(K key, Class<? extends V> clazz, Class<?>[] parameterTypes, Object[] args) {
-        return cache.computeIfAbsent(key, k -> {
-            try {
-                Constructor<? extends V> constructor = clazz.getConstructor(parameterTypes);
-                return constructor.newInstance(args);
-            } catch (NoSuchMethodException | InvocationTargetException |
-                     InstantiationException | IllegalAccessException e) {
-                throw new RuntimeException("Failed to instantiate " + clazz.getName() +
-                        " with arguments", e);
-            }
-        });
+        V existing = cache.get(key);
+        if (existing != null) return existing;
+
+        Constructor<?> ctorKey = constructorCache.computeIfAbsent(
+                clazz,
+                ck -> {
+                    try {
+                        Constructor<?> c = clazz.getDeclaredConstructor(parameterTypes);
+                        c.setAccessible(true);
+                        return c;
+                    } catch (NoSuchMethodException e) {
+                        throw new RuntimeException("No matching constructor for " + clazz.getName(), e);
+                    }
+                });
+
+        try {
+            @SuppressWarnings("unchecked")
+            V instance = (V) ctorKey.newInstance(args);
+            cache.put(key, instance);
+            return instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException("Failed to instantiate " + clazz.getName() + " with args", e);
+        }
     }
 
-    public void put(K key, V value) {
-        cache.put(key, value);
+    // helper to differentiate parameterized constructor cache entries
+        private record ConstructorKey(Class<?> clazz, Class<?>[] params) {
+            private ConstructorKey(Class<?> clazz, Class<?>[] params) {
+                this.clazz = clazz;
+                this.params = params.clone();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof ConstructorKey)) return false;
+                ConstructorKey other = (ConstructorKey) o;
+                if (!clazz.equals(other.clazz)) return false;
+                if (params.length != other.params.length) return false;
+                for (int i = 0; i < params.length; i++) {
+                    if (!params[i].equals(other.params[i])) return false;
+                }
+                return true;
+            }
+
     }
 }
