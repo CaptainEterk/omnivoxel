@@ -63,7 +63,7 @@ public final class GameLoop {
         this.state = state;
         this.settings = settings;
         this.textRenderer = textRenderer;
-        this.logger = new Logger("game_loop", OmniVoxel.SHOW_LOGS);
+        this.logger = new Logger("Game Loop", OmniVoxel.SHOW_LOGS);
         logger.addTimer("shouldUpdateVisibleMeshes", new Timer(50));
         logger.addTimer("shouldUpdateView", new Timer(50));
         logger.addTimer("other", new Timer(50));

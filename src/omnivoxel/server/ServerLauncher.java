@@ -19,7 +19,7 @@ public class ServerLauncher {
     private final Logger logger;
 
     public ServerLauncher() {
-        logger = new Logger("server", true);
+        logger = new Logger("Server", true);
     }
 
     public static void main(String[] args) {

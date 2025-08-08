@@ -85,13 +85,17 @@ public class Logger {
     }
 
     public void writeDebug() throws IOException {
-        Path debugPath = Path.of(ConstantGameSettings.LOG_LOCATION + logName + "_debug.log");
+        Path debugPath = Path.of(ConstantGameSettings.LOG_LOCATION + logName() + "_debug.log");
         Files.write(debugPath, String.join("\n", debugLogs).getBytes());
     }
 
     public void writeInfo() throws IOException {
-        Path infoPath = Path.of(ConstantGameSettings.LOG_LOCATION + logName + ".log");
+        Path infoPath = Path.of(ConstantGameSettings.LOG_LOCATION + logName() + ".log");
         Files.write(infoPath, String.join("\n", logs).getBytes());
+    }
+
+    private String logName() {
+        return logName.toLowerCase().replace(' ', '_');
     }
 
     public void write() throws IOException {

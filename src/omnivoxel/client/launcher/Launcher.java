@@ -51,7 +51,7 @@ public class Launcher {
 
         ClientWorld world = new ClientWorld(state);
 
-        Logger logger = new Logger("client", OmniVoxel.SHOW_LOGS);
+        Logger logger = new Logger("Client", OmniVoxel.SHOW_LOGS);
 
         Client client = new Client(clientID, clientWorldDataService, logger, world);
         ClientLauncher clientLauncher = new ClientLauncher(logger, connected, client);
