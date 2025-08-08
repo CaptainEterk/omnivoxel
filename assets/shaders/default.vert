@@ -27,10 +27,10 @@ flat out uint type;
 uniform uint meshType;
 
 uniform ivec3 chunkPosition;
-uniform vec3 exactPosition;
 
 uniform vec3 cameraPosition;
 
+uniform mat4 cameraView;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
@@ -63,7 +63,7 @@ void main() {
         TexCoord = vec2(u, v);
 
         xyz *= 0.0625;
-        xyz += chunkPosition*CHUNK_SIZE;
+        xyz += chunkPosition*CHUNK_SIZE-cameraPosition;
 
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
 
@@ -80,10 +80,12 @@ void main() {
         }
 
         position = xyz;
+
+        gl_Position = projection * view * vec4(position, 1.0);
     } else if (meshType == 1u) {
         position = vPosition;
         TexCoord = vUV;
-    }
 
-    gl_Position = projection * view * model * vec4(position, 1.0);
+        gl_Position = projection * cameraView * model * vec4(position, 1.0);
+    }
 }
