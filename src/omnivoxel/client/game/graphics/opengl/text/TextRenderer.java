@@ -10,50 +10,72 @@ import java.nio.FloatBuffer;
 public class TextRenderer {
     private static final float TAB_SIZE = 40f;
 
-    private int vaoID;
-    private int vboID;
-
-    // Tunable: maximum characters per frame
     private static final int MAX_CHARS = 2048;
-    private static final int VERTICES_PER_QUAD = 6;
-    private static final int FLOATS_PER_VERTEX = 4; // x, y, s, t
 
-    private final FloatBuffer vertexBuffer =
-            MemoryUtil.memAllocFloat(MAX_CHARS * VERTICES_PER_QUAD * FLOATS_PER_VERTEX);
+    private static final int INSTANCE_FLOATS = 8;
 
-    private int drawCount = 0;   // number of vertices in current batch
-    private Font currentFont;    // font used for batching
+    private int vaoID;
+    private int quadVboID;
+    private int instanceVboID;
+
+    private final FloatBuffer instanceBuffer =
+            MemoryUtil.memAllocFloat(MAX_CHARS * INSTANCE_FLOATS);
+
+    private int drawCount = 0;
+    private Font currentFont;
 
     public void init() {
+        float[] quadVertices = {
+                0f, 0f, 0f, 0f,
+                1f, 0f, 1f, 0f,
+                1f, 1f, 1f, 1f,
+
+                0f, 0f, 0f, 0f,
+                1f, 1f, 1f, 1f,
+                0f, 1f, 0f, 1f
+        };
+
         vaoID = GL30C.glGenVertexArrays();
         GL30C.glBindVertexArray(vaoID);
 
-        vboID = GL15C.glGenBuffers();
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
+        quadVboID = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, quadVboID);
+        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, quadVertices, GL15C.GL_STATIC_DRAW);
 
-        // Allocate GPU memory once
+        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 4 * Float.BYTES, 0);
+        GL20.glEnableVertexAttribArray(0);
+
+        GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
+        GL20.glEnableVertexAttribArray(1);
+
+        instanceVboID = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, instanceVboID);
         GL15C.glBufferData(
                 GL15C.GL_ARRAY_BUFFER,
-                (long) MAX_CHARS * VERTICES_PER_QUAD * FLOATS_PER_VERTEX * Float.BYTES,
+                (long) MAX_CHARS * INSTANCE_FLOATS * Float.BYTES,
                 GL15C.GL_DYNAMIC_DRAW
         );
 
-        // Position attribute
-        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, FLOATS_PER_VERTEX * Float.BYTES, 0);
-        GL20.glEnableVertexAttribArray(0);
 
-        // UV attribute
-        GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, FLOATS_PER_VERTEX * Float.BYTES, 2 * Float.BYTES);
-        GL20.glEnableVertexAttribArray(1);
+        int stride = INSTANCE_FLOATS * Float.BYTES;
+
+        GL20.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, stride, 0);
+        GL20.glEnableVertexAttribArray(2);
+        GL33C.glVertexAttribDivisor(2, 1);
+
+        GL20.glVertexAttribPointer(3, 2, GL11.GL_FLOAT, false, stride, 2 * Float.BYTES);
+        GL20.glEnableVertexAttribArray(3);
+        GL33C.glVertexAttribDivisor(3, 1);
+
+        GL20.glVertexAttribPointer(4, 4, GL11.GL_FLOAT, false, stride, 4 * Float.BYTES);
+        GL20.glEnableVertexAttribArray(4);
+        GL33C.glVertexAttribDivisor(4, 1);
+
 
         GL30C.glBindVertexArray(0);
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
     }
 
-    /**
-     * Queue text to be rendered this frame.
-     * Must call flush() after queuing all text.
-     */
     public void queueText(Font font, String text, float x, float y, float scale, Alignment alignment) {
         if (currentFont == null) {
             currentFont = font;
@@ -100,7 +122,13 @@ public class TextRenderer {
             float w = (charInfo.x1() - charInfo.x0()) * scale;
             float h = (charInfo.y1() - charInfo.y0()) * scale;
 
-            addQuadVertices(xPos, yPos, w, h, font, charInfo);
+            float sMin = (float) charInfo.x0() / font.bitmapWidth();
+            float tMax = (float) charInfo.y0() / font.bitmapHeight();
+            float sMax = (float) charInfo.x1() / font.bitmapWidth();
+            float tMin = (float) charInfo.y1() / font.bitmapHeight();
+
+            addInstance(xPos, yPos, w, h, sMin, tMin, sMax, tMax);
+
             startX += getCharWidth(charInfo, scale);
         }
     }
@@ -109,54 +137,40 @@ public class TextRenderer {
         return charInfo.xadvance() * scale;
     }
 
-    private void addQuadVertices(float x, float y, float w, float h, Font font, STBTTBakedChar charInfo) {
-        float sMin = (float) charInfo.x0() / font.bitmapWidth();
-        float tMax = (float) charInfo.y0() / font.bitmapHeight();
-        float sMax = (float) charInfo.x1() / font.bitmapWidth();
-        float tMin = (float) charInfo.y1() / font.bitmapHeight();
-
-        putVertex(x, y, sMin, tMax);
-        putVertex(x + w, y, sMax, tMax);
-        putVertex(x + w, y + h, sMax, tMin);
-
-        putVertex(x, y, sMin, tMax);
-        putVertex(x + w, y + h, sMax, tMin);
-        putVertex(x, y + h, sMin, tMin);
-    }
-
-    private void putVertex(float x, float y, float s, float t) {
-        if (drawCount >= MAX_CHARS * VERTICES_PER_QUAD) return; // prevent overflow
-        vertexBuffer.put(x).put(y).put(s).put(t);
+    private void addInstance(float x, float y, float w, float h,
+                             float sMin, float tMin, float sMax, float tMax) {
+        if (drawCount >= MAX_CHARS) return;
+        instanceBuffer.put(x).put(y).put(w).put(h)
+                .put(sMin).put(tMin).put(sMax).put(tMax);
         drawCount++;
     }
 
-    /**
-     * Upload all queued text to GPU and render in one draw call.
-     */
     public void flush() {
         if (drawCount == 0 || currentFont == null) return;
 
-        vertexBuffer.flip();
+        instanceBuffer.flip();
 
-        GL30C.glActiveTexture(GL13C.GL_TEXTURE0);
-        GL30C.glBindTexture(GL30C.GL_TEXTURE_2D, currentFont.textureID());
+        GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
+        GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, currentFont.textureID());
 
         GL30C.glBindVertexArray(vaoID);
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vboID);
 
-        GL15C.glBufferSubData(GL15C.GL_ARRAY_BUFFER, 0, vertexBuffer);
-        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, drawCount);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, instanceVboID);
+        GL15C.glBufferSubData(GL15C.GL_ARRAY_BUFFER, 0, instanceBuffer);
+
+        GL31C.glDrawArraysInstanced(GL11C.GL_TRIANGLES, 0, 6, drawCount);
 
         GL30C.glBindVertexArray(0);
 
-        vertexBuffer.clear();
+        instanceBuffer.clear();
         drawCount = 0;
         currentFont = null;
     }
 
     public void cleanup() {
-        GL30C.glDeleteBuffers(vboID);
         GL30C.glDeleteVertexArrays(vaoID);
-        MemoryUtil.memFree(vertexBuffer);
+        GL15C.glDeleteBuffers(quadVboID);
+        GL15C.glDeleteBuffers(instanceVboID);
+        MemoryUtil.memFree(instanceBuffer);
     }
 }
