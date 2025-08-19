@@ -290,6 +290,7 @@ public final class GameLoop {
                                     \t- Loaded: %d
                                     \t- Should be loaded: %d
                                     \t- Bufferized Chunks: %d
+                                    \t- Non-Bufferized Chunks: %d
                                     \t- Missing Chunks: %d
                                     Network:
                                     \t- Inflight Requests: %d
@@ -315,6 +316,7 @@ public final class GameLoop {
                             world.size(),
                             totalRenderedChunks,
                             bufferizedChunkCount,
+                            state.getItem("bufferizingQueueSize", Integer.class),
                             state.getItem("missing_chunks", Integer.class),
                             state.getItem("inflight_requests", Integer.class),
                             state.getItem("chunk_requests_sent", Integer.class),

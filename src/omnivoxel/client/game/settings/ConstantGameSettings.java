@@ -15,7 +15,7 @@ public class ConstantGameSettings {
 
     // TODO: Move this to settings
     public static final int MAX_MESH_GENERATOR_THREADS = Runtime.getRuntime().availableProcessors();
-    public static final int BUFFERIZE_CHUNKS_PER_FRAME = 10000;
+    public static final int BUFFERIZE_CHUNKS_PER_FRAME = 10;
 
     public static final String FILE_LOCATION = getRootFolder();
 

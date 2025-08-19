@@ -9,33 +9,46 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.util.log.Logger;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ServerLauncher {
     // TODO: Use a config file
     private static final int PORT = 5000;
-    private static final String IP = "192.168.14.162";
+    private static final String IP = "0.0.0.0";
     private final Logger logger;
 
     public ServerLauncher() {
         logger = new Logger("Server", true);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new ServerLauncher().run(100);
     }
 
-    public void run(int seed) {
+    public void run(int seed) throws IOException {
+        createDirectories();
+
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+
+        Map<String, String> blockIDMap = new HashMap<>();
+        Map<String, BlockShape> blockShapeCache = new HashMap<>();
 
         ServerBlockService blockService = new ServerBlockService();
 
         ServerWorld world = new ServerWorld();
 
         try {
-            Server server = new Server(seed, world, blockService, logger);
+            Server server = new Server(seed, world, blockShapeCache, blockService, blockIDMap, logger);
             Thread thread = new Thread(server::run, "Server Tick Loop");
             thread.start();
             ServerHandler serverHandler = new ServerHandler(server);
@@ -46,7 +59,11 @@ public class ServerLauncher {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(1048576, 0, 4, 0, 4), new LengthFieldPrepender(4), serverHandler);
+                            ch.pipeline().addLast(
+                                    new LengthFieldBasedFrameDecoder(1048576, 0, 4, 0, 4),
+                                    serverHandler,
+                                    new LengthFieldPrepender(4)
+                            );
                         }
                     });
 
@@ -59,6 +76,32 @@ public class ServerLauncher {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+        }
+    }
+
+    private static void createDirectories() throws IOException {
+        Files.createDirectories(Path.of(ConstantServerSettings.WORLD_SAVE_LOCATION));
+        Path chunkSaveLocation = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION);
+        clearDirectory(chunkSaveLocation);
+        Files.createDirectories(chunkSaveLocation);
+    }
+
+    public static void clearDirectory(Path dir) throws IOException {
+        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
+            return;
+        }
+
+        try (var paths = Files.walk(dir)) {
+            paths
+                    .sorted(Comparator.reverseOrder())
+                    .filter(path -> !path.equals(dir))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to delete: " + path, e);
+                        }
+                    });
         }
     }
 }

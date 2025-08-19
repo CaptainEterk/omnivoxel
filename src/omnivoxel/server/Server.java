@@ -4,7 +4,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.ServerClient;
+import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
@@ -24,6 +26,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -37,10 +40,18 @@ public class Server {
     private final Map<String, ServerClient> clients;
     private final WorkerThreadPool<ChunkTask> workerThreadPool;
     private final Value script;
+    private final ServerWorld world;
+    private final Map<String, String> blockIDMap;
+    private final Map<String, BlockShape> blockShapeCache;
     private final Logger logger;
+    private final ServerBlockService blockService;
 
-    public Server(int seed, ServerWorld world, ServerBlockService blockService, Logger logger) throws InterruptedException {
+    public Server(int seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap, Logger logger) throws InterruptedException {
+        this.world = world;
+        this.blockShapeCache = blockShapeCache;
+        this.blockIDMap = blockIDMap;
         this.logger = logger;
+        this.blockService = blockService;
         this.clients = new ConcurrentHashMap<>();
 
         File gamesDir = new File(ConstantGameSettings.GAME_LOCATION);
@@ -77,6 +88,24 @@ public class Server {
         ctx.channel().writeAndFlush(buffer);
     }
 
+    private static void sendBlock(ChannelHandlerContext ctx, ServerBlock block) {
+        ByteBuf buffer = Unpooled.buffer();
+        byte[] bytes = block.getBytes();
+        buffer.writeInt(4 + bytes.length);
+        buffer.writeInt(PackageID.REGISTER_BLOCK.ordinal());
+        buffer.writeBytes(bytes);
+        ctx.channel().writeAndFlush(buffer);
+    }
+
+    private static void sendBlockShape(ChannelHandlerContext ctx, BlockShape blockShape) {
+        ByteBuf buffer = Unpooled.buffer();
+        byte[] bytes = blockShape.getBytes();
+        buffer.writeInt(4 + bytes.length);
+        buffer.writeInt(PackageID.REGISTER_BLOCK_SHAPE.ordinal());
+        buffer.writeBytes(bytes);
+        ctx.channel().writeAndFlush(buffer);
+    }
+
     private Value launchGame(String gameDirectory, int seed) {
         Config config = new Config(gameDirectory + "/game.properties");
         GameAPI.GAME_DIRECTORY = gameDirectory;
@@ -105,7 +134,7 @@ public class Server {
 
             // TODO: Maybe add settings, state, etc...
             ctx.getBindings("js").putMember("game", new GameAPI());
-            ctx.getBindings("js").putMember("worldGen", new WorldGenAPI(seed));
+            ctx.getBindings("js").putMember("worldGen", new WorldGenAPI(seed, blockShapeCache, blockService));
 
             Value script = ctx.eval(Source.newBuilder("js", jsFile).build());
 
@@ -129,7 +158,7 @@ public class Server {
                     int x = byteBuf.getInt(i * 3 * Integer.BYTES + 40);
                     int y = byteBuf.getInt(i * 3 * Integer.BYTES + 44);
                     int z = byteBuf.getInt(i * 3 * Integer.BYTES + 48);
-                    queueChunkTask(new ChunkTask(clients.get(clientID), x, y, z));
+                    queueChunkTask(new ChunkTask(clients.get(clientID), x, y, z, byteBuf));
                 }
                 break;
             case REGISTER_CLIENT:
@@ -187,6 +216,14 @@ public class Server {
             });
             sendBytes(ctx, PackageID.REGISTER_PLAYERS, playerList);
 
+            blockShapeCache.forEach((id, blockShape) -> sendBlockShape(serverClient.getCTX(), blockShape));
+
+            blockService.getAllBlocks().forEach((id, serverBlock) -> {
+                if (serverClient.registerBlockID(id)) {
+                    sendBlock(serverClient.getCTX(), serverBlock);
+                }
+            });
+
             clients.put(clientID, serverClient);
 
             logger.debug("Registered Client: " + clientID + " with playerID: " + ByteUtils.bytesToHex(serverClient.getPlayerID()));
@@ -199,36 +236,42 @@ public class Server {
     }
 
     public void run() {
-        final long tickIntervalNanos = 1_000_000_000L / TPS;
+        try {
+            final long tickIntervalNanos = 1_000_000_000L / TPS;
 
-        int tick = 0;
-        while (true) {
-            long startNano = System.nanoTime();
+            int tick = 0;
+            while (true) {
+                long startNano = System.nanoTime();
 
-            if (script.hasMember("tick")) {
-                try {
-                    script.invokeMember("tick", tick++);
-                } catch (Exception e) {
-                    e.printStackTrace();
+                if (script.hasMember("tick")) {
+                    try {
+                        script.invokeMember("tick", tick++);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                world.tick();
+
+                long elapsed = System.nanoTime() - startNano;
+                long sleepNanos = tickIntervalNanos - elapsed;
+
+                if (sleepNanos > 0) {
+                    try {
+                        long sleepMillis = sleepNanos / 1_000_000;
+                        int sleepSubNanos = (int) (sleepNanos % 1_000_000);
+                        Thread.sleep(sleepMillis, sleepSubNanos);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt(); // reset interrupted flag
+                        break;
+                    }
+                } else {
+                    // Tick overran — consider logging or skipping sleep
+                    System.err.println("Tick took too long: " + (elapsed / 1_000_000.0) + " ms");
                 }
             }
-
-            long elapsed = System.nanoTime() - startNano;
-            long sleepNanos = tickIntervalNanos - elapsed;
-
-            if (sleepNanos > 0) {
-                try {
-                    long sleepMillis = sleepNanos / 1_000_000;
-                    int sleepSubNanos = (int) (sleepNanos % 1_000_000);
-                    Thread.sleep(sleepMillis, sleepSubNanos);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt(); // reset interrupted flag
-                    break;
-                }
-            } else {
-                // Tick overran — consider logging or skipping sleep
-                System.err.println("Tick took too long: " + (elapsed / 1_000_000.0) + " ms");
-            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

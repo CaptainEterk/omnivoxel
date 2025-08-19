@@ -24,4 +24,8 @@ public record Position3D(int x, int y, int z) {
     public Position3D add(Position3D position3D) {
         return add(position3D.x(), position3D.y(), position3D.z());
     }
+
+    public String getPath() {
+        return x + "_" + y + "_" + z + ".chunk";
+    }
 }

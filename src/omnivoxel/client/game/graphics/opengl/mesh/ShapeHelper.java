@@ -1,4 +1,4 @@
-package omnivoxel.client.game.graphics.opengl.shape.util;
+package omnivoxel.client.game.graphics.opengl.mesh;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;

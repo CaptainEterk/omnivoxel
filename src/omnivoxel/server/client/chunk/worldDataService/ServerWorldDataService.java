@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public final class ServerWorldDataService {
     private static final Map<String, Class<? extends DensityFunction>> densityCache = new HashMap<>();
@@ -96,7 +97,11 @@ public final class ServerWorldDataService {
 
     @NotNull
     public ServerBlock getBlockAt(Position3D position3D, int x, int y, int z, int worldX, int worldY, int worldZ, boolean border, ChunkInfo chunkInfo) {
-        return generator.evaluate(worldX, worldY, worldZ) > 0 ? blockService.getBlock("core:stone_block") : blockService.getBlock("omnivoxel:air");
+        ServerBlock serverBlock = generator.evaluate(worldX, worldY, worldZ) > 0 ? blockService.getBlock("core:stone_block") : blockService.getBlock("omnivoxel:air");
+        if (worldY < 100 && !Objects.equals(serverBlock.id(), "core:stone_block")) {
+            return blockService.getBlock("core:water_source_block");
+        }
+        return serverBlock;
     }
 
     public ChunkInfo getChunkInfo(Position3D position3D) {

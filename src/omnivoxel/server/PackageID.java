@@ -17,6 +17,7 @@ public enum PackageID {
     NEW_ENTITY,
     SERVER_INFO,
     REGISTER_BLOCK,
+    REGISTER_BLOCK_SHAPE,
 
     // TODO: Implement UDP Client/Server (using TCP for now)
     // UDP

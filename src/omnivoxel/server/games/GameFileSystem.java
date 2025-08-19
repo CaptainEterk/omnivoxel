@@ -14,21 +14,64 @@ import java.util.Set;
 
 public class GameFileSystem implements FileSystem {
     private final Path root;
+    private final Path graalLib;
+    private final Path mainJar; // discovered at construction, may be null if unavailable
 
     public GameFileSystem(Path root) {
         this.root = root.toAbsolutePath().normalize();
+        this.graalLib = Path.of("./lib/graalvm").toAbsolutePath().normalize();
+        this.mainJar = discoverMainJar();
     }
 
+    /**
+     * Very strict resolver:
+     * - Allows paths under 'root'
+     * - Allows paths under './lib/graalvm'
+     * - Allows exactly the main JAR file (for read-only use by JVM/Graal internals)
+     * Everything else is forbidden.
+     */
     private Path resolve(Path path) throws IOException {
-        Path resolved = root.resolve(path).normalize();
-        if (resolved.startsWith(root)) {
-            return resolved;
+        Path candidate = path;
+        if (!candidate.isAbsolute()) {
+            candidate = Path.of(".").toAbsolutePath().normalize().resolve(candidate);
         }
-        Path graalLib = Path.of("./lib/graalvm").toAbsolutePath().normalize();
-        if (resolved.startsWith(graalLib)) {
-            return resolved;
+
+        candidate = candidate.normalize();
+
+        if (candidate.startsWith(root)) {
+            return candidate;
         }
+        if (candidate.startsWith(graalLib)) {
+            return candidate;
+        }
+
+        if (mainJar != null) {
+            if (candidate.equals(mainJar)) {
+                return candidate;
+            }
+
+            if (candidate.equals(mainJar.getParent())) {
+                return candidate;
+            }
+        }
+
         throw new SecurityException("Access outside the sandbox is not allowed: " + path);
+    }
+
+    private Path discoverMainJar() {
+        try {
+            URI uri = GameFileSystem.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI();
+            Path p = Path.of(uri).toAbsolutePath().normalize();
+
+            if (Files.isDirectory(p)) return null;
+
+            return p;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override
@@ -45,9 +88,27 @@ public class GameFileSystem implements FileSystem {
         }
     }
 
+    /**
+     * Enforce access modes: if the target is the main JAR, disallow write operations.
+     */
     @Override
     public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
         Path resolved = resolve(path);
+
+        if (isMainJar(resolved)) {
+            // If any requested mode is WRITE, deny it.
+            for (AccessMode m : modes) {
+                if (m == AccessMode.WRITE) {
+                    throw new SecurityException("Write access to the main JAR is forbidden.");
+                }
+                if (m == AccessMode.EXECUTE) {
+                    // Disallow execute on the jar path explicitly (defense-in-depth)
+                    throw new SecurityException("Execute access to the main JAR is forbidden.");
+                }
+            }
+        }
+
+        // Otherwise delegate to the platform provider for existence/readonly checks.
         resolved.getFileSystem().provider().checkAccess(resolved, modes.toArray(new AccessMode[0]));
     }
 
@@ -61,14 +122,38 @@ public class GameFileSystem implements FileSystem {
         throw new UnsupportedOperationException("Mods cannot delete files.");
     }
 
+    /**
+     * Enforce read-only semantics for the main JAR when opening channels.
+     * Any attempt to open mainJar with WRITE/CREATE/TRUNCATE/APPEND is rejected.
+     */
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-        return Files.newByteChannel(resolve(path), options, attrs);
+        Path resolved = resolve(path);
+
+        if (isMainJar(resolved)) {
+            for (OpenOption opt : options) {
+                if (opt == StandardOpenOption.WRITE
+                        || opt == StandardOpenOption.CREATE
+                        || opt == StandardOpenOption.CREATE_NEW
+                        || opt == StandardOpenOption.APPEND
+                        || opt == StandardOpenOption.TRUNCATE_EXISTING) {
+                    throw new SecurityException("Mods cannot open the main JAR for writing or creation.");
+                }
+            }
+        }
+
+        return Files.newByteChannel(resolved, options, attrs);
     }
 
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-        return Files.newDirectoryStream(resolve(dir), filter);
+        Path resolved = resolve(dir);
+
+        if (mainJar != null && resolved.equals(mainJar.getParent()) && !resolved.startsWith(root) && !resolved.startsWith(graalLib)) {
+            throw new SecurityException("Listing the main JAR's parent directory is forbidden.");
+        }
+
+        return Files.newDirectoryStream(resolved, filter);
     }
 
     @Override
@@ -90,7 +175,7 @@ public class GameFileSystem implements FileSystem {
         return Files.readAttributes(resolve(path), attributes, options);
     }
 
-    // Optional: deny symbolic links
+    // Symbolic links denied
     @Override
     public void createLink(Path link, Path existing) {
         throw new UnsupportedOperationException("Symbolic links are not supported.");
@@ -149,5 +234,9 @@ public class GameFileSystem implements FileSystem {
     @Override
     public void move(Path source, Path target, CopyOption... options) {
         throw new UnsupportedOperationException("Mods cannot move files.");
+    }
+
+    private boolean isMainJar(Path p) {
+        return p != null && p.equals(mainJar);
     }
 }

@@ -4,9 +4,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.settings.ConstantGameSettings;
+import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.ServerWorld;
-import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.result.ChunkResult;
 import omnivoxel.server.client.chunk.result.GeneratedChunk;
@@ -14,8 +14,10 @@ import omnivoxel.server.client.chunk.worldDataService.ChunkInfo;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.chunk.Chunk;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 
 public final class ChunkGenerator {
@@ -44,69 +46,47 @@ public final class ChunkGenerator {
     public void generateChunk(ChunkTask task) {
         Position3D position3D = new Position3D(task.x(), task.y(), task.z());
 
-        ChunkResult chunkResult;
-        Chunk<ServerBlock> c = world.get(position3D);
-        GeneratedChunk chunk = new EmptyGeneratedChunk();
-        ChunkInfo chunkInfo = null;
-        if (c != null) {
-            for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
-                int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
-                for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
-                    int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
+        try {
+            byte[] chunkBytes = world.getBytes(position3D);
+            if (chunkBytes != null) {
+                sendChunkBytes(task.serverClient().getCTX(), task.x(), task.y(), task.z(), chunkBytes);
+            } else {
+                ChunkResult chunkResult;
+                GeneratedChunk chunk = new EmptyGeneratedChunk();
+                ChunkInfo chunkInfo;
+                if (worldDataService.shouldGenerateChunk(position3D)) {
+                    chunkInfo = world.getChunkInfo(position3D);
+                    chunkInfo = chunkInfo == null ? worldDataService.getChunkInfo(position3D) : chunkInfo;
+                    for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
+                        int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
+                        for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
+                            int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
 
-                    for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
-                        int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
+                            for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
+                                int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
 
-                        boolean border =
-                                x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
-                                        y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
-                                        z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
+                                boolean border =
+                                        x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
+                                                y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
+                                                z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
 
-                        ServerBlock block = world.getBlock(position3D, x, y, z);
-
-                        if (block == null) {
-                            if (chunkInfo == null) {
-                                chunkInfo = worldDataService.getChunkInfo(position3D);
+                                chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, x, y, z, worldX, worldY, worldZ, border, chunkInfo));
                             }
-
-                            block = worldDataService.getBlockAt(position3D, x, y, z, worldX, worldY, worldZ, border, chunkInfo);
-                        }
-                        chunk = chunk.setBlock(x, y, z, border ? block : c.getBlock(x, y, z));
-                    }
-                }
-            }
-
-            chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());
-        } else {
-            if (worldDataService.shouldGenerateChunk(position3D)) {
-//                generateSurroundingChunks(position3D, 1);
-
-                chunkInfo = world.getChunkInfo(position3D);
-                chunkInfo = chunkInfo == null ? worldDataService.getChunkInfo(position3D) : chunkInfo;
-                for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
-                    int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
-                    for (int z = -1; z < ConstantGameSettings.CHUNK_LENGTH + 1; z++) {
-                        int worldZ = position3D.z() * ConstantGameSettings.CHUNK_LENGTH + z;
-
-                        for (int y = -1; y < ConstantGameSettings.CHUNK_HEIGHT + 1; y++) {
-                            int worldY = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT + y;
-
-                            boolean border =
-                                    x == -1 || x == ConstantGameSettings.CHUNK_WIDTH ||
-                                            y == -1 || y == ConstantGameSettings.CHUNK_HEIGHT ||
-                                            z == -1 || z == ConstantGameSettings.CHUNK_LENGTH;
-
-                            chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(position3D, x, y, z, worldX, worldY, worldZ, border, chunkInfo));
                         }
                     }
                 }
-            }
 
-            chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());
-            world.add(position3D, chunkResult.chunk());
+                chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());
+                world.add(position3D, chunkResult.chunk());
+
+                Files.write(Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath()), chunkResult.bytes());
+
+                sendChunkBytes(task.serverClient().getCTX(), task.x(), task.y(), task.z(), chunkResult.bytes());
+            }
+        } catch (IOException e) {
+            task.byteBuf().release();
+            throw new RuntimeException(e);
         }
-
-        sendChunkBytes(task.serverClient().getCTX(), task.x(), task.y(), task.z(), chunkResult.bytes());
     }
 
 //    private void generateSurroundingChunks(Position3D position3D, int size) {

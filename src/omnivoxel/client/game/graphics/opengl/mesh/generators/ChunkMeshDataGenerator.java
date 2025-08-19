@@ -1,6 +1,7 @@
 package omnivoxel.client.game.graphics.opengl.mesh.generators;
 
 import io.netty.buffer.ByteBuf;
+import omnivoxel.client.game.graphics.opengl.mesh.ShapeHelper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
 import omnivoxel.client.game.graphics.opengl.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
@@ -9,23 +10,22 @@ import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.UniqueVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
-import omnivoxel.client.game.graphics.opengl.shape.util.ShapeHelper;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.common.BlockShape;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
-import omnivoxel.world.chunk.SingleBlockChunk;
+import omnivoxel.world.chunk.SingleBlockAndAirChunk;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
 public class ChunkMeshDataGenerator {
-    private static final omnivoxel.world.block.Block air = new omnivoxel.world.block.Block("omnivoxel:air");
+    public static final omnivoxel.world.block.Block air = new omnivoxel.world.block.Block("omnivoxel:air");
     private final ClientWorldDataService worldDataService;
     private final BlockService blockService;
 
@@ -112,7 +112,7 @@ public class ChunkMeshDataGenerator {
             Block block, Block top, Block bottom, Block north, Block south, Block east, Block west,
             List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
 
-        Shape shape = block.getShape(top, bottom, north, south, east, west); // compute once
+        BlockShape shape = block.getShape(top, bottom, north, south, east, west); // compute once
 
         boolean renderTop = shouldRenderFaceCached(block, shape, top, BlockFace.TOP, top, bottom, north, south, east, west);
         boolean renderBottom = shouldRenderFaceCached(block, shape, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west);
@@ -134,7 +134,7 @@ public class ChunkMeshDataGenerator {
             addFacePrecomputedShape(x, y, z, block, shape, BlockFace.WEST, vertices, indices, vertexIndexMap);
     }
 
-    private boolean shouldRenderFaceCached(Block originalBlock, Shape originalShape, Block adjacentBlock, BlockFace face,
+    private boolean shouldRenderFaceCached(Block originalBlock, BlockShape originalShape, Block adjacentBlock, BlockFace face,
                                            Block top, Block bottom, Block north, Block south, Block east, Block west) {
         if (adjacentBlock == null) {
             return true;
@@ -143,16 +143,16 @@ public class ChunkMeshDataGenerator {
                 !Objects.equals(originalBlock.getModID(), "omnivoxel:air")) {
             return true;
         }
-        Shape adjShape = adjacentBlock.getShape(top, bottom, north, south, east, west);
-        return !(originalShape.isFaceSolid(face) && adjShape.isFaceSolid(face))
+        BlockShape adjBlockShape = adjacentBlock.getShape(top, bottom, north, south, east, west);
+        return !(originalShape.solid()[face.ordinal()] && adjBlockShape.solid()[face.ordinal()])
                 && originalBlock.shouldRenderFace(face, adjacentBlock);
     }
 
-    private void addFacePrecomputedShape(int x, int y, int z, Block block, Shape shape, BlockFace blockFace,
+    private void addFacePrecomputedShape(int x, int y, int z, Block block, BlockShape shape, BlockFace blockFace,
                                          List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
         int[] uvCoordinates = block.getUVCoordinates(blockFace);
-        Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
-        int[] faceIndices = shape.getIndicesOnFace(blockFace);
+        Vertex[] faceVertices = shape.vertices()[blockFace.ordinal()];
+        int[] faceIndices = shape.indices()[blockFace.ordinal()];
 
         // Same color logic as before
         float temp_r, temp_g, temp_b;
@@ -168,6 +168,7 @@ public class ChunkMeshDataGenerator {
             temp_r = temp_g = temp_b = 0;
         }
 
+        // TODO: Remove all hardcoding
         int blockType = Objects.equals(block.getModID(), "core:water_source_block") ? 1 : 0;
 
         for (int idx : faceIndices) {
@@ -178,57 +179,6 @@ public class ChunkMeshDataGenerator {
                     uvCoordinates[idx * 2],
                     uvCoordinates[idx * 2 + 1],
                     blockFace, temp_r, temp_g, temp_b, blockType);
-        }
-    }
-
-    private boolean shouldRenderFace(Block originalBlock, Block adjacentBlock, BlockFace face, Block top, Block bottom, Block north, Block south, Block east, Block west) {
-        if (adjacentBlock == null) {
-            return true;
-        }
-        if (Objects.equals(adjacentBlock.getModID(), "omnivoxel:air") && !Objects.equals(originalBlock.getModID(), "omnivoxel:air")) {
-            return true;
-        }
-        return (
-                !(
-                        originalBlock.getShape(top, bottom, north, south, east, west).isFaceSolid(face) &&
-                                adjacentBlock.getShape(top, bottom, north, south, east, west).isFaceSolid(face)
-                )
-        ) && originalBlock.shouldRenderFace(face, adjacentBlock);
-    }
-
-    private void addFace(int x, int y, int z, Block block, Block top, Block bottom, Block north, Block south, Block east, Block west, BlockFace blockFace, List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
-        Shape shape = block.getShape(top, bottom, north, south, east, west);
-        int[] uvCoordinates = block.getUVCoordinates(blockFace);
-        Vertex[] faceVertices = shape.getVerticesOnFace(blockFace);
-        int[] faceIndices = shape.getIndicesOnFace(blockFace);
-
-        // TODO: Add lighting
-        float temp_r, temp_g, temp_b;
-
-        if (block.getState() == null) {
-            temp_r = 0;
-            temp_g = 0;
-            temp_b = 0;
-        } else if (block.getState().length == 1) {
-            temp_r = block.getState()[0] / 32f;
-            temp_g = block.getState()[0] / 32f;
-            temp_b = block.getState()[0] / 32f;
-        } else if (block.getState().length == 3) {
-            temp_r = block.getState()[0] / 32f;
-            temp_g = block.getState()[1] / 32f;
-            temp_b = block.getState()[2] / 32f;
-        } else {
-            temp_r = 0;
-            temp_g = 0;
-            temp_b = 0;
-        }
-
-
-        for (int index : faceIndices) {
-            Vertex pointPosition = faceVertices[index];
-            Vertex position = pointPosition.add(x, y, z);
-            // TODO: Replace with game dependent point type
-            addPoint(vertices, indices, vertexIndexMap, position, uvCoordinates[index * 2], uvCoordinates[index * 2 + 1], blockFace, temp_r, temp_g, temp_b, Objects.equals(block.getModID(), "core:water_source_block") ? 1 : 0);
         }
     }
 
@@ -267,11 +217,13 @@ public class ChunkMeshDataGenerator {
                 blockState[k] = byteBuf.getInt(index + j);
                 j += 4;
             }
+            j++;
+            boolean transparent = byteBuf.getBoolean(j);
             palette[i] = new omnivoxel.world.block.Block(blockID.toString(), blockState.length == 0 ? null : blockState);
             index += j;
         }
 
-        Chunk<omnivoxel.world.block.Block> chunk = new SingleBlockChunk<>(air);
+        Chunk<omnivoxel.world.block.Block> chunk = new SingleBlockAndAirChunk<>(air);
         Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
         int x = 0, y = 0, z = 0;
 
@@ -308,7 +260,6 @@ public class ChunkMeshDataGenerator {
 
             i += blockCount;
         }
-
 
         byteBuf.release();
 

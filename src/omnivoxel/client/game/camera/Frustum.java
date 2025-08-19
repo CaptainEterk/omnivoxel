@@ -34,10 +34,6 @@ public class Frustum {
     }
 
     public boolean isEntityInFrustum(ClientEntity clientEntity, Camera camera) {
-        double x = clientEntity.getX();
-        double y = clientEntity.getY();
-        double z = clientEntity.getZ();
-
-        return frustumIntersection.testPoint((float) x, (float) y, (float) z);
+        return frustumIntersection.testPoint((float) clientEntity.getX(), (float) clientEntity.getY(), (float) clientEntity.getZ());
     }
 }

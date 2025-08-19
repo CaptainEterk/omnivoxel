@@ -14,8 +14,7 @@ import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ModelEntityMeshData;
-import omnivoxel.client.game.graphics.opengl.shape.BlockShape;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
@@ -23,6 +22,7 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.client.network.request.Request;
+import omnivoxel.common.BlockShape;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.entity.EntityType;
@@ -33,6 +33,7 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +46,7 @@ public final class Client {
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
     private final Queue<Position3D> queuedChunkTasks = new ArrayDeque<>();
     private final ClientWorld world;
-    private final IDCache<String, Shape> shapeCache;
+    private final Map<String, BlockShape> shapeCache;
     private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
@@ -57,7 +58,7 @@ public final class Client {
         this.logger = logger;
         this.world = world;
         entities = new ConcurrentHashMap<>();
-        shapeCache = new IDCache<>(new HashMap<>());
+        shapeCache = new HashMap<>();
     }
 
     private static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {
@@ -86,6 +87,46 @@ public final class Client {
                 f.cause().printStackTrace();
             }
         });
+    }
+
+    private static BlockShape readBlockShapeFromByteBuf(ByteBuf byteBuf) {
+        // --- Read id ---
+        byteBuf.skipBytes(8);
+        int idLen = byteBuf.readUnsignedShort();
+        byte[] idBytes = new byte[idLen];
+        byteBuf.readBytes(idBytes);
+        String id = new String(idBytes, StandardCharsets.UTF_8);
+
+        // --- Read faces ---
+        Vertex[][] vertices = new Vertex[6][];
+        int[][] indices = new int[6][];
+        boolean[] solid = new boolean[6];
+
+        for (int face = 0; face < 6; face++) {
+            // vertices
+            int vCount = byteBuf.readUnsignedShort();
+            Vertex[] verts = new Vertex[vCount];
+            for (int i = 0; i < vCount; i++) {
+                float x = byteBuf.readFloat();
+                float y = byteBuf.readFloat();
+                float z = byteBuf.readFloat();
+                verts[i] = new Vertex(x, y, z);
+            }
+            vertices[face] = verts;
+
+            // indices
+            int iCount = byteBuf.readUnsignedShort();
+            int[] idx = new int[iCount];
+            for (int i = 0; i < iCount; i++) {
+                idx[i] = byteBuf.readInt();
+            }
+            indices[face] = idx;
+
+            // solid
+            solid[face] = byteBuf.readByte() != 0;
+        }
+
+        return new BlockShape(id, vertices, indices, solid);
     }
 
     public boolean isClientRunning() {
@@ -148,12 +189,46 @@ public final class Client {
                 newEntity(byteBuf);
                 byteBuf.release();
                 break;
-            case REGISTER_BLOCK:
-                int idLength = byteBuf.getShort(8);
+            case REGISTER_BLOCK_SHAPE:
+                BlockShape blockShape = readBlockShapeFromByteBuf(byteBuf);
+                shapeCache.put(blockShape.id(), blockShape);
+                byteBuf.release();
+                break;
+            case REGISTER_BLOCK: {
+                int readerIndex = 8;
+
+                int idLength = byteBuf.getShort(readerIndex);
+                readerIndex += 2;
+
                 byte[] idBytes = new byte[idLength];
-                byteBuf.getBytes(10, idBytes);
-                String modID = new String(idBytes);
-                String blockID = modID.split(":")[1];
+                byteBuf.getBytes(readerIndex, idBytes);
+                readerIndex += idLength;
+
+                final String modID = new String(idBytes);
+                final String blockID = modID.contains(":") ? modID.split(":", 2)[1] : modID;
+
+                int blockStateLength = byteBuf.getShort(readerIndex);
+                readerIndex += 2;
+
+                int[] blockState = new int[blockStateLength];
+                for (int i = 0; i < blockStateLength; i++) {
+                    blockState[i] = byteBuf.getInt(readerIndex);
+                    readerIndex += 4;
+                }
+
+                int shapeIDLength = byteBuf.getShort(readerIndex);
+                readerIndex += 2;
+
+                byte[] shapeIDBytes = new byte[shapeIDLength];
+                byteBuf.getBytes(readerIndex, shapeIDBytes);
+                readerIndex += shapeIDLength;
+
+                final String shapeID = new String(shapeIDBytes);
+                final BlockShape blockShapeID = shapeCache.getOrDefault(shapeID, BlockShape.DEFAULT_BLOCK_SHAPE);
+
+                boolean transparent = byteBuf.getByte(readerIndex) == 1;
+                readerIndex += 1;
+
                 worldDataService.addBlock(new Block() {
                     @Override
                     public String getID() {
@@ -166,27 +241,42 @@ public final class Client {
                     }
 
                     @Override
-                    public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
-                        return shapeCache.get("omnivoxel:block_shape", BlockShape.class);
+                    public BlockShape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
+                        return blockShapeID;
                     }
 
                     @Override
                     public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
-                        return modID.equals("omnivoxel:air");
+                        if (modID.equals("omnivoxel:air") || adjacentBlock.getModID().equals(modID) || !adjacentBlock.isTransparent())
+                            return false;
+                        if (transparent) return true;
+                        return true;
                     }
 
                     @Override
                     public int[] getUVCoordinates(BlockFace blockFace) {
-                        return new int[]{
-                                2, 0,
-                                3, 0,
-                                3, 1,
-                                2, 1
-                        };
+                        return new int[]{2, 0, 3, 0, 3, 1, 2, 1};
+                    }
+
+                    @Override
+                    public boolean isTransparent() {
+                        return transparent;
+                    }
+
+                    @Override
+                    public boolean shouldRenderTransparentMesh() {
+                        return transparent;
+                    }
+
+                    @Override
+                    public int[] getState() {
+                        return blockState;
                     }
                 });
+
                 byteBuf.release();
                 break;
+            }
             default:
                 System.err.println("Unexpected package id: " + packageID);
                 byteBuf.release();
@@ -210,7 +300,7 @@ public final class Client {
 
             if (entity.getMesh() != null) {
                 entity.getMeshData().setModel(new Matrix4f().identity()
-                        .translate((float) x, (float) (y - 0.75f/2), (float) z)
+                        .translate((float) x, (float) (y - 0.75f / 2), (float) z)
                         .scale(0.5f)
                         .rotateY((float) -yaw));
                 if (!entity.getMesh().getChildren().isEmpty()) {
