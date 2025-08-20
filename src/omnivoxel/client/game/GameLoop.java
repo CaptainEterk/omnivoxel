@@ -248,7 +248,7 @@ public final class GameLoop {
 
                 time = GLFW.glfwGetTime();
 
-                GL11C.glPolygonMode(GL11C.GL_FRONT, GL11C.GL_FILL);
+                GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_FILL);
 
                 shaderProgram.setUniform("time", (float) time);
                 if (time - updateRightDebugTextTime > 0.5) {
@@ -469,8 +469,6 @@ public final class GameLoop {
     private int update(Window window, List<DistanceChunk> solidRenderedChunks, List<DistanceChunk> transparentRenderedChunks, boolean completeRenderDistance) {
         if (state.getItem("shouldRenderWireframe", Boolean.class)) {
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
-        } else {
-            GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_FILL);
         }
 
         shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
