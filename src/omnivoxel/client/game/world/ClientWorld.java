@@ -137,7 +137,7 @@ public class ClientWorld {
         state.setItem("shouldCheckNewChunks", true);
     }
 
-    public void freeAll() {
+    public void cleanup() {
         for (Position3D position : getKeys()) {
             freeChunk(chunks.get(position).getMesh());
         }

@@ -1,5 +1,7 @@
 package omnivoxel.client.game.graphics.opengl.input;
 
+import omnivoxel.client.game.graphics.opengl.window.Window;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,8 +17,8 @@ public class MouseButtonInput {
         mouseLocked = new AtomicBoolean();
     }
 
-    public void init(long window) {
-        glfwSetMouseButtonCallback(window, this::mouseButtonCallback);
+    public void init(Window window) {
+        glfwSetMouseButtonCallback(window.window(), this::mouseButtonCallback);
     }
 
     public void mouseButtonCallback(long window, int button, int action, int mods) {
@@ -31,13 +33,13 @@ public class MouseButtonInput {
         return mouseButtons.getOrDefault(mouseButton, false);
     }
 
-    public void lockMouse(long window) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    public void lockMouse(Window window) {
+        glfwSetInputMode(window.window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         mouseLocked.set(true);
     }
 
-    public void unlockMouse(long window) {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    public void unlockMouse(Window window) {
+        glfwSetInputMode(window.window(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         mouseLocked.set(false);
     }
 

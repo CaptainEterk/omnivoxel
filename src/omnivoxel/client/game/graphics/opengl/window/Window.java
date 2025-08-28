@@ -1,10 +1,10 @@
 package omnivoxel.client.game.graphics.opengl.window;
 
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWWindowSizeCallback;
+import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.function.Consumer;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -17,15 +17,17 @@ public final class Window {
     private int width;
     private int height;
     private float aspectRatio;
+    private final Queue<Consumer<Window>> contextTasks;
 
-    public Window(long window, String version) {
+    public Window(long window, String version, Queue<Consumer<Window>> contextTasks) {
         this.window = window;
         this.version = version;
+        this.contextTasks = contextTasks;
         this.matrixUsers = new ArrayList<>();
     }
 
     public void init(int width, int height) {
-        glfwSetWindowSizeCallback(window, new GLFWWindowSizeCallback() {
+        glfwSetFramebufferSizeCallback(window, new GLFWFramebufferSizeCallback() {
             @Override
             public void invoke(long window, int width, int height) {
                 updateSize(width, height);
@@ -42,10 +44,6 @@ public final class Window {
         glViewport(0, 0, width, height);
 
         updateMatrices();
-    }
-
-    public void fullscreen() {
-        GLFW.glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     }
 
     public void addMatrixListener(Consumer<Window> matrixUser) {

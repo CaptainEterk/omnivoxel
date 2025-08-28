@@ -25,7 +25,7 @@ uniform float fogFar;
 uniform float fogNear;
 uniform float time;
 
-uniform sampler2D texture1;
+uniform sampler2D blockTexture;
 
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -62,7 +62,7 @@ float simpleNoise(vec2 pos) {
 
 void main() {
     if (meshType == 0u) {
-        FragColor = texture(texture1, TexCoord / TEXTURE_SIZE);
+        FragColor = texture(blockTexture, TexCoord / TEXTURE_SIZE);
         if (FragColor.a == 0) discard;
 
         float distance = length(position-cameraPosition);
@@ -88,8 +88,10 @@ void main() {
         FragColor = mix(fogColor, FragColor, fogFactor);
         // TODO: Mix with filter color too for water and things.
     } else if (meshType == 1u) {
-        FragColor = texture(texture1, TexCoord);
+        FragColor = texture(blockTexture, TexCoord);
     } else if (meshType == 2u) {
 
     }
+
+//    FragColor = vec4(vec3(gl_FragCoord.z/10), 1.0);
 }

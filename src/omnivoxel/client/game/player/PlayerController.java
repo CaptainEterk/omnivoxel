@@ -4,6 +4,7 @@ import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.graphics.opengl.input.KeyInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseButtonInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseInput;
+import omnivoxel.client.game.graphics.opengl.window.Window;
 import omnivoxel.client.game.hitbox.Hitbox;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.settings.Settings;
@@ -41,7 +42,7 @@ public class PlayerController {
     private final Client client;
     private final Camera camera;
     private final Settings settings;
-    private final BlockingQueue<Consumer<Long>> contextTasks;
+    private final BlockingQueue<Consumer<Window>> contextTasks;
     private final State state;
     private final ClientWorld world;
     private final IDCache<String, String> blockHitbox;
@@ -50,7 +51,7 @@ public class PlayerController {
     private final double speed = 4.317f * ConstantGameSettings.TARGET_TPS;
 
     @NotNull
-    private MovementMode movementMode = MovementMode.FLY_COLLIDE;
+    private MovementMode movementMode = MovementMode.FALL_COLLIDE;
 
     private double x;
     private double y = 128;
@@ -75,7 +76,7 @@ public class PlayerController {
     private Chunk<Block> cachedChunk;
     private boolean onGround = false;
 
-    public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Long>> contextTasks, State state, ClientWorld world) {
+    public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Window>> contextTasks, State state, ClientWorld world) {
         this.client = client;
         this.camera = camera;
         this.settings = settings;
@@ -382,7 +383,7 @@ public class PlayerController {
 
                         int[] x = new int[1];
                         int[] y = new int[1];
-                        GLFW.glfwGetWindowPos(window, x, y);
+                        GLFW.glfwGetWindowPos(window.window(), x, y);
                         oldWindowX = x[0];
                         oldWindowY = y[0];
 
