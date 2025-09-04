@@ -13,7 +13,7 @@ public class ClientWorldDataService {
         blocks = new ConcurrentHashMap<>();
     }
 
-    public Block getBlock(String blockModID, int[] state) {
+    public Block getBlock(String blockModID, String state) {
         return blocks.get(blockModID).get(state);
     }
 
@@ -21,8 +21,8 @@ public class ClientWorldDataService {
         blocks.put(block.getModID(), new BlockMap(new ConcurrentHashMap<>(), block));
     }
 
-    private record BlockMap(Map<int[], Block> blocks, Block block) {
-        public Block get(int[] state) {
+    private record BlockMap(Map<String, Block> blocks, Block block) {
+        public Block get(String state) {
             if (state == null) {
                 return block;
             }

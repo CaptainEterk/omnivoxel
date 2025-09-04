@@ -12,4 +12,5 @@ public final class ConstantServerSettings {
 
     public static final String WORLD_SAVE_LOCATION = "./world/";
     public static final String CHUNK_SAVE_LOCATION = WORLD_SAVE_LOCATION + "chunks/";
+    public static final String GAME_LOCATION = "game/";
 }

@@ -73,7 +73,7 @@ public final class WindowFactory {
         }
 
         if (logger != null) {
-            logger.debug(String.format("OpenGL/GLFW window created - title \"%s\" - position (%d, %d) - size (%d, %d) - id %d", title, x, y, width, height, window));
+            logger.debug(String.format("OpenGL/GLFW window created - title \"%s\" - position (%d, %d) - size (%d, %d) - key %d", title, x, y, width, height, window));
         }
 
         String osName = System.getProperty("os.name").toLowerCase();

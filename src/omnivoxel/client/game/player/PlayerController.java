@@ -168,21 +168,21 @@ public class PlayerController {
             velocityY -= (float) (GRAVITY * tickDelta);
         }
 
+        double frictionFactor;
         if (movementMode == MovementMode.FALL_COLLIDE) {
-            float frictionFactor = (float) ((onGround ? GROUND_FRICTION : AIR_RESISTANCE) * deltaTime);
+            frictionFactor = (float) ((onGround ? GROUND_FRICTION : AIR_RESISTANCE) * deltaTime);
             velocityX *= frictionFactor;
             velocityZ *= frictionFactor;
             if (!onGround) {
                 velocityY *= 0.98f;
             }
-            state.setItem("friction_factor", frictionFactor);
         } else {
-            float frictionFactor = (float) (AIR_RESISTANCE * deltaTime);
+            frictionFactor = (float) (AIR_RESISTANCE * deltaTime);
             velocityX *= frictionFactor;
             velocityY *= frictionFactor;
             velocityZ *= frictionFactor;
-            state.setItem("friction_factor", frictionFactor);
         }
+        state.setItem("friction_factor", frictionFactor);
 
         handleMovement(deltaTime, movementMode != MovementMode.FLY);
 

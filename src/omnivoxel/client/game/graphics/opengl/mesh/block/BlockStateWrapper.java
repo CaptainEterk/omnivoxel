@@ -6,7 +6,7 @@ import omnivoxel.common.BlockShape;
 public class BlockStateWrapper extends Block {
     private final Block wrappedBlock;
 
-    public BlockStateWrapper(Block wrappedBlock, int[] state) {
+    public BlockStateWrapper(Block wrappedBlock, String state) {
         super(state);
         wrappedBlock.state = state;
         this.wrappedBlock = wrappedBlock;
@@ -33,7 +33,7 @@ public class BlockStateWrapper extends Block {
     }
 
     @Override
-    public int[] getState() {
+    public String getState() {
         return super.getState();
     }
 }

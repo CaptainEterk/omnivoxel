@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class GeneratedChunk {
-    private static final ChunkResult emptyChunk = new ChunkResult(new byte[]{0, 1, 0, 13, 111, 109, 110, 105, 118, 111, 120, 101, 108, 58, 97, 105, 114, 0, 0, 0, 0, 0, 0, 0, 0, -103, -120}, new SingleBlockChunk<>(new ServerBlock("omnivoxel:air", "omnivoxel:empty_block_shape", true)));
+    private static ChunkResult emptyChunk = null;
 
     private static void sendBlock(ChannelHandlerContext ctx, ServerBlock block) {
         ByteBuf buffer = Unpooled.buffer();
@@ -30,7 +30,10 @@ public abstract class GeneratedChunk {
     }
 
     public static ChunkResult getResult(GeneratedChunk generatedChunk, ServerClient client) {
-        if (generatedChunk instanceof EmptyGeneratedChunk) {
+        if (generatedChunk instanceof EmptyGeneratedChunk && client != null) {
+            if (emptyChunk == null) {
+                emptyChunk = getResult(new EmptyGeneratedChunk(), null);
+            }
             return emptyChunk;
         }
 
@@ -50,12 +53,14 @@ public abstract class GeneratedChunk {
             }
         }
 
-        // TODO: This shouldn't handle anything server/client related
-        palette.forEach(serverBlock -> {
-            if (client.registerBlockID(serverBlock.id())) {
-                sendBlock(client.getCTX(), serverBlock);
-            }
-        });
+        if (client != null) {
+            // TODO: This shouldn't handle anything server/client related
+            palette.forEach(serverBlock -> {
+                if (client.registerBlockID(serverBlock.id())) {
+                    sendBlock(client.getCTX(), serverBlock);
+                }
+            });
+        }
 
         Chunk<ServerBlock> chunkOut;
         if (palette.size() == 1) {

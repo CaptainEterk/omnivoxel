@@ -1,19 +1,25 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 
 @Function(id = "omnivoxel:max")
 public class MaxDensityFunction extends DensityFunction {
     private final DensityFunction arg1;
     private final DensityFunction arg2;
 
-    public MaxDensityFunction(Value[] args, long i) {
-        super(args, i);
-        arg1 = ServerWorldDataService.getGenerator(args[0], i);
-        arg2 = ServerWorldDataService.getGenerator(args[1], i);
+    public MaxDensityFunction(GameNode args, long seed) {
+        super(args, seed);
+
+        if (args instanceof ObjectGameNode objectGameNode) {
+            this.arg1 = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg1"), seed);
+            this.arg2 = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg2"), seed);
+        } else {
+            throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
+        }
     }
 
     @Override

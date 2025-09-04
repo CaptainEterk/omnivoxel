@@ -14,7 +14,7 @@ public final class ServerBlockService {
         serverBlocksById = new ConcurrentHashMap<>();
     }
 
-    public ServerBlock getBlock(String id, int... blockState) {
+    public ServerBlock getBlock(String id, String blockState) {
         String key = createKey(id, blockState);
         ServerBlock serverBlock = serverBlocksById.get(key);
         if (serverBlock == null) {
@@ -34,8 +34,8 @@ public final class ServerBlockService {
         return serverBlocksById;
     }
 
-    private String createKey(String id, int[] blockState) {
-        return id + ":" + Arrays.hashCode(blockState);
+    private String createKey(String id, String blockState) {
+        return id + ":" + blockState;
     }
 
     public void addServerBlock(String id, ServerBlock serverBlock) {

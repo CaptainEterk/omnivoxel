@@ -161,7 +161,7 @@ public class ServerWorld {
     }
 
     private static class ChunkValue {
-        private Chunk<ServerBlock> chunk;
+        private final Chunk<ServerBlock> chunk;
         private int request;
 
         public ChunkValue(Chunk<ServerBlock> chunk, int request) {

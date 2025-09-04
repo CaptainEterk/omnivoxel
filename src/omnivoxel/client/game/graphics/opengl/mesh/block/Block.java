@@ -4,9 +4,9 @@ import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.common.BlockShape;
 
 public abstract class Block {
-    protected int[] state;
+    protected String state;
 
-    protected Block(int[] state) {
+    protected Block(String state) {
         this.state = state;
     }
 
@@ -34,7 +34,7 @@ public abstract class Block {
         return adjacentBlock.isTransparent();
     }
 
-    public int[] getState() {
+    public String getState() {
         return state;
     }
 }

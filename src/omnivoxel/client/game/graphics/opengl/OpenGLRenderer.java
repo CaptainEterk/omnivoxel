@@ -84,7 +84,7 @@ public class OpenGLRenderer implements Renderer {
 
         try {
             // Creates an OpenGL window
-            this.window = WindowFactory.createWindow(500, 500, ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
+            this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
 
             // Create renderers
             this.textRenderer = new TextRenderer();
@@ -110,7 +110,7 @@ public class OpenGLRenderer implements Renderer {
 
             initResources();
 
-            this.window.init(500, 500);
+            this.window.init(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500));
             this.window.show();
 
             initOpenGL();
@@ -196,6 +196,8 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void initFrameActions() {
+        addFrameAction(periodicTimeExecutorCollection::execute);
+
         addFrameAction(this::start);
         addFrameAction(this::update);
 
@@ -207,8 +209,6 @@ public class OpenGLRenderer implements Renderer {
         addFrameAction(this::renderTransparentChunks);
 
         addFrameAction(this::bufferizeChunks);
-
-        addFrameAction(periodicTimeExecutorCollection::execute);
 
         addFrameAction(this::renderDebugText);
         addFrameAction(this::openGLStateReset);
@@ -473,7 +473,7 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("velocity_y", Double.class),
                     state.getItem("velocity_z", Double.class),
                     state.getItem("on_ground", Boolean.class),
-                    state.getItem("friction_factor", Float.class)
+                    state.getItem("friction_factor", Double.class)
             );
 
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_FILL);

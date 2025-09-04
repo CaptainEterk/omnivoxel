@@ -14,10 +14,10 @@ public final class Window {
     private final long window;
     private final String version;
     private final List<Consumer<Window>> matrixUsers;
+    private final Queue<Consumer<Window>> contextTasks;
     private int width;
     private int height;
     private float aspectRatio;
-    private final Queue<Consumer<Window>> contextTasks;
 
     public Window(long window, String version, Queue<Consumer<Window>> contextTasks) {
         this.window = window;

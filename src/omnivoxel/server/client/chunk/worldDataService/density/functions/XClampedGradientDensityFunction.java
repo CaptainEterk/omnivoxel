@@ -1,9 +1,10 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 
 @Function(id = "omnivoxel:x_clamped_gradient")
 public class XClampedGradientDensityFunction extends DensityFunction {
@@ -12,12 +13,17 @@ public class XClampedGradientDensityFunction extends DensityFunction {
     private final DensityFunction fromValue;
     private final DensityFunction toValue;
 
-    public XClampedGradientDensityFunction(Value[] args, long i) {
-        super(args, i);
-        this.from = ServerWorldDataService.getGenerator(args[0], i);
-        this.to = ServerWorldDataService.getGenerator(args[1], i);
-        this.fromValue = ServerWorldDataService.getGenerator(args[2], i);
-        this.toValue = ServerWorldDataService.getGenerator(args[3], i);
+    public XClampedGradientDensityFunction(GameNode args, long seed) {
+        super(args, seed);
+
+        if (args instanceof ObjectGameNode objectGameNode) {
+            this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+        } else {
+            throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
+        }
     }
 
     @Override

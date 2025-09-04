@@ -3,7 +3,6 @@ package omnivoxel.server;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
@@ -11,25 +10,17 @@ import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
-import omnivoxel.server.client.chunk.worldDataService.WorldGenAPI;
-import omnivoxel.server.games.GameAPI;
-import omnivoxel.server.games.GameFileSystem;
-import omnivoxel.server.games.GameFinder;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
-import omnivoxel.util.config.Config;
-import omnivoxel.util.log.Logger;
+import omnivoxel.util.game.GameParser;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 import omnivoxel.util.thread.WorkerThreadPool;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,40 +30,30 @@ public class Server {
     private static final int TPS = 20;
     private final Map<String, ServerClient> clients;
     private final WorkerThreadPool<ChunkTask> workerThreadPool;
-    private final Value script;
     private final ServerWorld world;
     private final Map<String, String> blockIDMap;
     private final Map<String, BlockShape> blockShapeCache;
-    private final Logger logger;
     private final ServerBlockService blockService;
 
-    public Server(int seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap, Logger logger) throws InterruptedException {
+    public Server(int seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap) throws InterruptedException, IOException {
         this.world = world;
         this.blockShapeCache = blockShapeCache;
         this.blockIDMap = blockIDMap;
-        this.logger = logger;
         this.blockService = blockService;
         this.clients = new ConcurrentHashMap<>();
 
-        File gamesDir = new File(ConstantGameSettings.GAME_LOCATION);
+        GameNode gameNode = GameParser.parseNode(Files.readString(Path.of("game/main.json")));
 
-        GameFinder gameFinder = new GameFinder(gamesDir);
-        List<String> games = gameFinder.findGames();
-
-        if (games.isEmpty()) {
-            throw new InterruptedException("No valid games found.");
+        if (gameNode instanceof ObjectGameNode objectGameNode) {
+            ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, objectGameNode.object().get("world_generator"));
+            Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
+            workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes)::generateChunk, true);
+        } else {
+            throw new IllegalArgumentException("gameNode must be an ObjectGameNode, not " + gameNode.getClass());
         }
-
-        String selected = games.getFirst();
-        this.script = launchGame(selected, seed);
-
-        Value worldGenerator = this.script.invokeMember("worldGenerator");
-
-        ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, worldGenerator);
-
-        Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
-        workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes)::generateChunk, true);
     }
+
+    // TODO: Cleanup the server
 
     private static void sendBytes(ChannelHandlerContext ctx, PackageID id, byte[]... bytes) {
         ByteBuf buffer = Unpooled.buffer();
@@ -104,48 +85,6 @@ public class Server {
         buffer.writeInt(PackageID.REGISTER_BLOCK_SHAPE.ordinal());
         buffer.writeBytes(bytes);
         ctx.channel().writeAndFlush(buffer);
-    }
-
-    private Value launchGame(String gameDirectory, int seed) {
-        Config config = new Config(gameDirectory + "/game.properties");
-        GameAPI.GAME_DIRECTORY = gameDirectory;
-        String scriptPath = config.get("path");
-
-        if (scriptPath == null || scriptPath.isBlank()) {
-            throw new IllegalArgumentException("Missing 'path' in game.properties");
-        }
-
-        File jsFile = new File(gameDirectory, scriptPath);
-        if (!jsFile.exists()) {
-            throw new IllegalArgumentException("JS script not found: " + jsFile.getAbsolutePath());
-        }
-        try {
-            HostAccess hostAccess = HostAccess.newBuilder()
-                    .allowPublicAccess(false)
-                    .allowAccessAnnotatedBy(HostAccess.Export.class)
-                    .build();
-
-            Context ctx = Context.newBuilder("js")
-                    .allowHostAccess(hostAccess)
-                    .allowHostClassLookup(className -> false)
-                    .allowIO(true)
-                    .fileSystem(new GameFileSystem(Path.of(gameDirectory)))
-                    .build();
-
-            // TODO: Maybe add settings, state, etc...
-            ctx.getBindings("js").putMember("game", new GameAPI());
-            ctx.getBindings("js").putMember("worldGen", new WorldGenAPI(seed, blockShapeCache, blockService));
-
-            Value script = ctx.eval(Source.newBuilder("js", jsFile).build());
-
-            if (script.hasMember("init")) {
-                script.getMember("init").execute();
-            }
-
-            return script;
-        } catch (Exception e) {
-            throw new RuntimeException("Game failed to launch", e);
-        }
     }
 
     public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws
@@ -189,7 +128,7 @@ public class Server {
                 });
                 break;
             default:
-                System.err.println("Unknown package id: " + packageID);
+                System.err.println("Unknown package key: " + packageID);
         }
     }
 
@@ -226,7 +165,7 @@ public class Server {
 
             clients.put(clientID, serverClient);
 
-            logger.debug("Registered Client: " + clientID + " with playerID: " + ByteUtils.bytesToHex(serverClient.getPlayerID()));
+            ServerLogger.logger.debug("Registered Client: " + clientID + " with playerID: " + ByteUtils.bytesToHex(serverClient.getPlayerID()));
         } else {
             System.err.println("Client has different version, disconnecting...");
             System.err.println("\tClient: " + Arrays.toString(versionID));
@@ -242,14 +181,6 @@ public class Server {
             int tick = 0;
             while (true) {
                 long startNano = System.nanoTime();
-
-                if (script.hasMember("tick")) {
-                    try {
-                        script.invokeMember("tick", tick++);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
 
                 world.tick();
 
@@ -273,9 +204,5 @@ public class Server {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public void stop() {
-        script.getContext().close();
     }
 }

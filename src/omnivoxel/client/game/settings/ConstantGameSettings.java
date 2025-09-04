@@ -15,7 +15,7 @@ public class ConstantGameSettings {
 
     // TODO: Move this to settings
     public static final int MAX_MESH_GENERATOR_THREADS = Runtime.getRuntime().availableProcessors();
-    public static final int BUFFERIZE_CHUNKS_PER_FRAME = 10;
+    public static final int BUFFERIZE_CHUNKS_PER_FRAME = 100;
 
     public static final String FILE_LOCATION = getRootFolder();
 
@@ -24,7 +24,7 @@ public class ConstantGameSettings {
             width=750
             height=750
             render_distance=128
-            sensitivity=100f""";
+            sensitivity=2f""";
 
     public static final long AUTO_RECALCULATE_CHUNKS_TIME = 5000;
     public static final String DATA_LOCATION = "";

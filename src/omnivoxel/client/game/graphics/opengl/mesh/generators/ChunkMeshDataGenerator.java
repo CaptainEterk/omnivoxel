@@ -17,8 +17,8 @@ import omnivoxel.common.BlockShape;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.block.BlockService;
+import omnivoxel.world.chunk.BiBlockChunk;
 import omnivoxel.world.chunk.Chunk;
-import omnivoxel.world.chunk.SingleBlockAndAirChunk;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -154,20 +154,6 @@ public class ChunkMeshDataGenerator {
         Vertex[] faceVertices = shape.vertices()[blockFace.ordinal()];
         int[] faceIndices = shape.indices()[blockFace.ordinal()];
 
-        // Same color logic as before
-        float temp_r, temp_g, temp_b;
-        if (block.getState() == null) {
-            temp_r = temp_g = temp_b = 0;
-        } else if (block.getState().length == 1) {
-            temp_r = temp_g = temp_b = block.getState()[0] / 32f;
-        } else if (block.getState().length == 3) {
-            temp_r = block.getState()[0] / 32f;
-            temp_g = block.getState()[1] / 32f;
-            temp_b = block.getState()[2] / 32f;
-        } else {
-            temp_r = temp_g = temp_b = 0;
-        }
-
         // TODO: Remove all hardcoding
         int blockType = Objects.equals(block.getModID(), "core:water_source_block") ? 1 : 0;
 
@@ -178,7 +164,12 @@ public class ChunkMeshDataGenerator {
                     position,
                     uvCoordinates[idx * 2],
                     uvCoordinates[idx * 2 + 1],
-                    blockFace, temp_r, temp_g, temp_b, blockType);
+                    blockFace,
+                    0,
+                    0,
+                    0,
+                    blockType
+            );
         }
     }
 
@@ -210,20 +201,15 @@ public class ChunkMeshDataGenerator {
                 byte b = byteBuf.getByte(index + j);
                 blockID.append((char) b);
             }
-            short blockStateCount = byteBuf.getShort(index + j);
-            j += 2;
-            int[] blockState = new int[blockStateCount];
-            for (int k = 0; k < blockStateCount; k++) {
-                blockState[k] = byteBuf.getInt(index + j);
-                j += 4;
-            }
             j++;
             boolean transparent = byteBuf.getBoolean(j);
-            palette[i] = new omnivoxel.world.block.Block(blockID.toString(), blockState.length == 0 ? null : blockState);
+            String[] ids = blockID.toString().split(":");
+            String modID = ids[0] + ":" + ids[1];
+            palette[i] = new omnivoxel.world.block.Block(modID, ids[2]);
             index += j;
         }
 
-        Chunk<omnivoxel.world.block.Block> chunk = new SingleBlockAndAirChunk<>(air);
+        Chunk<omnivoxel.world.block.Block> chunk = new BiBlockChunk<>(air);
         Block[] blocks = new Block[ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED];
         int x = 0, y = 0, z = 0;
 

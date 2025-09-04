@@ -7,6 +7,8 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolean[] solid) {
+    public static final String DEFAULT_BLOCK_SHAPE_STRING = "omnivoxel:default_block_shape";
+    public static final String EMPTY_BLOCK_SHAPE_STRING = "omnivoxel:empty_block_shape";
     // Default unit cube vertices
     private static final Vertex[][] CUBE_VERTICES = {
             // Top (+Y)
@@ -61,22 +63,20 @@ public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolea
             {0, 1, 2, 2, 3, 0},
     };
     private static final boolean[] CUBE_SOLID = {true, true, true, true, true, true};
-    public static final String DEFAULT_BLOCK_SHAPE_STRING = "omnivoxel:default_block_shape";
     public static final BlockShape DEFAULT_BLOCK_SHAPE = new BlockShape(BlockShape.DEFAULT_BLOCK_SHAPE_STRING, CUBE_VERTICES, CUBE_INDICES, CUBE_SOLID);
     private static final Vertex[][] EMPTY_VERTICES = new Vertex[6][0];
     private static final int[][] EMPTY_INDICES = new int[6][0];
     private static final boolean[] EMPTY_SOLID = new boolean[6];
-    public static final String EMPTY_BLOCK_SHAPE_STRING = "omnivoxel:empty_block_shape";
     public static final BlockShape EMPTY_BLOCK_SHAPE =
-            new BlockShape("omnivoxel:empty_block_shape", EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID);
+            new BlockShape(BlockShape.DEFAULT_BLOCK_SHAPE_STRING, EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID);
 
     public byte[] getBytes() {
-        // Encode id
+        // Encode key
         byte[] idBytes = id == null ? new byte[0] : id.getBytes(StandardCharsets.UTF_8);
         int idLen = idBytes.length;
 
         // First, compute required capacity
-        int capacity = 2 + idLen; // id length + id bytes
+        int capacity = 2 + idLen; // key length + key bytes
         for (int face = 0; face < 6; face++) {
             capacity += Short.BYTES; // vertex count
             capacity += vertices[face].length * (3 * Float.BYTES); // vertex data
@@ -87,7 +87,7 @@ public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolea
 
         ByteBuffer buffer = ByteBuffer.allocate(capacity).order(ByteOrder.BIG_ENDIAN);
 
-        // Write id
+        // Write key
         buffer.putShort((short) idLen);
         buffer.put(idBytes);
 

@@ -39,13 +39,6 @@ public class Spline2D {
         return y0 * (1 - t) + y1 * t;
     }
 
-    public static class Point {
-        public final double x;
-        public final double y;
-
-        public Point(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
+    public record Point(double x, double y) {
     }
 }

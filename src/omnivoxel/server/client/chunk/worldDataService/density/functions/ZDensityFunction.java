@@ -1,12 +1,12 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
 
 @Function(id = "omnivoxel:z")
 public class ZDensityFunction extends DensityFunction {
-    public ZDensityFunction(Value[] args, long seed) {
+    public ZDensityFunction(GameNode args, long seed) {
         super(args, seed);
     }
 

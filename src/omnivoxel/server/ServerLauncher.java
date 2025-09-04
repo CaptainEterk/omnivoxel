@@ -11,7 +11,6 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
-import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,59 +23,9 @@ public class ServerLauncher {
     // TODO: Use a config file
     private static final int PORT = 5000;
     private static final String IP = "0.0.0.0";
-    private final Logger logger;
-
-    public ServerLauncher() {
-        logger = new Logger("Server", true);
-    }
 
     public static void main(String[] args) throws IOException {
         new ServerLauncher().run(100);
-    }
-
-    public void run(int seed) throws IOException {
-        createDirectories();
-
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-
-        Map<String, String> blockIDMap = new HashMap<>();
-        Map<String, BlockShape> blockShapeCache = new HashMap<>();
-
-        ServerBlockService blockService = new ServerBlockService();
-
-        ServerWorld world = new ServerWorld();
-
-        try {
-            Server server = new Server(seed, world, blockShapeCache, blockService, blockIDMap, logger);
-            Thread thread = new Thread(server::run, "Server Tick Loop");
-            thread.start();
-            ServerHandler serverHandler = new ServerHandler(server);
-
-            ServerBootstrap serverBootstrap = new ServerBootstrap();
-            serverBootstrap.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(
-                                    new LengthFieldBasedFrameDecoder(1048576, 0, 4, 0, 4),
-                                    serverHandler,
-                                    new LengthFieldPrepender(4)
-                            );
-                        }
-                    });
-
-            ChannelFuture future = serverBootstrap.bind(IP, PORT).sync();
-            logger.info("Server started at " + IP + ":" + PORT);
-
-            future.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-        }
     }
 
     private static void createDirectories() throws IOException {
@@ -102,6 +51,51 @@ public class ServerLauncher {
                             throw new RuntimeException("Failed to delete: " + path, e);
                         }
                     });
+        }
+    }
+
+    public void run(int seed) throws IOException {
+        createDirectories();
+
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+
+        Map<String, String> blockIDMap = new HashMap<>();
+        Map<String, BlockShape> blockShapeCache = new HashMap<>();
+
+        ServerBlockService blockService = new ServerBlockService();
+
+        ServerWorld world = new ServerWorld();
+
+        try {
+            Server server = new Server(seed, world, blockShapeCache, blockService, blockIDMap);
+            Thread thread = new Thread(server::run, "Server Tick Loop");
+            thread.start();
+            ServerHandler serverHandler = new ServerHandler(server);
+
+            ServerBootstrap serverBootstrap = new ServerBootstrap();
+            serverBootstrap.group(bossGroup, workerGroup)
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            ch.pipeline().addLast(
+                                    new LengthFieldBasedFrameDecoder(1048576, 0, 4, 0, 4),
+                                    serverHandler,
+                                    new LengthFieldPrepender(4)
+                            );
+                        }
+                    });
+
+            ChannelFuture future = serverBootstrap.bind(IP, PORT).sync();
+            ServerLogger.logger.info("Server started at " + IP + ":" + PORT);
+
+            future.channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
         }
     }
 }
