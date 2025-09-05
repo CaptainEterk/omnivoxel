@@ -1,4 +1,4 @@
-# OmniVoxel
+# OmniVoxel v0.7.8-alpha
 
 OmniVoxel is a Minecraft clone developed by CaptainEterk.
 
