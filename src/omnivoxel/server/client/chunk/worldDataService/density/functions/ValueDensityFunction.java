@@ -1,16 +1,17 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
 
-@Function(id = "omnivoxel:value")
+@Function(id = "value")
 public class ValueDensityFunction extends DensityFunction {
     private final double value;
 
-    public ValueDensityFunction(Value[] args, long i) {
-        super(args, i);
-        value = Double.longBitsToDouble(i);
+    public ValueDensityFunction(GameNode args, long seed) {
+        super(args, seed);
+
+        this.value = Double.longBitsToDouble(seed);
     }
 
     @Override

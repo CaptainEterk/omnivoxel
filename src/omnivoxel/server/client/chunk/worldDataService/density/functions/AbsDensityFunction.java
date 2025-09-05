@@ -1,18 +1,23 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 
 @Function(id = "omnivoxel:abs")
 public class AbsDensityFunction extends DensityFunction {
     private final DensityFunction arg;
 
-    public AbsDensityFunction(Value[] args, long seed) {
+    public AbsDensityFunction(GameNode args, long seed) {
         super(args, seed);
 
-        arg = ServerWorldDataService.getGenerator(args[0], seed);
+        if (args instanceof ObjectGameNode objectGameNode) {
+            this.arg = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+        } else {
+            throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
+        }
     }
 
     @Override

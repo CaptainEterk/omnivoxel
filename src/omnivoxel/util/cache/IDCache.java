@@ -79,24 +79,23 @@ public final class IDCache<K, V> {
     }
 
     // helper to differentiate parameterized constructor cache entries
-        private record ConstructorKey(Class<?> clazz, Class<?>[] params) {
-            private ConstructorKey(Class<?> clazz, Class<?>[] params) {
-                this.clazz = clazz;
-                this.params = params.clone();
-            }
+    private record ConstructorKey(Class<?> clazz, Class<?>[] params) {
+        private ConstructorKey(Class<?> clazz, Class<?>[] params) {
+            this.clazz = clazz;
+            this.params = params.clone();
+        }
 
-            @Override
-            public boolean equals(Object o) {
-                if (this == o) return true;
-                if (!(o instanceof ConstructorKey)) return false;
-                ConstructorKey other = (ConstructorKey) o;
-                if (!clazz.equals(other.clazz)) return false;
-                if (params.length != other.params.length) return false;
-                for (int i = 0; i < params.length; i++) {
-                    if (!params[i].equals(other.params[i])) return false;
-                }
-                return true;
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof ConstructorKey other)) return false;
+            if (!clazz.equals(other.clazz)) return false;
+            if (params.length != other.params.length) return false;
+            for (int i = 0; i < params.length; i++) {
+                if (!params[i].equals(other.params[i])) return false;
             }
+            return true;
+        }
 
     }
 }

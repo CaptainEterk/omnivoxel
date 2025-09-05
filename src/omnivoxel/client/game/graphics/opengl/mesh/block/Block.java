@@ -1,12 +1,12 @@
 package omnivoxel.client.game.graphics.opengl.mesh.block;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.common.BlockShape;
 
 public abstract class Block {
-    protected int[] state;
+    protected String state;
 
-    protected Block(int[] state) {
+    protected Block(String state) {
         this.state = state;
     }
 
@@ -18,7 +18,7 @@ public abstract class Block {
 
     public abstract String getModID();
 
-    public abstract Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west);
+    public abstract BlockShape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west);
 
     public abstract int[] getUVCoordinates(BlockFace blockFace);
 
@@ -34,7 +34,7 @@ public abstract class Block {
         return adjacentBlock.isTransparent();
     }
 
-    public int[] getState() {
+    public String getState() {
         return state;
     }
 }

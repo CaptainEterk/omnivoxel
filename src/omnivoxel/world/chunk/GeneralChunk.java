@@ -3,8 +3,6 @@ package omnivoxel.world.chunk;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.util.IndexCalculator;
 
-import java.util.Arrays;
-
 public class GeneralChunk<B> implements Chunk<B> {
     private final B[] blocks;
 
@@ -39,12 +37,5 @@ public class GeneralChunk<B> implements Chunk<B> {
     public Chunk<B> setBlock(int x, int y, int z, B block) {
         blocks[IndexCalculator.calculateBlockIndex(x, y, z)] = block;
         return this;
-    }
-
-    @Override
-    public String toString() {
-        return "GeneralChunk{" +
-                "blocks=" + Arrays.toString(blocks) +
-                '}';
     }
 }

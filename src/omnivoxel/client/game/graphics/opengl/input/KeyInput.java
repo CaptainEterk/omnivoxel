@@ -1,5 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.input;
 
+import omnivoxel.client.game.graphics.opengl.window.Window;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Map;
@@ -15,8 +16,8 @@ public class KeyInput {
         keys = new ConcurrentHashMap<>();
     }
 
-    public void init(long window) {
-        GLFW.glfwSetKeyCallback(window, this::keyCallback);
+    public void init(Window window) {
+        GLFW.glfwSetKeyCallback(window.window(), this::keyCallback);
     }
 
     private void keyCallback(long window, int key, int scancode, int action, int mods) {

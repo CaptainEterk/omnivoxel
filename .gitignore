@@ -27,6 +27,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### OmniVoxel ###
 /omnivoxel.iml
 /assets/textures/player_texture.xcf
 /assets/textures/texture_atlas.xcf
+/assets/icons/favicon.xcf

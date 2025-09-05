@@ -6,7 +6,7 @@ import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import org.jetbrains.annotations.NotNull;
 
 public final class EmptyGeneratedChunk extends GeneratedChunk {
-    private static final ServerBlock air = new ServerBlock("omnivoxel:air");
+    public static final ServerBlock air = new ServerBlock("omnivoxel:air", null, "omnivoxel:empty_block_shape", false);
 
     @Override
     protected ServerBlock getBlock(int x, int y, int z) {

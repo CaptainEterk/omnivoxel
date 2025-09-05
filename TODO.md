@@ -5,7 +5,7 @@
     - [ ] Custom blocks
     - [ ] Custom entities
     - [ ] World Generation
-        - [X] Structures
+        - [ ] Structures
         - [ ] More restriction options
 - [ ] Rendering
     - [ ] Basic Rendering

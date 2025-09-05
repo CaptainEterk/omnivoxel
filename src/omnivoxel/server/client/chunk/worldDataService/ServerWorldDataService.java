@@ -1,12 +1,19 @@
 package omnivoxel.server.client.chunk.worldDataService;
 
+import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.server.client.block.ServerBlock;
+import omnivoxel.server.client.chunk.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.server.client.chunk.worldDataService.block.BlockFunction;
+import omnivoxel.server.client.chunk.worldDataService.block.BlockFunctionResult;
+import omnivoxel.server.client.chunk.worldDataService.block.functions.ConditionBlockFunction;
+import omnivoxel.server.client.chunk.worldDataService.block.functions.OneBlockFunction;
+import omnivoxel.server.client.chunk.worldDataService.block.functions.SequenceBlockFunction;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
 import omnivoxel.server.client.chunk.worldDataService.density.functions.*;
+import omnivoxel.server.games.Game;
+import omnivoxel.util.game.nodes.*;
 import omnivoxel.util.math.Position3D;
-import org.graalvm.polyglot.Value;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
@@ -14,9 +21,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ServerWorldDataService {
-    private static final Map<String, Class<? extends DensityFunction>> densityCache = new HashMap<>();
+    private static final Map<String, Class<? extends DensityFunction>> densityFunctionCache = new HashMap<>();
+    private static final Map<String, Class<? extends BlockFunction>> blockFunctionCache = new HashMap<>();
     private final ServerBlockService blockService;
-    private final DensityFunction generator;
+    private final DensityFunction densityFunction;
+    private final BlockFunction blockFunction;
+
     private final Integer chunkMinX;
     private final Integer chunkMinY;
     private final Integer chunkMinZ;
@@ -24,7 +34,14 @@ public final class ServerWorldDataService {
     private final Integer chunkMaxY;
     private final Integer chunkMaxZ;
 
-    public ServerWorldDataService(ServerBlockService blockService, Value worldGenerator) {
+    private final Integer blockMinX;
+    private final Integer blockMinY;
+    private final Integer blockMinZ;
+    private final Integer blockMaxX;
+    private final Integer blockMaxY;
+    private final Integer blockMaxZ;
+
+    public ServerWorldDataService(ServerBlockService blockService, GameNode gameNode) {
         this.blockService = blockService;
 
         addDensityFunction(Noise3DDensityFunction.class);
@@ -48,39 +65,95 @@ public final class ServerWorldDataService {
         addDensityFunction(SqueezeDensityFunction.class);
         addDensityFunction(QuarterNegativeDensityFunction.class);
 
-        chunkMinX = worldGenerator.hasMember("chunk_min_x") ? worldGenerator.getMember("chunk_min_x").as(Integer.class) : null;
-        chunkMinY = worldGenerator.hasMember("chunk_min_y") ? worldGenerator.getMember("chunk_min_y").as(Integer.class) : null;
-        chunkMinZ = worldGenerator.hasMember("chunk_min_z") ? worldGenerator.getMember("chunk_min_z").as(Integer.class) : null;
+        addBlockFunction(OneBlockFunction.class);
+        addBlockFunction(SequenceBlockFunction.class);
+        addBlockFunction(ConditionBlockFunction.class);
 
-        chunkMaxX = worldGenerator.hasMember("chunk_max_x") ? worldGenerator.getMember("chunk_max_x").as(Integer.class) : null;
-        chunkMaxY = worldGenerator.hasMember("chunk_max_y") ? worldGenerator.getMember("chunk_max_y").as(Integer.class) : null;
-        chunkMaxZ = worldGenerator.hasMember("chunk_max_z") ? worldGenerator.getMember("chunk_max_z").as(Integer.class) : null;
+        ObjectGameNode worldGeneratorNode = Game.checkGameNodeType(gameNode, ObjectGameNode.class);
 
-        generator = getGenerator(worldGenerator.getMember("final_density"), 100L);
+        long seed = 100L;
+
+        Game.loadNoises(Game.checkGameNodeType(worldGeneratorNode.object().get("noises"), ArrayGameNode.class), seed);
+
+        DoubleGameNode chunkMinXNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_min_x"), DoubleGameNode.class);
+        DoubleGameNode chunkMinYNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_min_y"), DoubleGameNode.class);
+        DoubleGameNode chunkMinZNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_min_z"), DoubleGameNode.class);
+
+        DoubleGameNode chunkMaxXNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_max_x"), DoubleGameNode.class);
+        DoubleGameNode chunkMaxYNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_max_y"), DoubleGameNode.class);
+        DoubleGameNode chunkMaxZNode = Game.checkGameNodeType(worldGeneratorNode.object().get("chunk_max_z"), DoubleGameNode.class);
+
+        this.chunkMinX = chunkMinXNode == null ? null : (int) chunkMinXNode.value();
+        this.chunkMinY = chunkMinYNode == null ? null : (int) chunkMinYNode.value();
+        this.chunkMinZ = chunkMinZNode == null ? null : (int) chunkMinZNode.value();
+
+        this.chunkMaxX = chunkMaxXNode == null ? null : (int) chunkMaxXNode.value();
+        this.chunkMaxY = chunkMaxYNode == null ? null : (int) chunkMaxYNode.value();
+        this.chunkMaxZ = chunkMaxZNode == null ? null : (int) chunkMaxZNode.value();
+
+        blockMinX = chunkMinX == null ? null : chunkMinX * ConstantGameSettings.CHUNK_WIDTH;
+        blockMinY = chunkMinY == null ? null : chunkMinY * ConstantGameSettings.CHUNK_HEIGHT;
+        blockMinZ = chunkMinZ == null ? null : chunkMinZ * ConstantGameSettings.CHUNK_LENGTH;
+
+        blockMaxX = chunkMaxX == null ? null : (chunkMaxX + 1) * ConstantGameSettings.CHUNK_WIDTH;
+        blockMaxY = chunkMaxY == null ? null : (chunkMaxY + 1) * ConstantGameSettings.CHUNK_HEIGHT;
+        blockMaxZ = chunkMaxZ == null ? null : (chunkMaxZ + 1) * ConstantGameSettings.CHUNK_LENGTH;
+
+        densityFunction = getDensityFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("density"), ObjectGameNode.class), seed);
+        blockFunction = getBlockFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("surface"), ObjectGameNode.class), seed);
     }
 
-    public static DensityFunction getGenerator(Value value, long seed) {
+    private static void addDensityFunction(Class<? extends DensityFunction> densityFunctionClass) {
+        Function[] annotations = densityFunctionClass.getAnnotationsByType(Function.class);
+        if (annotations.length == 0) {
+            throw new IllegalArgumentException("Density functions must have the @Function annotation");
+        }
+        densityFunctionCache.put(annotations[0].id(), densityFunctionClass);
+    }
+
+    private static void addBlockFunction(Class<? extends BlockFunction> blockFunctionClass) {
+        Function[] annotations = blockFunctionClass.getAnnotationsByType(Function.class);
+        if (annotations.length == 0) {
+            throw new IllegalArgumentException(blockFunctionClass + " must have the @Function annotation");
+        }
+        blockFunctionCache.put(annotations[0].id(), blockFunctionClass);
+    }
+
+    public static DensityFunction getDensityFunction(GameNode args, long seed) {
         try {
-            if (value.isNumber()) {
-                return new ValueDensityFunction(null, Double.doubleToLongBits(value.as(Double.class)));
+            String type;
+            long i;
+            if (args instanceof DoubleGameNode doubleGameNode) {
+                type = "value";
+                i = Double.doubleToLongBits(doubleGameNode.value());
+            } else {
+                ObjectGameNode objectGameNode = Game.checkGameNodeType(args, ObjectGameNode.class);
+                type = Game.checkGameNodeType(objectGameNode.object().get("type"), StringGameNode.class).value();
+                i = seed;
             }
-            String type = value.getMember("type").as(String.class);
-            Value[] args = value.hasMember("args") ? value.getMember("args").as(Value[].class) : new Value[0];
-            Class<? extends DensityFunction> dfClass = densityCache.get(type);
+            Class<? extends DensityFunction> dfClass = densityFunctionCache.get(type);
             if (dfClass == null) {
                 throw new IllegalArgumentException(String.format("%s is not a valid type for a density function", type));
             }
-            return dfClass.getConstructor(Value[].class, long.class).newInstance(args, seed);
+            return dfClass.getConstructor(GameNode.class, long.class).newInstance(args, i);
         } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
                  IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void addDensityFunction(Class<? extends DensityFunction> densityFunction) {
-        Function function = densityFunction.getAnnotationsByType(Function.class)[0];
-        String id = function.id();
-        densityCache.put(id, densityFunction);
+    public static BlockFunction getBlockFunction(GameNode args, long seed) {
+        try {
+            String type = Game.checkGameNodeType(Game.checkGameNodeType(args, ObjectGameNode.class).object().get("type"), StringGameNode.class).value();
+            Class<? extends BlockFunction> dfClass = blockFunctionCache.get(type);
+            if (dfClass == null) {
+                throw new IllegalArgumentException(String.format("%s is not a valid type for a density function", type));
+            }
+            return dfClass.getConstructor(GameNode.class, long.class).newInstance(args, seed);
+        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
+                 IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean shouldGenerateChunk(Position3D position3D) {
@@ -94,9 +167,25 @@ public final class ServerWorldDataService {
         return withinX && withinY && withinZ;
     }
 
+    public boolean shouldGenerateBlock(int worldX, int worldY, int worldZ) {
+        boolean withinX = (blockMinX == null || blockMaxX == null) ||
+                (worldX >= blockMinX && worldX < blockMaxX);
+        boolean withinY = (blockMinY == null || blockMaxY == null) ||
+                (worldY >= blockMinY && worldY < blockMaxY);
+        boolean withinZ = (blockMinZ == null || blockMaxZ == null) ||
+                (worldZ >= blockMinZ && worldZ < blockMaxZ);
+
+        return withinX && withinY && withinZ;
+    }
+
     @NotNull
     public ServerBlock getBlockAt(Position3D position3D, int x, int y, int z, int worldX, int worldY, int worldZ, boolean border, ChunkInfo chunkInfo) {
-        return generator.evaluate(worldX, worldY, worldZ) > 0 ? blockService.getBlock("core:stone_block") : blockService.getBlock("omnivoxel:air");
+        if (border && !shouldGenerateBlock(worldX, worldY, worldZ)) {
+            return EmptyGeneratedChunk.air;
+        }
+        double density = densityFunction.evaluate(worldX, worldY, worldZ);
+        BlockFunctionResult result = blockFunction.evaluate(density, null, false, false, 0, worldX, worldY, worldZ);
+        return blockService.getBlock(result.id(), result.blockState());
     }
 
     public ChunkInfo getChunkInfo(Position3D position3D) {

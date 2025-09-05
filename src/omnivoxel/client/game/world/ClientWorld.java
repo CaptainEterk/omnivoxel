@@ -137,18 +137,9 @@ public class ClientWorld {
         state.setItem("shouldCheckNewChunks", true);
     }
 
-    public void freeAll() {
-        for (ClientWorldChunk clientWorldChunk : getValues()) {
-            ChunkMesh chunkMesh = clientWorldChunk.getMesh();
-            if (chunkMesh != null) {
-                GL30C.glDeleteVertexArrays(chunkMesh.solidVAO());
-                GL30C.glDeleteBuffers(chunkMesh.solidVBO());
-                GL30C.glDeleteBuffers(chunkMesh.solidEBO());
-
-                GL30C.glDeleteVertexArrays(chunkMesh.transparentVAO());
-                GL30C.glDeleteBuffers(chunkMesh.transparentVBO());
-                GL30C.glDeleteBuffers(chunkMesh.transparentEBO());
-            }
+    public void cleanup() {
+        for (Position3D position : getKeys()) {
+            freeChunk(chunks.get(position).getMesh());
         }
         chunks.clear();
     }
@@ -161,26 +152,28 @@ public class ClientWorld {
         state.setItem("chunk_requests_sent", crs);
         state.setItem("chunk_requests_received", crg);
         requesting = true;
-//        missingChunks.clear()
     }
 
     public void freeAllChunksNotIn(Predicate<Position3D> predicate) {
         Position3D[] positions = getKeys();
         for (Position3D position : positions) {
             if (!predicate.test(position)) {
-                ChunkMesh mesh = chunks.remove(position).getMesh();
-                if (mesh != null) {
-                    GL30C.glDeleteVertexArrays(mesh.solidVAO());
-                    GL30C.glDeleteBuffers(mesh.solidVBO());
-                    GL30C.glDeleteBuffers(mesh.solidEBO());
-
-                    GL30C.glDeleteVertexArrays(mesh.transparentVAO());
-                    GL30C.glDeleteBuffers(mesh.transparentVBO());
-                    GL30C.glDeleteBuffers(mesh.transparentEBO());
-
-                    mesh.meshData().cleanup();
-                }
+                freeChunk(chunks.remove(position).getMesh());
             }
+        }
+    }
+
+    private void freeChunk(ChunkMesh mesh) {
+        if (mesh != null) {
+            GL30C.glDeleteVertexArrays(mesh.solidVAO());
+            GL30C.glDeleteBuffers(mesh.solidVBO());
+            GL30C.glDeleteBuffers(mesh.solidEBO());
+
+            GL30C.glDeleteVertexArrays(mesh.transparentVAO());
+            GL30C.glDeleteBuffers(mesh.transparentVBO());
+            GL30C.glDeleteBuffers(mesh.transparentEBO());
+
+            mesh.meshData().cleanup();
         }
     }
 

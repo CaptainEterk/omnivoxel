@@ -4,6 +4,7 @@ import omnivoxel.client.game.graphics.opengl.input.KeyInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseButtonInput;
 import omnivoxel.client.game.graphics.opengl.input.MouseInput;
 import omnivoxel.client.game.graphics.opengl.mesh.util.PriorityUtils;
+import omnivoxel.client.game.graphics.opengl.window.Window;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.network.Client;
@@ -16,10 +17,10 @@ import java.util.function.Consumer;
 public class TickLoop implements Runnable {
     private final PlayerController playerController;
     private final AtomicBoolean gameRunning;
-    private final BlockingQueue<Consumer<Long>> contextTasks;
+    private final BlockingQueue<Consumer<Window>> contextTasks;
     private final Client client;
 
-    public TickLoop(PlayerController playerController, AtomicBoolean gameRunning, BlockingQueue<Consumer<Long>> contextTasks, Client client) {
+    public TickLoop(PlayerController playerController, AtomicBoolean gameRunning, BlockingQueue<Consumer<Window>> contextTasks, Client client) {
         this.playerController = playerController;
         this.gameRunning = gameRunning;
         this.contextTasks = contextTasks;

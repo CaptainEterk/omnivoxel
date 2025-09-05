@@ -9,11 +9,13 @@ import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL11C;
 import org.lwjgl.system.MemoryUtil;
 
+import java.util.Queue;
+import java.util.function.Consumer;
+
 public final class WindowFactory {
-    public static Window createWindow(int width, int height, String title, Logger logger) throws RuntimeException {
+    public static Window createWindow(int width, int height, String title, Logger logger, Queue<Consumer<Window>> contextTasks) throws RuntimeException {
         // Set up an error callback. The default implementation will print the error message in System.err.
         GLFW.glfwSetErrorCallback((error, description) -> {
             String msg = GLFWErrorCallback.getDescription(description);
@@ -37,10 +39,12 @@ public final class WindowFactory {
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_POSITION_X, x);
         GLFW.glfwWindowHint(GLFW.GLFW_POSITION_Y, y);
+        GLFW.glfwWindowHint(GLFW.GLFW_DEPTH_BITS, 24);
+        GLFW.glfwWindowHint(GLFW.GLFW_DOUBLEBUFFER, GLFW.GLFW_TRUE);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
-        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GL11C.GL_TRUE);
+
 
         // Create the window
         long window = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL);
@@ -69,7 +73,7 @@ public final class WindowFactory {
         }
 
         if (logger != null) {
-            logger.debug(String.format("OpenGL/GLFW window created - title \"%s\" - position (%d, %d) - size (%d, %d) - id %d", title, x, y, width, height, window));
+            logger.debug(String.format("OpenGL/GLFW window created - title \"%s\" - position (%d, %d) - size (%d, %d) - key %d", title, x, y, width, height, window));
         }
 
         String osName = System.getProperty("os.name").toLowerCase();
@@ -89,6 +93,6 @@ public final class WindowFactory {
 
         String version = GL11.glGetString(GL11.GL_VERSION);
 
-        return new Window(window, version);
+        return new Window(window, version, contextTasks);
     }
 }

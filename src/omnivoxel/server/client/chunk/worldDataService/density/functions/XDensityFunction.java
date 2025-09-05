@@ -1,15 +1,14 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
 
 @Function(id = "omnivoxel:x")
 public class XDensityFunction extends DensityFunction {
 
-    public XDensityFunction(Value[] args, long i) {
-        super(args, i);
-        // no args needed
+    public XDensityFunction(GameNode args, long seed) {
+        super(args, seed);
     }
 
     @Override

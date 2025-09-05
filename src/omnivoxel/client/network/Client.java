@@ -9,13 +9,9 @@ import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.graphics.opengl.mesh.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.opengl.mesh.MeshDataTask;
-import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ModelEntityMeshData;
-import omnivoxel.client.game.graphics.opengl.shape.BlockShape;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
@@ -23,6 +19,7 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.client.network.request.CloseRequest;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.client.network.request.Request;
+import omnivoxel.client.network.util.ByteBufUtils;
 import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.entity.EntityType;
@@ -33,7 +30,10 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import org.joml.Matrix4f;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -45,7 +45,6 @@ public final class Client {
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
     private final Queue<Position3D> queuedChunkTasks = new ArrayDeque<>();
     private final ClientWorld world;
-    private final IDCache<String, Shape> shapeCache;
     private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private EventLoopGroup group;
     private Channel channel;
@@ -57,7 +56,6 @@ public final class Client {
         this.logger = logger;
         this.world = world;
         entities = new ConcurrentHashMap<>();
-        shapeCache = new IDCache<>(new HashMap<>());
     }
 
     private static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {
@@ -148,47 +146,18 @@ public final class Client {
                 newEntity(byteBuf);
                 byteBuf.release();
                 break;
-            case REGISTER_BLOCK:
-                int idLength = byteBuf.getShort(8);
-                byte[] idBytes = new byte[idLength];
-                byteBuf.getBytes(10, idBytes);
-                String modID = new String(idBytes);
-                String blockID = modID.split(":")[1];
-                worldDataService.addBlock(new Block() {
-                    @Override
-                    public String getID() {
-                        return blockID;
-                    }
-
-                    @Override
-                    public String getModID() {
-                        return modID;
-                    }
-
-                    @Override
-                    public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
-                        return shapeCache.get("omnivoxel:block_shape", BlockShape.class);
-                    }
-
-                    @Override
-                    public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
-                        return modID.equals("omnivoxel:air");
-                    }
-
-                    @Override
-                    public int[] getUVCoordinates(BlockFace blockFace) {
-                        return new int[]{
-                                2, 0,
-                                3, 0,
-                                3, 1,
-                                2, 1
-                        };
-                    }
-                });
+            case REGISTER_BLOCK_SHAPE:
+                ByteBufUtils.readBlockShapeFromByteBuf(byteBuf);
                 byteBuf.release();
                 break;
+            case REGISTER_BLOCK: {
+                worldDataService.addBlock(ByteBufUtils.registerBlockFromByteBuf(byteBuf));
+
+                byteBuf.release();
+                break;
+            }
             default:
-                System.err.println("Unexpected package id: " + packageID);
+                System.err.println("Unexpected package key: " + packageID);
                 byteBuf.release();
                 break;
         }
@@ -210,7 +179,7 @@ public final class Client {
 
             if (entity.getMesh() != null) {
                 entity.getMeshData().setModel(new Matrix4f().identity()
-                        .translate((float) x, (float) (y - 0.75f/2), (float) z)
+                        .translate((float) x, (float) (y - 0.75f / 2), (float) z)
                         .scale(0.5f)
                         .rotateY((float) -yaw));
                 if (!entity.getMesh().getChildren().isEmpty()) {

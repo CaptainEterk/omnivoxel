@@ -1,9 +1,11 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.server.games.Game;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 
 @Function(id = "omnivoxel:y_clamped_gradient")
 public class YClampedGradientDensityFunction extends DensityFunction {
@@ -12,12 +14,14 @@ public class YClampedGradientDensityFunction extends DensityFunction {
     private final DensityFunction fromValue;
     private final DensityFunction toValue;
 
-    public YClampedGradientDensityFunction(Value[] args, long i) {
-        super(args, i);
-        this.from = ServerWorldDataService.getGenerator(args[0], i);
-        this.to = ServerWorldDataService.getGenerator(args[1], i);
-        this.fromValue = ServerWorldDataService.getGenerator(args[2], i);
-        this.toValue = ServerWorldDataService.getGenerator(args[3], i);
+    public YClampedGradientDensityFunction(GameNode args, long seed) {
+        super(args, seed);
+
+        ObjectGameNode objectGameNode = Game.checkGameNodeType(args, ObjectGameNode.class);
+        this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low"), seed);
+        this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high"), seed);
+        this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low_value"), seed);
+        this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high_value"), seed);
     }
 
     @Override

@@ -5,7 +5,7 @@ import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.camera.Frustum;
 import omnivoxel.client.game.graphics.opengl.mesh.block.AirBlock;
-import omnivoxel.client.game.graphics.opengl.text.TextRenderer;
+import omnivoxel.client.game.graphics.opengl.window.Window;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.settings.Settings;
 import omnivoxel.client.game.state.State;
@@ -64,11 +64,11 @@ public class Launcher {
         if (connected.await(5L, TimeUnit.SECONDS)) {
             client.setListeners(world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData());
             AtomicBoolean gameRunning = new AtomicBoolean(true);
-            BlockingQueue<Consumer<Long>> contextTasks = new LinkedBlockingDeque<>();
+            BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
 
             PlayerController playerController = new PlayerController(client, new Camera(new Frustum(), state), settings, contextTasks, state, world);
 
-            GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, state, settings, new TextRenderer());
+            GameLoop gameLoop = new GameLoop(playerController.getCamera(), world, gameRunning, contextTasks, client, state, settings);
 
             Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");
             tickLoopThread.start();

@@ -1,12 +1,12 @@
 package omnivoxel.client.game.graphics.opengl.mesh.block;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
-import omnivoxel.client.game.graphics.opengl.shape.Shape;
+import omnivoxel.common.BlockShape;
 
 public class BlockStateWrapper extends Block {
     private final Block wrappedBlock;
 
-    public BlockStateWrapper(Block wrappedBlock, int[] state) {
+    public BlockStateWrapper(Block wrappedBlock, String state) {
         super(state);
         wrappedBlock.state = state;
         this.wrappedBlock = wrappedBlock;
@@ -23,7 +23,7 @@ public class BlockStateWrapper extends Block {
     }
 
     @Override
-    public Shape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
+    public BlockShape getShape(Block top, Block bottom, Block north, Block south, Block east, Block west) {
         return wrappedBlock.getShape(top, bottom, north, south, east, west);
     }
 
@@ -33,7 +33,7 @@ public class BlockStateWrapper extends Block {
     }
 
     @Override
-    public int[] getState() {
+    public String getState() {
         return super.getState();
     }
 }

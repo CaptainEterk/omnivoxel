@@ -1,9 +1,10 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
+import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
-import omnivoxel.server.client.chunk.worldDataService.density.Function;
-import org.graalvm.polyglot.Value;
+import omnivoxel.util.game.nodes.GameNode;
+import omnivoxel.util.game.nodes.ObjectGameNode;
 
 @Function(id = "omnivoxel:range_choice")
 public class RangeChoiceDensityFunction extends DensityFunction {
@@ -13,14 +14,18 @@ public class RangeChoiceDensityFunction extends DensityFunction {
     private final DensityFunction whenInRange;
     private final DensityFunction whenOutOfRange;
 
-    public RangeChoiceDensityFunction(Value[] args, long seed) {
+    public RangeChoiceDensityFunction(GameNode args, long seed) {
         super(args, seed);
 
-        this.input = ServerWorldDataService.getGenerator(args[0], seed);
-        this.minInclusive = ServerWorldDataService.getGenerator(args[1], seed);
-        this.maxExclusive = ServerWorldDataService.getGenerator(args[2], seed);
-        this.whenInRange = ServerWorldDataService.getGenerator(args[3], seed);
-        this.whenOutOfRange = ServerWorldDataService.getGenerator(args[4], seed);
+        if (args instanceof ObjectGameNode objectGameNode) {
+            this.input = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("input"), seed);
+            this.minInclusive = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("min_inclusive"), seed);
+            this.maxExclusive = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("max_exclusive"), seed);
+            this.whenInRange = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("in_range"), seed);
+            this.whenOutOfRange = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("out_range"), seed);
+        } else {
+            throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
+        }
     }
 
     @Override

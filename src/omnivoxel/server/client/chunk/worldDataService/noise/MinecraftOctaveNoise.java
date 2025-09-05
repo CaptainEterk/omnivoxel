@@ -11,7 +11,7 @@ public class MinecraftOctaveNoise {
         this.amplitudes = new double[octaveCount];
 
         for (int i = 0; i < octaveCount; i++) {
-            octaves[i] = new MinecraftPerlinNoise(seed + i * 31);
+            octaves[i] = new MinecraftPerlinNoise(seed + i * 31L);
             amplitudes[i] = 1.0 / (1 << i); // halves each octave
         }
     }

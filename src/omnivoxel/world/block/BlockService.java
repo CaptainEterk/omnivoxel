@@ -1,6 +1,5 @@
 package omnivoxel.world.block;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,7 +10,7 @@ public final class BlockService {
         serverBlocksById = new ConcurrentHashMap<>();
     }
 
-    public Block getBlock(String id, int... blockState) {
+    public Block getBlock(String id, String blockState) {
         String key = createKey(id, blockState);
         Block block = serverBlocksById.get(key);
         if (block == null) {
@@ -22,7 +21,7 @@ public final class BlockService {
         return block;
     }
 
-    private String createKey(String id, int[] blockState) {
-        return id + ":" + Arrays.hashCode(blockState);
+    private String createKey(String id, String blockState) {
+        return id + ":" + blockState;
     }
 }

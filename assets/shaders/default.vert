@@ -18,11 +18,11 @@ layout(location = 4) in vec2 vUV;
 
 out vec2 TexCoord;
 out float shadow;
-out vec3 position;
+smooth out vec3 position;
 out vec3 lighting;
 out float ao;
 out vec3 vNormal;
-flat out uint type;
+flat out uint blockType;
 
 uniform uint meshType;
 
@@ -37,9 +37,9 @@ uniform mat4 model;
 
 uniform float time;
 
-float simpleNoise(float x, float z) {
-    float n = dot(vec2(x, z), vec2(127.1, 311.7));// Create a seed value
-    return cos(sin(n) * 13.71632);// Fractal noise using sine function
+float simpleNoise(vec2 pos) {
+    float n = dot(pos, vec2(127.1, 311.7));
+    return cos(sin(n) * 13.71632);
 }
 
 void main() {
@@ -63,29 +63,29 @@ void main() {
         TexCoord = vec2(u, v);
 
         xyz *= 0.0625;
-        xyz += chunkPosition*CHUNK_SIZE-cameraPosition;
+        xyz += chunkPosition*CHUNK_SIZE;
 
         shadow = (normal < 6u) ? SHADOWS[normal] : 1.0;
 
         lighting = vec3(r, g, b);
 
-        vec3 toCameraVector = cameraPosition - xyz;
+        vec3 toCameraVector = cameraPosition-xyz;
         vec3 viewVector = normalize(toCameraVector);
         vNormal = viewVector;
 
-        type = data3;
+        blockType = data3;
 
-        if (type == 1u) {
-            xyz.y += simpleNoise(xyz.x+time/1000, xyz.z+time/1000)/10;
+        if (blockType == 1u) {
+            xyz.y += simpleNoise(xyz.xz+time/1000)/10;
         }
 
         position = xyz;
 
-        gl_Position = projection * view * vec4(position, 1.0);
+        gl_Position = projection * view * vec4(position - cameraPosition, 1.0);
     } else if (meshType == 1u) {
         position = vPosition;
         TexCoord = vUV;
 
-        gl_Position = projection * cameraView * model * vec4(position, 1.0);
+        gl_Position = projection * cameraView * model * vec4(position - cameraPosition, 1.0);
     }
 }
