@@ -12,5 +12,5 @@ public abstract class BlockFunction {
         }
     }
 
-    public abstract BlockFunctionResult evaluate(double density, int[] info, boolean floor, boolean ceiling, int depth, double x, double y, double z);
+    public abstract String evaluate(double density, int[] info, boolean floor, boolean ceiling, int depth, double x, double y, double z);
 }

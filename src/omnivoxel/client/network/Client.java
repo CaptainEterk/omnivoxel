@@ -147,7 +147,7 @@ public final class Client {
                 byteBuf.release();
                 break;
             case REGISTER_BLOCK_SHAPE:
-                ByteBufUtils.readBlockShapeFromByteBuf(byteBuf);
+                ByteBufUtils.cacheBlockShapeFromByteBuf(byteBuf);
                 byteBuf.release();
                 break;
             case REGISTER_BLOCK: {

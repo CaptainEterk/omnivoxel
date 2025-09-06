@@ -13,21 +13,18 @@ import java.util.Map;
 public class ByteBufUtils {
     private static final Map<String, BlockShape> shapeCache = new HashMap<>();
 
-    public static BlockShape readBlockShapeFromByteBuf(ByteBuf byteBuf) {
-        // --- Read key ---
+    public static void cacheBlockShapeFromByteBuf(ByteBuf byteBuf) {
         byteBuf.skipBytes(8);
         int idLen = byteBuf.readUnsignedShort();
         byte[] idBytes = new byte[idLen];
         byteBuf.readBytes(idBytes);
         String id = new String(idBytes, StandardCharsets.UTF_8);
 
-        // --- Read faces ---
         Vertex[][] vertices = new Vertex[6][];
         int[][] indices = new int[6][];
         boolean[] solid = new boolean[6];
 
         for (int face = 0; face < 6; face++) {
-            // vertices
             int vCount = byteBuf.readUnsignedShort();
             Vertex[] verts = new Vertex[vCount];
             for (int i = 0; i < vCount; i++) {
@@ -38,7 +35,6 @@ public class ByteBufUtils {
             }
             vertices[face] = verts;
 
-            // indices
             int iCount = byteBuf.readUnsignedShort();
             int[] idx = new int[iCount];
             for (int i = 0; i < iCount; i++) {
@@ -46,11 +42,12 @@ public class ByteBufUtils {
             }
             indices[face] = idx;
 
-            // solid
             solid[face] = byteBuf.readByte() != 0;
         }
 
-        return new BlockShape(id, vertices, indices, solid);
+        BlockShape blockShape = new BlockShape(id, vertices, indices, solid);
+
+        shapeCache.put(id, blockShape);
     }
 
     public static Block registerBlockFromByteBuf(ByteBuf byteBuf) {
@@ -65,8 +62,8 @@ public class ByteBufUtils {
 
         String blockIDState = new String(idBytes);
 
-        String[] ids = blockIDState.split(":");
-        String modID = ids[0] + ":" + ids[1];
+        String[] ids = blockIDState.split("/");
+        String modID = ids[0];
 
         final String blockID = modID.contains(":") ? modID.split(":", 2)[1] : modID;
 
@@ -82,9 +79,23 @@ public class ByteBufUtils {
 
         boolean transparent = byteBuf.getByte(readerIndex) == 1;
 
+        readerIndex++;
+
+        int[][] allUVCoords = new int[6][];
+        for (int f = 0; f < 6; f++) {
+            short uvCoordCount = byteBuf.getShort(readerIndex);
+            readerIndex += 2;
+            int[] uvCoords = new int[uvCoordCount];
+            for (int i = 0; i < uvCoordCount; i++) {
+                uvCoords[i] = (int) byteBuf.getDouble(readerIndex);
+                readerIndex += Double.BYTES;
+            }
+            allUVCoords[f] = uvCoords;
+        }
+
         shapeCache.put(blockShape.id(), blockShape);
 
-        return new Block() {
+        return new Block(ids[1]) {
             @Override
             public String getID() {
                 return blockID;
@@ -102,15 +113,12 @@ public class ByteBufUtils {
 
             @Override
             public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
-                if (modID.equals("omnivoxel:air") || adjacentBlock.getModID().equals(modID) || !adjacentBlock.isTransparent())
-                    return false;
-                if (transparent) return true;
-                return true;
+                return !modID.equals("omnivoxel:air") && !adjacentBlock.getModID().equals(modID) && adjacentBlock.isTransparent();
             }
 
             @Override
             public int[] getUVCoordinates(BlockFace blockFace) {
-                return new int[]{2, 0, 3, 0, 3, 1, 2, 1};
+                return allUVCoords[blockFace.ordinal()];
             }
 
             @Override

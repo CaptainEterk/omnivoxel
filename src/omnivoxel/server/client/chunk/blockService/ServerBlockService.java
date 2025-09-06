@@ -1,9 +1,9 @@
 package omnivoxel.server.client.chunk.blockService;
 
-import omnivoxel.common.BlockShape;
+import omnivoxel.server.ServerLogger;
 import omnivoxel.server.client.block.ServerBlock;
+import omnivoxel.server.client.chunk.EmptyGeneratedChunk;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,17 +14,11 @@ public final class ServerBlockService {
         serverBlocksById = new ConcurrentHashMap<>();
     }
 
-    public ServerBlock getBlock(String id, String blockState) {
-        String key = createKey(id, blockState);
-        ServerBlock serverBlock = serverBlocksById.get(key);
+    public ServerBlock getBlock(String id) {
+        ServerBlock serverBlock = serverBlocksById.get(id);
         if (serverBlock == null) {
-            if (blockState != null) {
-                ServerBlock noStateBlock = serverBlocksById.get(createKey(id, null));
-                serverBlock = new ServerBlock(id, blockState, noStateBlock == null ? BlockShape.DEFAULT_BLOCK_SHAPE_STRING : noStateBlock.blockShape(), noStateBlock != null && noStateBlock.transparent());
-            } else {
-                serverBlock = new ServerBlock(id, null, BlockShape.DEFAULT_BLOCK_SHAPE_STRING, false);
-            }
-            serverBlocksById.put(key, serverBlock);
+            serverBlocksById.put(id, EmptyGeneratedChunk.air);
+            ServerLogger.logger.warn("Unregistered block: " + id);
         }
 
         return serverBlock;
@@ -34,11 +28,8 @@ public final class ServerBlockService {
         return serverBlocksById;
     }
 
-    private String createKey(String id, String blockState) {
-        return id + ":" + blockState;
-    }
-
-    public void addServerBlock(String id, ServerBlock serverBlock) {
-        serverBlocksById.put(id, serverBlock);
+    public void registerServerBlock(ServerBlock serverBlock) {
+        ServerLogger.logger.debug("Registered block: " + serverBlock.id());
+        serverBlocksById.put(serverBlock.id(), serverBlock);
     }
 }

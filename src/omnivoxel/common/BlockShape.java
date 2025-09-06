@@ -68,7 +68,7 @@ public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolea
     private static final int[][] EMPTY_INDICES = new int[6][0];
     private static final boolean[] EMPTY_SOLID = new boolean[6];
     public static final BlockShape EMPTY_BLOCK_SHAPE =
-            new BlockShape(BlockShape.DEFAULT_BLOCK_SHAPE_STRING, EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID);
+            new BlockShape(BlockShape.EMPTY_BLOCK_SHAPE_STRING, EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID);
 
     public byte[] getBytes() {
         // Encode key
