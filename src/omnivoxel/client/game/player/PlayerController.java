@@ -51,7 +51,7 @@ public class PlayerController {
     private final double speed = 4.317f * ConstantGameSettings.TARGET_TPS;
 
     @NotNull
-    private MovementMode movementMode = MovementMode.FALL_COLLIDE;
+    private MovementMode movementMode = MovementMode.FLY_COLLIDE;
 
     private double x;
     private double y = 128;
@@ -67,6 +67,7 @@ public class PlayerController {
     private boolean togglingWireframe;
     private boolean togglingFullscreen;
     private boolean togglingDebug;
+    private boolean togglingMovementMode;
     // TODO: Move to Window
     private int oldWindowWidth;
     private int oldWindowHeight;
@@ -363,6 +364,14 @@ public class PlayerController {
         } else {
             togglingDebug = false;
         }
+        if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F4)) {
+            if (!togglingMovementMode) {
+                movementMode = MovementMode.values()[(movementMode.ordinal()+1)%MovementMode.values().length];
+            }
+            togglingMovementMode = true;
+        } else {
+            togglingMovementMode = false;
+        }
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F11)) {
             if (!togglingFullscreen) {
                 contextTasks.add(window -> {
@@ -390,6 +399,8 @@ public class PlayerController {
                         assert vidMode != null;
                         GLFW.glfwSetWindowMonitor(currentWindow, monitor, 0, 0, vidMode.width(), vidMode.height(), vidMode.refreshRate());
                     }
+
+                    mouseInput.clearDelta();
                 });
             }
             togglingFullscreen = true;

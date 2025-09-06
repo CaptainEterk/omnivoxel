@@ -14,7 +14,7 @@ public class ServerClient extends MobEntity implements ServerItem {
     private final String clientID;
     private final ChannelHandlerContext ctx;
     private final byte[] playerID;
-    private final Set<String> registeredIDs;
+    public final Set<String> registeredIDs;
 
     public ServerClient(String clientID, ChannelHandlerContext ctx) {
         super(clientID, new Hitbox(0, 0, 0, 1, 2, 1, 2, 3, 2));

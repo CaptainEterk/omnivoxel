@@ -92,6 +92,4 @@ void main() {
     } else if (meshType == 2u) {
 
     }
-
-//    FragColor = vec4(vec3(gl_FragCoord.z/10), 1.0);
 }

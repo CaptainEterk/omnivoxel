@@ -7,8 +7,8 @@
 #define BITMASK_2 3u
 #define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
 
-// TODO: Make this a uniform
-#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)// Array of shadow levels
+// TODO: Make this a uniform that can change over time
+#define SHADOWS float[6](1.2, 0.3, 0.4, 0.6, 0.8, 1.0)
 
 layout(location = 0) in uint data1;
 layout(location = 1) in uint data2;

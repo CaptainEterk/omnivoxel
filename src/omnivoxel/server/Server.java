@@ -10,9 +10,11 @@ import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.games.Game;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.game.GameParser;
+import omnivoxel.util.game.nodes.ArrayGameNode;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 import omnivoxel.util.thread.WorkerThreadPool;
@@ -42,10 +44,10 @@ public class Server {
         this.blockService = blockService;
         this.clients = new ConcurrentHashMap<>();
 
-        GameNode gameNode = GameParser.parseNode(Files.readString(Path.of("game/main.json")));
+        GameNode gameNode = GameParser.parseNode(Files.readString(Path.of("game/main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of("game/constants.json")), null), ArrayGameNode.class));
 
         if (gameNode instanceof ObjectGameNode objectGameNode) {
-            ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, objectGameNode.object().get("world_generator"));
+            ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, blockShapeCache, objectGameNode.object().get("world_generator"));
             Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
             workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes)::generateChunk, true);
         } else {

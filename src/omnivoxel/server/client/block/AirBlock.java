@@ -1,9 +1,12 @@
-package omnivoxel.client.game.graphics.opengl.mesh.block;
+package omnivoxel.server.client.block;
 
+import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.common.BlockShape;
 
 public final class AirBlock extends Block {
+    private final static int[][] emptyUVCoords = new int[6][0];
+
     @Override
     public String getID() {
         return "air";
@@ -20,8 +23,13 @@ public final class AirBlock extends Block {
     }
 
     @Override
+    public String getState() {
+        return "";
+    }
+
+    @Override
     public int[] getUVCoordinates(BlockFace blockFace) {
-        return new int[0];
+        return emptyUVCoords[blockFace.ordinal()];
     }
 
     @Override

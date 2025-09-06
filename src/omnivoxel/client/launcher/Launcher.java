@@ -4,7 +4,6 @@ import io.netty.util.ResourceLeakDetector;
 import omnivoxel.client.game.GameLoop;
 import omnivoxel.client.game.camera.Camera;
 import omnivoxel.client.game.camera.Frustum;
-import omnivoxel.client.game.graphics.opengl.mesh.block.AirBlock;
 import omnivoxel.client.game.graphics.opengl.window.Window;
 import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.settings.Settings;
@@ -42,8 +41,6 @@ public class Launcher {
         CountDownLatch connected = new CountDownLatch(1);
 
         ClientWorldDataService clientWorldDataService = new ClientWorldDataService();
-
-        clientWorldDataService.addBlock(new AirBlock());
 
         State state = new State();
         Settings settings = new Settings();

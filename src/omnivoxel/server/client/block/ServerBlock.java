@@ -1,30 +1,35 @@
 package omnivoxel.server.client.block;
 
-import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.ServerItem;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-public record ServerBlock(String id, String blockState, String blockShape, boolean transparent) implements ServerItem {
-    public ServerBlock(String id, boolean transparent) {
-        this(id, null, BlockShape.DEFAULT_BLOCK_SHAPE_STRING, transparent);
-    }
-
-    public ServerBlock(String id, String blockShape, boolean transparent) {
-        this(id, null, blockShape, transparent);
+public record ServerBlock(
+        String id,
+        String blockShape,
+        double[][] uvCoords,
+        boolean transparent
+) implements ServerItem {
+    public static String createID(String id, String blockState) {
+        return id + "/" + blockState;
     }
 
     @Override
     public byte @NotNull [] getBytes() {
-        String idAndState = id + ":" + blockState;
-        byte[] idBytes = idAndState.getBytes();
+        byte[] idBytes = id.getBytes();
         byte[] shapeBytes = blockShape == null ? new byte[0] : blockShape.getBytes();
+
+        int uvCoordByteCount = 0;
+        for (double[] uvCoords : this.uvCoords) {
+            uvCoordByteCount += 2;
+            uvCoordByteCount += uvCoords.length * Double.BYTES;
+        }
 
         int size = 2 + idBytes.length
                 + 2 + shapeBytes.length
-                + 1;
+                + 1
+                + uvCoordByteCount;
 
         ByteBuffer buffer = ByteBuffer.allocate(size);
 
@@ -36,30 +41,26 @@ public record ServerBlock(String id, String blockState, String blockShape, boole
 
         buffer.put((byte) (transparent ? 1 : 0));
 
+        for (double[] uvCoords : this.uvCoords) {
+            buffer.putShort((short) uvCoords.length);
+            for (double uv : uvCoords) {
+                buffer.putDouble(uv);
+            }
+        }
+
         return buffer.array();
     }
 
     public byte[] getBlockBytes() {
-        String idAndState = id + ":" + blockState;
-        byte[] idBytes = idAndState.getBytes();
+        byte[] idBytes = id.getBytes();
 
-        int size = 2 + idBytes.length
-                + 1;
+        int size = 2 + idBytes.length;
 
         ByteBuffer buffer = ByteBuffer.allocate(size);
 
         buffer.putShort((short) idBytes.length);
         buffer.put(idBytes);
 
-        buffer.put((byte) (transparent ? 1 : 0));
-
         return buffer.array();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        ServerBlock that = (ServerBlock) o;
-        return Objects.equals(blockState, that.blockState) && Objects.equals(id, that.id);
     }
 }

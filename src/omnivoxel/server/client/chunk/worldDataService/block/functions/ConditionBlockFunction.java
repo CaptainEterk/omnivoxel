@@ -3,11 +3,8 @@ package omnivoxel.server.client.chunk.worldDataService.block.functions;
 import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.block.BlockFunction;
-import omnivoxel.server.client.chunk.worldDataService.block.BlockFunctionResult;
 import omnivoxel.server.client.chunk.worldDataService.block.condition.BlockConditionFunction;
-import omnivoxel.server.client.chunk.worldDataService.block.condition.functions.GreaterBlockConditionFunction;
-import omnivoxel.server.client.chunk.worldDataService.block.condition.functions.LessBlockConditionFunction;
-import omnivoxel.server.client.chunk.worldDataService.block.condition.functions.YGradientBlockConditionFunction;
+import omnivoxel.server.client.chunk.worldDataService.block.condition.functions.*;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
@@ -25,6 +22,8 @@ public class ConditionBlockFunction extends BlockFunction {
         addBlockConditionFunction(GreaterBlockConditionFunction.class);
         addBlockConditionFunction(LessBlockConditionFunction.class);
         addBlockConditionFunction(YGradientBlockConditionFunction.class);
+        addBlockConditionFunction(FloorBlockConditionFunction.class);
+        addBlockConditionFunction(CeilingBlockConditionFunction.class);
     }
 
     private final BlockConditionFunction condition;
@@ -63,7 +62,7 @@ public class ConditionBlockFunction extends BlockFunction {
     }
 
     @Override
-    public BlockFunctionResult evaluate(double density, int[] info, boolean floor, boolean ceiling, int depth, double x, double y, double z) {
+    public String evaluate(double density, int[] info, boolean floor, boolean ceiling, int depth, double x, double y, double z) {
         return condition.evaluate(density, info, floor, ceiling, depth, x, y, z) ? ifTrue.evaluate(density, info, floor, ceiling, depth, x, y, z) : null;
     }
 }

@@ -34,6 +34,21 @@ public class BlockStateWrapper extends Block {
 
     @Override
     public String getState() {
-        return super.getState();
+        return wrappedBlock.state;
+    }
+
+    @Override
+    public boolean isTransparent() {
+        return wrappedBlock.isTransparent();
+    }
+
+    @Override
+    public boolean shouldRenderTransparentMesh() {
+        return wrappedBlock.shouldRenderTransparentMesh();
+    }
+
+    @Override
+    public boolean shouldRenderFace(BlockFace face, Block adjacentBlock) {
+        return wrappedBlock.shouldRenderFace(face, adjacentBlock);
     }
 }

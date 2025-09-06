@@ -112,7 +112,7 @@ public class ChunkMeshDataGenerator {
             Block block, Block top, Block bottom, Block north, Block south, Block east, Block west,
             List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap) {
 
-        BlockShape shape = block.getShape(top, bottom, north, south, east, west); // compute once
+        BlockShape shape = block.getShape(top, bottom, north, south, east, west);
 
         boolean renderTop = shouldRenderFaceCached(block, shape, top, BlockFace.TOP, top, bottom, north, south, east, west);
         boolean renderBottom = shouldRenderFaceCached(block, shape, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west);
@@ -121,7 +121,8 @@ public class ChunkMeshDataGenerator {
         boolean renderEast = shouldRenderFaceCached(block, shape, east, BlockFace.EAST, top, bottom, north, south, east, west);
         boolean renderWest = shouldRenderFaceCached(block, shape, west, BlockFace.WEST, top, bottom, north, south, east, west);
 
-        if (renderTop) addFacePrecomputedShape(x, y, z, block, shape, BlockFace.TOP, vertices, indices, vertexIndexMap);
+        if (renderTop)
+            addFacePrecomputedShape(x, y, z, block, shape, BlockFace.TOP, vertices, indices, vertexIndexMap);
         if (renderBottom)
             addFacePrecomputedShape(x, y, z, block, shape, BlockFace.BOTTOM, vertices, indices, vertexIndexMap);
         if (renderNorth)
@@ -139,8 +140,8 @@ public class ChunkMeshDataGenerator {
         if (adjacentBlock == null) {
             return true;
         }
-        if (Objects.equals(adjacentBlock.getModID(), "omnivoxel:air") &&
-                !Objects.equals(originalBlock.getModID(), "omnivoxel:air")) {
+        if (adjacentBlock.isTransparent() && !Objects.equals(adjacentBlock.getModID(), originalBlock.getModID())
+        ) {
             return true;
         }
         BlockShape adjBlockShape = adjacentBlock.getShape(top, bottom, north, south, east, west);
@@ -160,7 +161,10 @@ public class ChunkMeshDataGenerator {
         for (int idx : faceIndices) {
             Vertex pointPosition = faceVertices[idx];
             Vertex position = pointPosition.add(x, y, z);
-            addPoint(vertices, indices, vertexIndexMap,
+            addPoint(
+                    vertices,
+                    indices,
+                    vertexIndexMap,
                     position,
                     uvCoordinates[idx * 2],
                     uvCoordinates[idx * 2 + 1],
@@ -201,11 +205,8 @@ public class ChunkMeshDataGenerator {
                 byte b = byteBuf.getByte(index + j);
                 blockID.append((char) b);
             }
-            j++;
-            boolean transparent = byteBuf.getBoolean(j);
-            String[] ids = blockID.toString().split(":");
-            String modID = ids[0] + ":" + ids[1];
-            palette[i] = new omnivoxel.world.block.Block(modID, ids[2]);
+            String[] ids = blockID.toString().split("/");
+            palette[i] = new omnivoxel.world.block.Block(ids[0], ids[1]);
             index += j;
         }
 

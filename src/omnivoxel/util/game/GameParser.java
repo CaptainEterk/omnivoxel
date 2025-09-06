@@ -9,18 +9,18 @@ import java.nio.file.Files;
 import java.util.*;
 
 public class GameParser {
-    public static GameNode parseNode(String string) {
-        return parseNode(string, null, true).value;
+    public static GameNode parseNode(String string, ArrayGameNode constants) {
+        return parseNode(string, null, constants).value;
     }
 
-    private static Result parseNode(String string, String key, boolean root) {
+    private static Result parseNode(String string, String key, ArrayGameNode constants) {
         int i = nextChar(string, 0);
         char c = string.charAt(i);
 
         if (c == '{') {
-            return parseObject(string, i + 1, key);
+            return parseObject(string, i + 1, key, constants);
         } else if (c == '[') {
-            return parseArray(string, i + 1, key);
+            return parseArray(string, i + 1, key, constants);
         } else if (c == '"') {
             return parseString(string, i + 1, key);
         } else if (Character.isDigit(c) || c == '-') {
@@ -36,7 +36,7 @@ public class GameParser {
         throw new IllegalArgumentException("Unexpected character: " + c);
     }
 
-    private static Result parseObject(String string, int idx, String key) {
+    private static Result parseObject(String string, int idx, String key, ArrayGameNode constants) {
         Map<String, GameNode> map = new LinkedHashMap<>();
         int i = nextChar(string, idx);
 
@@ -50,7 +50,7 @@ public class GameParser {
             }
             i = nextChar(string, i + 1);
 
-            Result valRes = parseNode(string.substring(i), fieldKey, false);
+            Result valRes = parseNode(string.substring(i), fieldKey, constants);
             map.put(fieldKey, valRes.value);
             i += valRes.next;
             i = nextChar(string, i);
@@ -61,17 +61,17 @@ public class GameParser {
                 throw new IllegalArgumentException("Expected ',' or '}' in object");
             }
         }
-        return new Result(handleObject(new ObjectGameNode(key, map)), i + 1);
+        return new Result(handleObject(new ObjectGameNode(key, map), constants), i + 1);
     }
 
-    private static Result parseArray(String string, int idx, String key) {
+    private static Result parseArray(String string, int idx, String key, ArrayGameNode constants) {
         List<GameNode> list = new ArrayList<>();
         int i = nextChar(string, idx);
 
         int counter = 0;
         while (string.charAt(i) != ']') {
             String elementKey = String.valueOf(counter++);
-            Result valRes = parseNode(string.substring(i), elementKey, false);
+            Result valRes = parseNode(string.substring(i), elementKey, constants);
             list.add(valRes.value);
             i += valRes.next;
             i = nextChar(string, i);
@@ -121,31 +121,31 @@ public class GameParser {
 
     private static int nextChar(String string, int idx) {
         int i = idx;
-        while (i < string.length() && shouldSkip(string.charAt(i))) {
+        while (i < string.length() && Character.isWhitespace(string.charAt(i))) {
             i++;
         }
         return i;
     }
 
-    private static boolean shouldSkip(char c) {
-        return Character.isWhitespace(c);
-    }
-
-    private static GameNode handleObject(ObjectGameNode objectGameNode) {
+    private static GameNode handleObject(ObjectGameNode objectGameNode, ArrayGameNode constants) {
         StringGameNode type = Game.checkGameNodeType(objectGameNode.object().get("type"), StringGameNode.class);
 
+        GameNode out = null;
+
+//        System.out.println(objectGameNode);
+
         if (type == null) {
-            return objectGameNode;
+            out = null;
         } else if (Objects.equals(type.value(), "read_file")) {
-            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("file"), StringGameNode.class).value() + ".json";
+            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value() + ".json";
             try {
                 String content = Files.readString(new File(path).toPath());
-                return GameParser.parseNode(content);
+                return GameParser.parseNode(content, constants);
             } catch (Exception e) {
                 throw new RuntimeException("Failed to read file: " + path, e);
             }
-        } else if (Objects.equals(type.value(), "read_directory")) {
-            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("file"), StringGameNode.class).value();
+        } else if (Objects.equals(type.value(), "scan_directory")) {
+            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value();
             File dir = new File(path);
             if (!dir.isDirectory()) {
                 throw new IllegalArgumentException("Path is not a directory: " + path);
@@ -157,7 +157,7 @@ public class GameParser {
                 if (f.isFile()) {
                     try {
                         String content = Files.readString(f.toPath());
-                        GameNode parsed = GameParser.parseNode(content);
+                        GameNode parsed = GameParser.parseNode(content, constants);
                         if (parsed instanceof ObjectGameNode obj) {
                             children.add(new ObjectGameNode(String.valueOf(index++), obj.object()));
                         } else if (parsed instanceof ArrayGameNode arr) {
@@ -171,8 +171,28 @@ public class GameParser {
                 }
             }
             return new ArrayGameNode(objectGameNode.key(), children.toArray(GameNode[]::new));
-        } else {
+        } else if (Objects.equals(type.value(), "constant")) {
+            String v = Game.checkGameNodeType(objectGameNode.object().get("id"), StringGameNode.class).value();
+            boolean found = false;
+            for (GameNode node : constants.nodes()) {
+                StringGameNode id = Game.checkGameNodeType(Game.checkGameNodeType(node, ObjectGameNode.class).object().get("id"), StringGameNode.class);
+                if (Objects.equals(id.value(), v)) {
+                    out = Game.checkGameNodeType(node, ObjectGameNode.class).object().get("value");
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw new RuntimeException(v + " is not a valid constant");
+            }
+        }
+
+        if (out == null) {
             return objectGameNode;
+        } else if (out instanceof ObjectGameNode) {
+            return handleObject(objectGameNode, constants);
+        } else {
+            return out;
         }
     }
 
