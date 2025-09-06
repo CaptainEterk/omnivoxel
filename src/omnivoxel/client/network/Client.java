@@ -200,9 +200,6 @@ public final class Client {
         byteBuf.retain();
         Position3D position3D = new Position3D(x, y, z);
 
-//        Chunk chunk = ChunkFactory.create(Arrays.stream(blocks).map(Block::getBlock).toArray(omnivoxel.world.block.Block[]::new), palette);
-//        world.add(omnivoxel.math.Position3D.createFrom(position3D), chunk);
-
         meshDataGenerators.submit(new ChunkMeshDataTask(byteBuf, position3D));
     }
 

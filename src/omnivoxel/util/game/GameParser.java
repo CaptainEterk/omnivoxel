@@ -132,58 +132,56 @@ public class GameParser {
 
         GameNode out = null;
 
-//        System.out.println(objectGameNode);
+        if (type != null) {
+            if (Objects.equals(type.value(), "read_file")) {
+                String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value() + ".json";
+                try {
+                    String content = Files.readString(new File(path).toPath());
+                    return GameParser.parseNode(content, constants);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to read file: " + path, e);
+                }
+            } else if (Objects.equals(type.value(), "scan_directory")) {
+                String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value();
+                File dir = new File(path);
+                if (!dir.isDirectory()) {
+                    throw new IllegalArgumentException("Path is not a directory: " + path);
+                }
 
-        if (type == null) {
-            out = null;
-        } else if (Objects.equals(type.value(), "read_file")) {
-            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value() + ".json";
-            try {
-                String content = Files.readString(new File(path).toPath());
-                return GameParser.parseNode(content, constants);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to read file: " + path, e);
-            }
-        } else if (Objects.equals(type.value(), "scan_directory")) {
-            String path = ConstantServerSettings.GAME_LOCATION + Game.checkGameNodeType(objectGameNode.object().get("path"), StringGameNode.class).value();
-            File dir = new File(path);
-            if (!dir.isDirectory()) {
-                throw new IllegalArgumentException("Path is not a directory: " + path);
-            }
-
-            List<GameNode> children = new ArrayList<>();
-            int index = 0;
-            for (File f : Objects.requireNonNull(dir.listFiles())) {
-                if (f.isFile()) {
-                    try {
-                        String content = Files.readString(f.toPath());
-                        GameNode parsed = GameParser.parseNode(content, constants);
-                        if (parsed instanceof ObjectGameNode obj) {
-                            children.add(new ObjectGameNode(String.valueOf(index++), obj.object()));
-                        } else if (parsed instanceof ArrayGameNode arr) {
-                            children.add(new ArrayGameNode(String.valueOf(index++), arr.nodes()));
-                        } else {
-                            children.add(parsed);
+                List<GameNode> children = new ArrayList<>();
+                int index = 0;
+                for (File f : Objects.requireNonNull(dir.listFiles())) {
+                    if (f.isFile()) {
+                        try {
+                            String content = Files.readString(f.toPath());
+                            GameNode parsed = GameParser.parseNode(content, constants);
+                            if (parsed instanceof ObjectGameNode obj) {
+                                children.add(new ObjectGameNode(String.valueOf(index++), obj.object()));
+                            } else if (parsed instanceof ArrayGameNode arr) {
+                                children.add(new ArrayGameNode(String.valueOf(index++), arr.nodes()));
+                            } else {
+                                children.add(parsed);
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to read file: " + f, e);
                         }
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to read file: " + f, e);
                     }
                 }
-            }
-            return new ArrayGameNode(objectGameNode.key(), children.toArray(GameNode[]::new));
-        } else if (Objects.equals(type.value(), "constant")) {
-            String v = Game.checkGameNodeType(objectGameNode.object().get("id"), StringGameNode.class).value();
-            boolean found = false;
-            for (GameNode node : constants.nodes()) {
-                StringGameNode id = Game.checkGameNodeType(Game.checkGameNodeType(node, ObjectGameNode.class).object().get("id"), StringGameNode.class);
-                if (Objects.equals(id.value(), v)) {
-                    out = Game.checkGameNodeType(node, ObjectGameNode.class).object().get("value");
-                    found = true;
-                    break;
+                return new ArrayGameNode(objectGameNode.key(), children.toArray(GameNode[]::new));
+            } else if (Objects.equals(type.value(), "constant")) {
+                String v = Game.checkGameNodeType(objectGameNode.object().get("id"), StringGameNode.class).value();
+                boolean found = false;
+                for (GameNode node : constants.nodes()) {
+                    StringGameNode id = Game.checkGameNodeType(Game.checkGameNodeType(node, ObjectGameNode.class).object().get("id"), StringGameNode.class);
+                    if (Objects.equals(id.value(), v)) {
+                        out = Game.checkGameNodeType(node, ObjectGameNode.class).object().get("value");
+                        found = true;
+                        break;
+                    }
                 }
-            }
-            if (!found) {
-                throw new RuntimeException(v + " is not a valid constant");
+                if (!found) {
+                    throw new RuntimeException(v + " is not a valid constant");
+                }
             }
         }
 

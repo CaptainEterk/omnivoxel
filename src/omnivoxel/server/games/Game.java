@@ -95,12 +95,11 @@ public final class Game {
                 solid[i] = Game.checkGameNodeType(nodes[i], BooleanGameNode.class).value();
             }
 
-            // TODO: Read game.properties to get this (BEFORE COMMIT)
-            blockShapeCache.put(gameID + ":" + id, new BlockShape("core:" + id, vertices, indices, solid));
+            blockShapeCache.put(gameID + ":" + id, new BlockShape(gameID + ":" + id, vertices, indices, solid));
         }
 
         blockShapeCache.put(BlockShape.EMPTY_BLOCK_SHAPE_STRING, BlockShape.EMPTY_BLOCK_SHAPE);
 
-        blockService.registerServerBlock(new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, EmptyGeneratedChunk.emptyUVCoords, true));
+        blockService.registerServerBlock(EmptyGeneratedChunk.air);
     }
 }

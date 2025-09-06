@@ -43,6 +43,7 @@ public final class ServerWorldDataService {
     private final Integer blockMaxX;
     private final Integer blockMaxY;
     private final Integer blockMaxZ;
+    private final Integer depthSections;
 
     public ServerWorldDataService(ServerBlockService blockService, Map<String, BlockShape> blockShapeCache, GameNode gameNode) {
         this.blockService = blockService;
@@ -105,6 +106,10 @@ public final class ServerWorldDataService {
         blockMaxX = chunkMaxX == null ? null : (chunkMaxX + 1) * ConstantGameSettings.CHUNK_WIDTH;
         blockMaxY = chunkMaxY == null ? null : (chunkMaxY + 1) * ConstantGameSettings.CHUNK_HEIGHT;
         blockMaxZ = chunkMaxZ == null ? null : (chunkMaxZ + 1) * ConstantGameSettings.CHUNK_LENGTH;
+
+        DoubleGameNode depthSectionsNode = Game.checkGameNodeType(worldGeneratorNode.object().get("depth_sections"), DoubleGameNode.class);
+
+        this.depthSections = depthSectionsNode == null ? null : (int) depthSectionsNode.value();
 
         densityFunction = getDensityFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("density"), ObjectGameNode.class), seed);
         blockFunction = getBlockFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("surface"), ObjectGameNode.class), seed);

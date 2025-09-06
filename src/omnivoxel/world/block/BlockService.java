@@ -10,18 +10,13 @@ public final class BlockService {
         serverBlocksById = new ConcurrentHashMap<>();
     }
 
-    public Block getBlock(String id, String blockState) {
-        String key = createKey(id, blockState);
-        Block block = serverBlocksById.get(key);
+    public Block getBlock(String id) {
+        Block block = serverBlocksById.get(id);
         if (block == null) {
-            block = new Block(id, blockState);
-            serverBlocksById.put(key, block);
+            block = new Block(id);
+            serverBlocksById.put(id, block);
         }
 
         return block;
-    }
-
-    private String createKey(String id, String blockState) {
-        return id + ":" + blockState;
     }
 }

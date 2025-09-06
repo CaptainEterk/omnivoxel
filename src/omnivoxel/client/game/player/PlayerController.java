@@ -129,7 +129,7 @@ public class PlayerController {
                     }
 
                     Block block = cachedChunk.getBlock(localX, localY, localZ);
-                    if (block != null && !"omnivoxel:air".equals(block.id())) {
+                    if (block != null && !"omnivoxel:air/default".equals(block.id())) {
                         BlockHitbox blockHitboxImpl = blockHitboxCache.get(
                                 blockHitbox.get(block.id(), String.class, new Class[]{String.class}, new Object[]{"core:hitbox/full_block"}),
                                 FullBlockHitbox.class
