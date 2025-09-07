@@ -14,5 +14,5 @@ public final class ConstantServerSettings {
     public static final String CHUNK_SAVE_LOCATION = WORLD_SAVE_LOCATION + "chunks/";
     public static final String GAME_LOCATION = "game/";
     public static final String CACHE_LOCATION = WORLD_SAVE_LOCATION + "cache/";
-    public static final String HEIGHT_LOCATION = CACHE_LOCATION + "height/";
+    public static final String HEIGHT_LOCATION = CACHE_LOCATION + "heights/";
 }

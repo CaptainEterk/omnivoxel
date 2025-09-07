@@ -59,6 +59,21 @@ public final class Game {
                     for (int i = 0; i < 6; i++) {
                         uvCoords[i] = coords;
                     }
+                } else if (Objects.equals(uvMapping, "cube")) {
+                    ArrayGameNode faceNodes = Game.checkGameNodeType(texture.object().get("uv_coords"), ArrayGameNode.class);
+                    if (faceNodes.nodes().length != 6) {
+                        throw new IllegalArgumentException("Cube mapping must provide 6 UV arrays, one per face");
+                    }
+
+                    for (int i = 0; i < 6; i++) {
+                        ArrayGameNode faceArray = Game.checkGameNodeType(faceNodes.nodes()[i], ArrayGameNode.class);
+                        double[] faceCoords = Arrays.stream(faceArray.nodes())
+                                .mapToDouble(gn -> Game.checkGameNodeType(gn, DoubleGameNode.class).value())
+                                .toArray();
+                        uvCoords[i] = faceCoords;
+                    }
+                } else {
+                    throw new IllegalArgumentException("\"" + uvMapping + "\" is not a valid uv_mapping");
                 }
 
                 blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparent));

@@ -84,7 +84,7 @@ public class OpenGLRenderer implements Renderer {
 
         try {
             // Creates an OpenGL window
-            this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
+            this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("heights", 500), ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
 
             // Create renderers
             this.textRenderer = new TextRenderer();
@@ -110,7 +110,7 @@ public class OpenGLRenderer implements Renderer {
 
             initResources();
 
-            this.window.init(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500));
+            this.window.init(settings.getIntSetting("width", 500), settings.getIntSetting("heights", 500));
             this.window.show();
 
             initOpenGL();

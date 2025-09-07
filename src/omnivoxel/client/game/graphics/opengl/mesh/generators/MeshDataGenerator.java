@@ -31,6 +31,8 @@ public final class MeshDataGenerator {
             } else if (meshDataTask instanceof EntityMeshDataTask(ClientEntity entity)) {
                 world.addEntity(entityMeshDataGenerator.generateMeshData(entity));
             }
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
         } finally {
             meshDataTask.cleanup();
         }
