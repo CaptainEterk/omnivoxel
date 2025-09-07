@@ -14,7 +14,7 @@ public class Frustum {
         frustumIntersection.set(viewProjMatrix);
     }
 
-    private boolean isChunkInFrustum(Position3D position3D) {
+    public boolean isChunkInFrustum(Position3D position3D) {
         int x = position3D.x() * ConstantGameSettings.CHUNK_WIDTH;
         int y = position3D.y() * ConstantGameSettings.CHUNK_HEIGHT;
         int z = position3D.z() * ConstantGameSettings.CHUNK_LENGTH;
@@ -27,10 +27,6 @@ public class Frustum {
                 y + ConstantGameSettings.CHUNK_HEIGHT,
                 z + ConstantGameSettings.CHUNK_LENGTH
         );
-    }
-
-    public boolean isMeshInFrustum(Position3D position3D) {
-        return isChunkInFrustum(position3D);
     }
 
     public boolean isEntityInFrustum(ClientEntity clientEntity, Camera camera) {

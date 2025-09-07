@@ -54,8 +54,8 @@ public class ClientWorld {
         queuedEntityMeshData = ConcurrentHashMap.newKeySet();
     }
 
-    public int totalQueuedChunks() {
-        return queuedChunks.size();
+    public int inflightRequests() {
+        return chunkRequestsSent.get() - chunkResponseGotten.get();
     }
 
     public void setClient(Client client) {
@@ -71,8 +71,8 @@ public class ClientWorld {
         if (clientWorldChunk != null) {
             return clientWorldChunk;
         } else if (requesting && request) {
-            int inflightRequests = chunkRequestsSent.get() - chunkResponseGotten.get();
-            if (inflightRequests < ConstantServerSettings.CHUNK_REQUEST_LIMIT && queuedChunks.add(position3D)) {
+            int inflightRequests = inflightRequests();
+            if (inflightRequests < ConstantServerSettings.CHUNK_REQUEST_LIMIT) {
                 client.sendRequest(new ChunkRequest(position3D));
                 chunkRequestsSent.incrementAndGet();
             } else {

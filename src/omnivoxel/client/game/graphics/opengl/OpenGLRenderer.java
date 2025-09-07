@@ -84,7 +84,7 @@ public class OpenGLRenderer implements Renderer {
 
         try {
             // Creates an OpenGL window
-            this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
+            this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("heights", 500), ConstantGameSettings.DEFAULT_WINDOW_TITLE, logger, contextTasks);
 
             // Create renderers
             this.textRenderer = new TextRenderer();
@@ -110,7 +110,7 @@ public class OpenGLRenderer implements Renderer {
 
             initResources();
 
-            this.window.init(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500));
+            this.window.init(settings.getIntSetting("width", 500), settings.getIntSetting("heights", 500));
             this.window.show();
 
             initOpenGL();
@@ -282,7 +282,7 @@ public class OpenGLRenderer implements Renderer {
             state.setItem("shouldUpdateView", false);
         }
 
-        if (world.totalQueuedChunks() < ConstantServerSettings.QUEUED_CHUNKS_MINIMUM) {
+        if (world.inflightRequests() < ConstantServerSettings.INFLIGHT_REQUESTS_MINIMUM) {
             state.setItem("shouldUpdateVisibleMeshes", true);
         }
 
@@ -344,14 +344,14 @@ public class OpenGLRenderer implements Renderer {
     private void calculateFrustumChunks() {
         solidRenderedChunksInFrustum.clear();
         for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
-            if (camera.getFrustum().isMeshInFrustum(solidRenderedChunk.pos())) {
+            if (camera.getFrustum().isChunkInFrustum(solidRenderedChunk.pos())) {
                 solidRenderedChunksInFrustum.add(new PositionedChunk(solidRenderedChunk.pos(), world.get(solidRenderedChunk.pos(), false)));
             }
         }
 
         transparentRenderedChunksInFrustum.clear();
         for (DistanceChunk transparentRenderedChunk : transparentRenderedChunks) {
-            if (camera.getFrustum().isMeshInFrustum(transparentRenderedChunk.pos())) {
+            if (camera.getFrustum().isChunkInFrustum(transparentRenderedChunk.pos())) {
                 transparentRenderedChunksInFrustum.add(new PositionedChunk(transparentRenderedChunk.pos(), world.get(transparentRenderedChunk.pos(), false)));
             }
         }
@@ -515,6 +515,7 @@ public class OpenGLRenderer implements Renderer {
         int rdChunks = renderDistance / ConstantGameSettings.CHUNK_SIZE + 1;
         int squaredRenderDistance = rdChunks * rdChunks;
         Map<Integer, Set<DistanceChunk>> positionedChunks = new HashMap<>();
+        Map<Integer, Set<DistanceChunk>> positionedInFrustumChunks = new HashMap<>();
         int highestBucketDistance = 0;
 
         int ccx = (int) -Math.floor(camera.getX() / ConstantGameSettings.CHUNK_WIDTH);
@@ -536,6 +537,11 @@ public class OpenGLRenderer implements Renderer {
                         }
 
                         Position3D position3D = new Position3D(dx, dy, dz);
+
+                        if (camera.getFrustum().isChunkInFrustum(position3D)) {
+                            distance /= 10;
+                        }
+
                         positionedChunks.computeIfAbsent(distance, i -> new HashSet<>()).add(new DistanceChunk(distance, position3D));
                         count++;
                     }

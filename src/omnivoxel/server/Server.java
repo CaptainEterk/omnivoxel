@@ -9,6 +9,7 @@ import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.ChunkGenerator;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.server.client.chunk.result.ChunkCacheItem;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
@@ -20,12 +21,17 @@ import omnivoxel.util.game.nodes.ObjectGameNode;
 import omnivoxel.util.thread.WorkerThreadPool;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 public class Server {
     private static final int HANDSHAKE_ID = 0;
@@ -36,6 +42,7 @@ public class Server {
     private final Map<String, String> blockIDMap;
     private final Map<String, BlockShape> blockShapeCache;
     private final ServerBlockService blockService;
+    private final BlockingQueue<ChunkCacheItem> chunkCacheQueue = new LinkedBlockingDeque<>();
 
     public Server(int seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap) throws InterruptedException, IOException {
         this.world = world;
@@ -49,7 +56,7 @@ public class Server {
         if (gameNode instanceof ObjectGameNode objectGameNode) {
             ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, blockShapeCache, objectGameNode.object().get("world_generator"));
             Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
-            workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes)::generateChunk, true);
+            workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes, chunkCacheQueue)::generateChunk, true);
         } else {
             throw new IllegalArgumentException("gameNode must be an ObjectGameNode, not " + gameNode.getClass());
         }
@@ -99,16 +106,18 @@ public class Server {
                     int x = byteBuf.getInt(i * 3 * Integer.BYTES + 40);
                     int y = byteBuf.getInt(i * 3 * Integer.BYTES + 44);
                     int z = byteBuf.getInt(i * 3 * Integer.BYTES + 48);
-                    queueChunkTask(new ChunkTask(clients.get(clientID), x, y, z, byteBuf));
+                    workerThreadPool.submit(new ChunkTask(clients.get(clientID), x, y, z, byteBuf));
                 }
                 break;
             case REGISTER_CLIENT:
                 registerClient(ctx, byteBuf);
+                byteBuf.release();
                 break;
             case CLOSE:
                 ServerClient client = clients.get(clientID);
                 clients.remove(clientID);
                 clients.values().forEach(player -> sendBytes(player.getCTX(), PackageID.CLOSE, client.getPlayerID()));
+                byteBuf.release();
                 break;
             case PLAYER_UPDATE:
                 double[] data = new double[5];
@@ -128,14 +137,11 @@ public class Server {
                         sendBytes(player.getCTX(), PackageID.ENTITY_UPDATE, serverClient.getBytes());
                     }
                 });
+                byteBuf.release();
                 break;
             default:
                 System.err.println("Unknown package key: " + packageID);
         }
-    }
-
-    private void queueChunkTask(ChunkTask chunkTask) throws InterruptedException {
-        workerThreadPool.submit(chunkTask);
     }
 
     private void registerClient(ChannelHandlerContext ctx, ByteBuf byteBuf) {
@@ -184,6 +190,36 @@ public class Server {
             while (true) {
                 long startNano = System.nanoTime();
 
+                while (!chunkCacheQueue.isEmpty()) {
+                    ChunkCacheItem item = chunkCacheQueue.poll(100, TimeUnit.MILLISECONDS);
+                    if (item != null) {
+                        try {
+                            Path finalPath = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + item.chunkPosition().getPath());
+                            Files.createDirectories(finalPath.getParent());
+
+                            // unique temp file so no collision with anything else
+                            Path tempPath = finalPath.resolveSibling(
+                                    finalPath.getFileName() + ".tmp"
+                            );
+
+                            // write bytes to temp file
+                            Files.write(tempPath, item.bytes());
+
+                            // atomically replace if possible, fallback otherwise
+                            try {
+                                Files.move(tempPath, finalPath,
+                                        StandardCopyOption.REPLACE_EXISTING,
+                                        StandardCopyOption.ATOMIC_MOVE);
+                            } catch (AtomicMoveNotSupportedException e) {
+                                Files.move(tempPath, finalPath,
+                                        StandardCopyOption.REPLACE_EXISTING);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace(); // replace with logging
+                        }
+                    }
+                }
+
                 world.tick();
 
                 long elapsed = System.nanoTime() - startNano;
@@ -203,7 +239,7 @@ public class Server {
                     System.err.println("Tick took too long: " + (elapsed / 1_000_000.0) + " ms");
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }

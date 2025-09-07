@@ -3,7 +3,6 @@ package omnivoxel.client.game.graphics.opengl.mesh.generators;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.opengl.mesh.ShapeHelper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
-import omnivoxel.client.game.graphics.opengl.mesh.block.BlockStateWrapper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
@@ -140,6 +139,7 @@ public class ChunkMeshDataGenerator {
         if (adjacentBlock == null) {
             return true;
         }
+
         if (adjacentBlock.isTransparent() && !Objects.equals(adjacentBlock.getModID(), originalBlock.getModID())
         ) {
             return true;
@@ -205,8 +205,7 @@ public class ChunkMeshDataGenerator {
                 byte b = byteBuf.getByte(index + j);
                 blockID.append((char) b);
             }
-            String[] ids = blockID.toString().split("/");
-            palette[i] = new omnivoxel.world.block.Block(ids[0], ids[1]);
+            palette[i] = new omnivoxel.world.block.Block(blockID.toString());
             index += j;
         }
 
@@ -222,16 +221,12 @@ public class ChunkMeshDataGenerator {
             for (int j = 0; j < blockCount && i + j < ConstantGameSettings.BLOCKS_IN_CHUNK_PADDED; j++) {
                 int blockIndex = i + j;
 
-                blocks[blockIndex] = worldDataService.getBlock(palette[blockID].id(), palette[blockID].blockState());
-                if (palette[blockID].blockState() != null && !(blocks[blockIndex] instanceof BlockStateWrapper)) {
-                    blocks[blockIndex] = new BlockStateWrapper(blocks[blockIndex], palette[blockID].blockState());
-                    worldDataService.addBlock(blocks[blockIndex]);
-                }
+                blocks[blockIndex] = worldDataService.getBlock(palette[blockID].id());
 
                 if (x < ConstantGameSettings.CHUNK_WIDTH &&
                         y < ConstantGameSettings.CHUNK_HEIGHT &&
                         z < ConstantGameSettings.CHUNK_LENGTH) {
-                    chunk = chunk.setBlock(x, y, z, blockService.getBlock(palette[blockID].id(), palette[blockID].blockState()));
+                    chunk = chunk.setBlock(x, y, z, blockService.getBlock(palette[blockID].id()));
                 }
 
                 y++;

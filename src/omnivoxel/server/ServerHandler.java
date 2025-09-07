@@ -20,8 +20,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
             PackageID packageID = PackageID.values()[bPackageID];
 
             server.handlePackage(ctx, packageID, byteBuf);
-
-            byteBuf.release();
         } else {
             System.out.println("Unknown package: " + pack);
         }

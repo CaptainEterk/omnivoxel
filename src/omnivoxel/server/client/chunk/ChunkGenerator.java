@@ -4,10 +4,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.settings.ConstantGameSettings;
-import omnivoxel.server.ConstantServerSettings;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.ServerWorld;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.server.client.chunk.result.ChunkCacheItem;
 import omnivoxel.server.client.chunk.result.ChunkResult;
 import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ChunkInfo;
@@ -16,19 +16,20 @@ import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.math.Position3D;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.Queue;
 import java.util.Set;
 
 public final class ChunkGenerator {
     private final ServerWorldDataService worldDataService;
     private final ServerWorld world;
     private final Set<WorldBoundingBox> worldBoundingBoxes;
+    private final Queue<ChunkCacheItem> chunkCacheQueue;
 
-    public ChunkGenerator(ServerWorldDataService worldDataService, ServerBlockService blockService, ServerWorld world, Set<WorldBoundingBox> worldBoundingBoxes) {
+    public ChunkGenerator(ServerWorldDataService worldDataService, ServerBlockService blockService, ServerWorld world, Set<WorldBoundingBox> worldBoundingBoxes, Queue<ChunkCacheItem> chunkCacheQueue) {
         this.worldDataService = worldDataService;
         this.world = world;
         this.worldBoundingBoxes = worldBoundingBoxes;
+        this.chunkCacheQueue = chunkCacheQueue;
     }
 
     private void sendChunkBytes(ChannelHandlerContext ctx, int x, int y, int z, byte[] chunk) {
@@ -79,7 +80,7 @@ public final class ChunkGenerator {
                 chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());
                 world.add(position3D, chunkResult.chunk());
 
-                Files.write(Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath()), chunkResult.bytes());
+                chunkCacheQueue.add(new ChunkCacheItem(position3D, chunkResult.bytes()));
 
                 sendChunkBytes(task.serverClient().getCTX(), task.x(), task.y(), task.z(), chunkResult.bytes());
             }
