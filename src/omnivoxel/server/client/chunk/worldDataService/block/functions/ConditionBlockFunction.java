@@ -24,6 +24,7 @@ public class ConditionBlockFunction extends BlockFunction {
         addBlockConditionFunction(YGradientBlockConditionFunction.class);
         addBlockConditionFunction(FloorBlockConditionFunction.class);
         addBlockConditionFunction(CeilingBlockConditionFunction.class);
+        addBlockConditionFunction(EqualBlockConditionFunction.class);
     }
 
     private final BlockConditionFunction condition;

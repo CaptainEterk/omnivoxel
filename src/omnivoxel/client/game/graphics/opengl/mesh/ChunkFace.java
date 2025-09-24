@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh;
 
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 
 public record ChunkFace(int x, int y, int z, BlockFace blockFace) {
     @Override

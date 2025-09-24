@@ -58,7 +58,7 @@ public class GameParser {
             if (string.charAt(i) == ',') {
                 i = nextChar(string, i + 1);
             } else if (string.charAt(i) != '}') {
-                throw new IllegalArgumentException("Expected ',' or '}' in object");
+                throw new IllegalArgumentException("Expected ',' or '}' in object. Got '%c'".formatted(string.charAt(i)));
             }
         }
         return new Result(handleObject(new ObjectGameNode(key, map), constants), i + 1);
@@ -109,12 +109,15 @@ public class GameParser {
 
     private static Result parseNumber(String string, int idx, String key) {
         int i = idx;
-        while (i < string.length() &&
-                (Character.isDigit(string.charAt(i)) || string.charAt(i) == '.' || string.charAt(i) == '-')) {
-            i++;
+        while (i < string.length()) {
+            char ch = string.charAt(i);
+            if (Character.isDigit(ch) || ch == '.' || ch == '-' || ch == '+' || ch == 'e' || ch == 'E') {
+                i++;
+            } else {
+                break;
+            }
         }
         String numStr = string.substring(idx, i);
-
         double num = Double.parseDouble(numStr);
         return new Result(new DoubleGameNode(key, num), i);
     }

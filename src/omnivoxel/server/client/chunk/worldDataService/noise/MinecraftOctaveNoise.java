@@ -1,17 +1,17 @@
 package omnivoxel.server.client.chunk.worldDataService.noise;
 
 public class MinecraftOctaveNoise {
-    private final MinecraftPerlinNoise[] octaves;
+    private final PerlinNoise[] octaves;
     private final double[] amplitudes;
     private final int octaveCount;
 
     public MinecraftOctaveNoise(int seed, int octaveCount) {
         this.octaveCount = octaveCount;
-        this.octaves = new MinecraftPerlinNoise[octaveCount];
+        this.octaves = new PerlinNoise[octaveCount];
         this.amplitudes = new double[octaveCount];
 
         for (int i = 0; i < octaveCount; i++) {
-            octaves[i] = new MinecraftPerlinNoise(seed + i * 31L);
+            octaves[i] = new PerlinNoise(seed + i * 31L);
             amplitudes[i] = 1.0 / (1 << i); // halves each octave
         }
     }

@@ -5,14 +5,16 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import omnivoxel.client.game.settings.ConstantGameSettings;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.ServerWorld;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.result.ChunkCacheItem;
 import omnivoxel.server.client.chunk.result.ChunkResult;
 import omnivoxel.server.client.chunk.result.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ChunkInfo;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
+import omnivoxel.util.cache.LRUCache;
+import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 
 import java.io.IOException;
@@ -24,6 +26,7 @@ public final class ChunkGenerator {
     private final ServerWorld world;
     private final Set<WorldBoundingBox> worldBoundingBoxes;
     private final Queue<ChunkCacheItem> chunkCacheQueue;
+    private final LRUCache<Position2D, ChunkInfo> chunkInfoLRUCache = new LRUCache<>(100);
 
     public ChunkGenerator(ServerWorldDataService worldDataService, ServerBlockService blockService, ServerWorld world, Set<WorldBoundingBox> worldBoundingBoxes, Queue<ChunkCacheItem> chunkCacheQueue) {
         this.worldDataService = worldDataService;
@@ -54,9 +57,9 @@ public final class ChunkGenerator {
             } else {
                 ChunkResult chunkResult;
                 GeneratedChunk chunk = new EmptyGeneratedChunk();
-                ChunkInfo chunkInfo;
                 if (worldDataService.shouldGenerateChunk(position3D)) {
-                    chunkInfo = world.getChunkInfo(position3D);
+                    Position2D position2D = position3D.getPosition2D();
+                    ChunkInfo chunkInfo = chunkInfoLRUCache.get(position2D);
                     chunkInfo = chunkInfo == null ? worldDataService.getChunkInfo(position3D) : chunkInfo;
                     for (int x = -1; x < ConstantGameSettings.CHUNK_WIDTH + 1; x++) {
                         int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
@@ -75,6 +78,8 @@ public final class ChunkGenerator {
                             }
                         }
                     }
+
+                    chunkInfoLRUCache.put(position3D.getPosition2D(), chunkInfo);
                 }
 
                 chunkResult = GeneratedChunk.getResult(chunk, task.serverClient());

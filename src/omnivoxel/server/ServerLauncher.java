@@ -11,6 +11,8 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
 import omnivoxel.common.BlockShape;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.server.world.ServerWorld;
+import omnivoxel.server.world.ServerWorldHandler;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,11 +23,11 @@ import java.util.Map;
 
 public class ServerLauncher {
     // TODO: Use a config file
-    private static final int PORT = 5000;
+    private static final int PORT = 1515;
     private static final String IP = "0.0.0.0";
 
     public static void main(String[] args) throws IOException {
-        new ServerLauncher().run(100);
+        new ServerLauncher().run(100L);
     }
 
     private static void createDirectories() throws IOException {
@@ -54,7 +56,7 @@ public class ServerLauncher {
         }
     }
 
-    public void run(int seed) throws IOException {
+    public void run(long seed) throws IOException {
         createDirectories();
 
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
@@ -68,7 +70,7 @@ public class ServerLauncher {
         ServerWorld world = new ServerWorld();
 
         try {
-            Server server = new Server(seed, world, blockShapeCache, blockService, blockIDMap);
+            Server server = new Server(seed, world, blockShapeCache, blockService, blockIDMap, new ServerWorldHandler(world));
             Thread thread = new Thread(server::run, "Server Tick Loop");
             thread.start();
             ServerHandler serverHandler = new ServerHandler(server);

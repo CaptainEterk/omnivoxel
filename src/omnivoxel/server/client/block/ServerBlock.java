@@ -9,8 +9,15 @@ public record ServerBlock(
         String id,
         String blockShape,
         double[][] uvCoords,
-        boolean transparent
+        boolean transparent,
+        boolean transparentMesh
 ) implements ServerItem {
+    public ServerBlock {
+        if (uvCoords.length != 6) {
+            throw new IllegalArgumentException("uvCoords must have 6 faces");
+        }
+    }
+
     public static String createID(String id, String blockState) {
         return id + "/" + blockState;
     }
@@ -28,7 +35,7 @@ public record ServerBlock(
 
         int size = 2 + idBytes.length
                 + 2 + shapeBytes.length
-                + 1
+                + 1 + 1
                 + uvCoordByteCount;
 
         ByteBuffer buffer = ByteBuffer.allocate(size);
@@ -40,6 +47,8 @@ public record ServerBlock(
         buffer.put(shapeBytes);
 
         buffer.put((byte) (transparent ? 1 : 0));
+
+        buffer.put((byte) (transparentMesh ? 1 : 0));
 
         for (double[] uvCoords : this.uvCoords) {
             buffer.putShort((short) uvCoords.length);

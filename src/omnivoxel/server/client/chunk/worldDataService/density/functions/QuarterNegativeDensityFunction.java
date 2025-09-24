@@ -6,7 +6,7 @@ import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 
-@Function(id = "omnivoxel:quarter_negative")
+@Function(id = "quarter_negative")
 public class QuarterNegativeDensityFunction extends DensityFunction {
     private final DensityFunction arg;
 

@@ -6,7 +6,7 @@ import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 
-@Function(id = "omnivoxel:abs")
+@Function(id = "abs")
 public class AbsDensityFunction extends DensityFunction {
     private final DensityFunction arg;
 

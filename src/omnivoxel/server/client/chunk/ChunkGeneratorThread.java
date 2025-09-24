@@ -1,6 +1,6 @@
 package omnivoxel.server.client.chunk;
 
-import omnivoxel.server.ServerWorld;
+import omnivoxel.server.world.ServerWorld;
 
 import java.util.ArrayDeque;
 import java.util.Queue;

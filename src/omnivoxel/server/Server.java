@@ -12,6 +12,8 @@ import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.result.ChunkCacheItem;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.games.Game;
+import omnivoxel.server.world.ServerWorld;
+import omnivoxel.server.world.ServerWorldHandler;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.game.GameParser;
@@ -43,18 +45,20 @@ public class Server {
     private final Map<String, BlockShape> blockShapeCache;
     private final ServerBlockService blockService;
     private final BlockingQueue<ChunkCacheItem> chunkCacheQueue = new LinkedBlockingDeque<>();
+    private final ServerWorldHandler worldHandler;
 
-    public Server(int seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap) throws InterruptedException, IOException {
+    public Server(long seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, ServerBlockService blockService, Map<String, String> blockIDMap, ServerWorldHandler worldHandler) throws InterruptedException, IOException {
         this.world = world;
         this.blockShapeCache = blockShapeCache;
         this.blockIDMap = blockIDMap;
         this.blockService = blockService;
+        this.worldHandler = worldHandler;
         this.clients = new ConcurrentHashMap<>();
 
         GameNode gameNode = GameParser.parseNode(Files.readString(Path.of("game/main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of("game/constants.json")), null), ArrayGameNode.class));
 
         if (gameNode instanceof ObjectGameNode objectGameNode) {
-            ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, blockShapeCache, objectGameNode.object().get("world_generator"));
+            ServerWorldDataService serverWorldDataService = new ServerWorldDataService(blockService, blockShapeCache, objectGameNode.object().get("world_generator"), seed);
             Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
             workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, new ChunkGenerator(serverWorldDataService, blockService, world, worldBoundingBoxes, chunkCacheQueue)::generateChunk, true);
         } else {
@@ -96,8 +100,7 @@ public class Server {
         ctx.channel().writeAndFlush(buffer);
     }
 
-    public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws
-            InterruptedException {
+    public void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
         String clientID = ByteUtils.bytesToHex(byteBuf, 4, 32);
         switch (packageID) {
             case CHUNK_REQUEST:
@@ -108,6 +111,7 @@ public class Server {
                     int z = byteBuf.getInt(i * 3 * Integer.BYTES + 48);
                     workerThreadPool.submit(new ChunkTask(clients.get(clientID), x, y, z, byteBuf));
                 }
+                byteBuf.release();
                 break;
             case REGISTER_CLIENT:
                 registerClient(ctx, byteBuf);
@@ -197,15 +201,12 @@ public class Server {
                             Path finalPath = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + item.chunkPosition().getPath());
                             Files.createDirectories(finalPath.getParent());
 
-                            // unique temp file so no collision with anything else
                             Path tempPath = finalPath.resolveSibling(
                                     finalPath.getFileName() + ".tmp"
                             );
 
-                            // write bytes to temp file
                             Files.write(tempPath, item.bytes());
 
-                            // atomically replace if possible, fallback otherwise
                             try {
                                 Files.move(tempPath, finalPath,
                                         StandardCopyOption.REPLACE_EXISTING,
@@ -215,10 +216,12 @@ public class Server {
                                         StandardCopyOption.REPLACE_EXISTING);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace(); // replace with logging
+                            e.printStackTrace();
                         }
                     }
                 }
+
+                worldHandler.removeBlock((int) Math.floor(Math.random() * 32), (int) Math.floor(Math.random() * 32)+100, (int) Math.floor(Math.random() * 32), null);
 
                 world.tick();
 
@@ -231,15 +234,14 @@ public class Server {
                         int sleepSubNanos = (int) (sleepNanos % 1_000_000);
                         Thread.sleep(sleepMillis, sleepSubNanos);
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt(); // reset interrupted flag
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 } else {
-                    // Tick overran — consider logging or skipping sleep
                     System.err.println("Tick took too long: " + (elapsed / 1_000_000.0) + " ms");
                 }
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
