@@ -9,6 +9,7 @@ import omnivoxel.server.PackageID;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.EmptyGeneratedChunk;
+import omnivoxel.world.chunk.BiBlockChunk;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk.GeneralChunk;
 import omnivoxel.world.chunk.SingleBlockChunk;
@@ -66,7 +67,7 @@ public abstract class GeneratedChunk {
         if (palette.size() == 1) {
             chunkOut = new SingleBlockChunk<>(palette.getFirst());
         } else {
-            chunkOut = new GeneralChunk<>();
+            chunkOut = palette.size() == 2 ? new BiBlockChunk<>(palette.getFirst()) : new GeneralChunk<>();
             for (int x = 0; x < ConstantGameSettings.CHUNK_WIDTH; x++) {
                 for (int z = 0; z < ConstantGameSettings.CHUNK_LENGTH; z++) {
                     for (int y = 0; y < ConstantGameSettings.CHUNK_HEIGHT; y++) {

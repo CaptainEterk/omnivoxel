@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.block;
 
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.BlockShape;
 
 public abstract class Block {

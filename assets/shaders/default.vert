@@ -76,7 +76,7 @@ void main() {
         blockType = data3;
 
         if (blockType == 1u) {
-            xyz.y += simpleNoise(xyz.xz+time/1000)/10;
+            xyz.y += simpleNoise(xyz.xz+time/1000)/5/length(toCameraVector);
         }
 
         position = xyz;

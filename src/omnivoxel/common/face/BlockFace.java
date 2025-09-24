@@ -1,4 +1,4 @@
-package omnivoxel.client.game.graphics.opengl.mesh.block.face;
+package omnivoxel.common.face;
 
 import omnivoxel.client.game.settings.ConstantGameSettings;
 

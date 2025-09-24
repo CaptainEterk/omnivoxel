@@ -7,21 +7,26 @@ import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 
-@Function(id = "omnivoxel:y_clamped_gradient")
+@Function(id = "y_clamped_gradient")
 public class YClampedGradientDensityFunction extends DensityFunction {
     private final DensityFunction from;
     private final DensityFunction to;
     private final DensityFunction fromValue;
     private final DensityFunction toValue;
 
-    public YClampedGradientDensityFunction(GameNode args, long seed) {
-        super(args, seed);
+    public YClampedGradientDensityFunction(GameNode node, long seed) {
+        super(node, seed);
 
-        ObjectGameNode objectGameNode = Game.checkGameNodeType(args, ObjectGameNode.class);
-        this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low"), seed);
-        this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high"), seed);
-        this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low_value"), seed);
-        this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high_value"), seed);
+        ObjectGameNode objectGameNode = Game.checkGameNodeType(node, ObjectGameNode.class);
+        try {
+            this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low"), seed);
+            this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high"), seed);
+            this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low_value"), seed);
+            this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high_value"), seed);
+        } catch (RuntimeException e) {
+            System.out.println("SDF " + node);
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

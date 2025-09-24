@@ -28,4 +28,8 @@ public record Position3D(int x, int y, int z) {
     public String getPath() {
         return x + "_" + y + "_" + z + ".chunk";
     }
+
+    public Position2D getPosition2D() {
+        return new Position2D(x, z);
+    }
 }

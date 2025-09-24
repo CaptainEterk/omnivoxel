@@ -2,7 +2,7 @@ package omnivoxel.client.game.graphics.opengl.mesh.generators;
 
 import omnivoxel.client.game.entity.ClientEntity;
 import omnivoxel.client.game.graphics.opengl.mesh.EntityMesh;
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.definition.EntityMeshDataNoDefinition;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.meshShape.BoxMeshShape;

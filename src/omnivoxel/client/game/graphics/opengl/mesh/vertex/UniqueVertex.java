@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.vertex;
 
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import org.jetbrains.annotations.NotNull;
 
 public final class UniqueVertex {

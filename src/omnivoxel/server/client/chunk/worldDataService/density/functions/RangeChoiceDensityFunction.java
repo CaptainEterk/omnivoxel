@@ -6,7 +6,7 @@ import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 
-@Function(id = "omnivoxel:range_choice")
+@Function(id = "range_choice")
 public class RangeChoiceDensityFunction extends DensityFunction {
     private final DensityFunction input;
     private final DensityFunction minInclusive;

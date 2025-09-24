@@ -2,35 +2,37 @@ package omnivoxel.server.client.chunk.worldDataService.noise;
 
 import java.util.Random;
 
-public class MinecraftPerlinNoise {
+public class PerlinNoise {
     private static final int PERM_SIZE = 512;
     private final int[] permutations;
 
-    public MinecraftPerlinNoise(long seed) {
+    public PerlinNoise(long seed) {
         this.permutations = new int[PERM_SIZE];
         Random random = new Random(seed);
 
         int[] p = new int[256];
+        for (int i = 0; i < 256; i++) p[i] = i;
+
+        // Fisher–Yates shuffle
         for (int i = 0; i < 256; i++) {
-            p[i] = i;
-        }
-        // shuffle
-        for (int i = 0; i < 256; i++) {
-            int j = random.nextInt(256 - i) + i;
-            int temp = p[i];
+            int j = i + random.nextInt(256 - i);
+            int tmp = p[i];
             p[i] = p[j];
-            p[j] = temp;
+            p[j] = tmp;
         }
 
-        // duplicate into perms
         for (int i = 0; i < PERM_SIZE; i++) {
             permutations[i] = p[i & 255];
         }
     }
 
+    private static int fastFloor(double d) {
+        int xi = (int) d;
+        return d < xi ? xi - 1 : xi;
+    }
+
     private static double fade(double t) {
-        // 6t^5 - 15t^4 + 10t^3
-        return t * t * t * (t * (t * 6 - 15) + 10);
+        return t * t * t * (t * (t * 6f - 15f) + 10f);
     }
 
     private static double lerp(double t, double a, double b) {
@@ -46,36 +48,36 @@ public class MinecraftPerlinNoise {
     }
 
     public double sample(double x, double y, double z) {
-        int X = (int) Math.floor(x) & 255;
-        int Y = (int) Math.floor(y) & 255;
-        int Z = (int) Math.floor(z) & 255;
+        int X = fastFloor(x) & 255;
+        int Y = fastFloor(y) & 255;
+        int Z = fastFloor(z) & 255;
 
-        x -= Math.floor(x);
-        y -= Math.floor(y);
-        z -= Math.floor(z);
+        x -= fastFloor(x);
+        y -= fastFloor(y);
+        z -= fastFloor(z);
 
         double u = fade(x);
         double v = fade(y);
         double w = fade(z);
 
-        int A = permutations[X] + Y;
+        int A  = permutations[X] + Y;
         int AA = permutations[A] + Z;
         int AB = permutations[A + 1] + Z;
-        int B = permutations[X + 1] + Y;
+        int B  = permutations[X + 1] + Y;
         int BA = permutations[B] + Z;
         int BB = permutations[B + 1] + Z;
 
         return lerp(w,
                 lerp(v,
                         lerp(u, grad(permutations[AA], x, y, z),
-                                grad(permutations[BA], x - 1, y, z)),
-                        lerp(u, grad(permutations[AB], x, y - 1, z),
-                                grad(permutations[BB], x - 1, y - 1, z))),
+                                grad(permutations[BA], x - 1f, y, z)),
+                        lerp(u, grad(permutations[AB], x, y - 1f, z),
+                                grad(permutations[BB], x - 1f, y - 1f, z))),
                 lerp(v,
-                        lerp(u, grad(permutations[AA + 1], x, y, z - 1),
-                                grad(permutations[BA + 1], x - 1, y, z - 1)),
-                        lerp(u, grad(permutations[AB + 1], x, y - 1, z - 1),
-                                grad(permutations[BB + 1], x - 1, y - 1, z - 1)))
+                        lerp(u, grad(permutations[AA + 1], x, y, z - 1f),
+                                grad(permutations[BA + 1], x - 1f, y, z - 1f)),
+                        lerp(u, grad(permutations[AB + 1], x, y - 1f, z - 1f),
+                                grad(permutations[BB + 1], x - 1f, y - 1f, z - 1f)))
         );
     }
 }

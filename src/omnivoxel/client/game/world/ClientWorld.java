@@ -23,6 +23,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -37,6 +38,8 @@ public class ClientWorld {
     private final Map<String, ClientEntity> entities;
     private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
     private final Set<String> queuedEntityMeshData;
+    private final AtomicBoolean chunksChanged = new AtomicBoolean(true);
+    private Position3D[] cachedKeys = null;
     private Client client;
     private boolean requesting = true;
 
@@ -83,7 +86,11 @@ public class ClientWorld {
     }
 
     public Position3D[] getKeys() {
-        return chunks.keySet().toArray(new Position3D[0]);
+        if (chunksChanged.get()) {
+            chunksChanged.set(false);
+            cachedKeys = chunks.keySet().toArray(new Position3D[0]);;
+        }
+        return cachedKeys;
     }
 
     public ClientWorldChunk[] getValues() {
@@ -114,6 +121,7 @@ public class ClientWorld {
                 ClientWorldChunk clientWorldChunk = chunks.get(chunkMeshData.chunkPosition());
                 if (clientWorldChunk == null) {
                     chunks.put(chunkMeshData.chunkPosition(), new ClientWorldChunk(chunkMesh));
+                    chunksChanged.set(true);
                 } else {
                     clientWorldChunk.setMesh(chunkMesh);
                 }
@@ -128,6 +136,7 @@ public class ClientWorld {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
         if (clientWorldChunk == null) {
             chunks.put(position3D, new ClientWorldChunk(meshData));
+            chunksChanged.set(true);
         } else {
             clientWorldChunk.setMeshData(meshData);
         }
@@ -159,6 +168,7 @@ public class ClientWorld {
         for (Position3D position : positions) {
             if (!predicate.test(position)) {
                 freeChunk(chunks.remove(position).getMesh());
+                chunksChanged.set(true);
             }
         }
     }
@@ -202,6 +212,7 @@ public class ClientWorld {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
         if (clientWorldChunk == null) {
             chunks.put(position3D, new ClientWorldChunk(chunk));
+            chunksChanged.set(true);
         } else {
             clientWorldChunk.setChunkData(chunk);
         }

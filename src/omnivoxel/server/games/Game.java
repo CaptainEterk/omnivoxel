@@ -2,11 +2,12 @@ package omnivoxel.server.games;
 
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
 import omnivoxel.common.BlockShape;
+import omnivoxel.server.ServerLogger;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
-import omnivoxel.server.client.chunk.worldDataService.density.functions.Noise3DDensityFunction;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
+import omnivoxel.server.client.chunk.worldDataService.noise.NoiseCache;
 import omnivoxel.util.game.nodes.*;
 
 import java.util.Arrays;
@@ -21,6 +22,9 @@ public final class Game {
         }
         if (clazz.isInstance(gameNode)) {
             return (T) gameNode;
+        }
+        if (gameNode instanceof StringGameNode stringGameNode) {
+            throw new IllegalArgumentException("Expected " + clazz.getSimpleName() + " but got \"" + stringGameNode.value() + "\"");
         }
         throw new IllegalArgumentException("Expected " + clazz.getSimpleName() + " but got " + gameNode.getClass().getSimpleName());
     }
@@ -37,7 +41,8 @@ public final class Game {
                 .mapToDouble(gameNode -> checkGameNodeType(gameNode, DoubleGameNode.class).value())
                 .toArray();
         double firstOctave = checkGameNodeType(noise.object().get("first_octave"), DoubleGameNode.class).value();
-        Noise3DDensityFunction.noises.put(id, new Noise3D(octaves, firstOctave, seed));
+        ServerLogger.logger.debug("Registered noise: " + id);
+        NoiseCache.registerNoise(id, new Noise3D(octaves, (int) firstOctave, seed));
     }
 
     public static void loadBlocks(ObjectGameNode worldGeneratorNode, ServerBlockService blockService) {
@@ -51,6 +56,7 @@ public final class Game {
                 String blockState = Game.checkGameNodeType(objectStateNode.object().get("id"), StringGameNode.class).value();
                 String blockShape = Game.checkGameNodeType(objectStateNode.object().get("block_shape"), StringGameNode.class).value();
                 boolean transparent = Game.checkGameNodeType(objectStateNode.object().get("transparent"), BooleanGameNode.class).value();
+                boolean transparentMesh = Game.checkGameNodeType(objectStateNode.object().get("transparent_mesh"), BooleanGameNode.class).value();
                 ObjectGameNode texture = Game.checkGameNodeType(objectStateNode.object().get("texture"), ObjectGameNode.class);
                 String uvMapping = Game.checkGameNodeType(texture.object().get("uv_mapping"), StringGameNode.class).value();
                 double[][] uvCoords = new double[6][];
@@ -76,7 +82,7 @@ public final class Game {
                     throw new IllegalArgumentException("\"" + uvMapping + "\" is not a valid uv_mapping");
                 }
 
-                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparent));
+                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparent, transparentMesh));
             }
         }
     }

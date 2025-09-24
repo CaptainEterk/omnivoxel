@@ -3,7 +3,7 @@ package omnivoxel.client.game.graphics.opengl.mesh.generators;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.opengl.mesh.ShapeHelper;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
@@ -140,8 +140,7 @@ public class ChunkMeshDataGenerator {
             return true;
         }
 
-        if (adjacentBlock.isTransparent() && !Objects.equals(adjacentBlock.getModID(), originalBlock.getModID())
-        ) {
+        if (adjacentBlock.isTransparent() && !Objects.equals(adjacentBlock.getModID(), originalBlock.getModID())) {
             return true;
         }
         BlockShape adjBlockShape = adjacentBlock.getShape(top, bottom, north, south, east, west);

@@ -119,47 +119,52 @@ public final class Client {
     }
 
     void handlePackage(ChannelHandlerContext ctx, PackageID packageID, ByteBuf byteBuf) throws InterruptedException {
-        switch (packageID) {
-            case REGISTER_PLAYERS:
-                registerPlayers(byteBuf);
-                byteBuf.release();
-                break;
-            case NEW_PLAYER:
-                newPlayer(byteBuf);
-                byteBuf.release();
-                break;
-            case CHUNK:
-                receiveChunk(byteBuf);
-                break;
-            case ENTITY_UPDATE:
-                updateEntity(byteBuf);
-                byteBuf.release();
-                break;
-            case CLOSE:
-                String playerID = ByteUtils.bytesToHex(ByteUtils.getBytes(byteBuf, 8, 32));
-                entities.remove(playerID);
-                logger.info("Removed Player: " + playerID);
-                world.removeEntity(playerID);
-                byteBuf.release();
-                break;
-            case NEW_ENTITY:
-                newEntity(byteBuf);
-                byteBuf.release();
-                break;
-            case REGISTER_BLOCK_SHAPE:
-                ByteBufUtils.cacheBlockShapeFromByteBuf(byteBuf);
-                byteBuf.release();
-                break;
-            case REGISTER_BLOCK: {
-                worldDataService.addBlock(ByteBufUtils.registerBlockFromByteBuf(byteBuf));
+        try {
+            switch (packageID) {
+                case REGISTER_PLAYERS:
+                    registerPlayers(byteBuf);
+                    byteBuf.release();
+                    break;
+                case NEW_PLAYER:
+                    newPlayer(byteBuf);
+                    byteBuf.release();
+                    break;
+                case CHUNK:
+                    receiveChunk(byteBuf);
+                    break;
+                case ENTITY_UPDATE:
+                    updateEntity(byteBuf);
+                    byteBuf.release();
+                    break;
+                case CLOSE:
+                    String playerID = ByteUtils.bytesToHex(ByteUtils.getBytes(byteBuf, 8, 32));
+                    entities.remove(playerID);
+                    logger.info("Removed Player: " + playerID);
+                    world.removeEntity(playerID);
+                    byteBuf.release();
+                    break;
+                case NEW_ENTITY:
+                    newEntity(byteBuf);
+                    byteBuf.release();
+                    break;
+                case REGISTER_BLOCK_SHAPE:
+                    ByteBufUtils.cacheBlockShapeFromByteBuf(byteBuf);
+                    byteBuf.release();
+                    break;
+                case REGISTER_BLOCK: {
+                    worldDataService.addBlock(ByteBufUtils.registerBlockFromByteBuf(byteBuf));
 
-                byteBuf.release();
-                break;
+                    byteBuf.release();
+                    break;
+                }
+                default:
+                    System.err.println("Unexpected package key: " + packageID);
+                    byteBuf.release();
+                    break;
             }
-            default:
-                System.err.println("Unexpected package key: " + packageID);
-                byteBuf.release();
-                break;
+        } catch (RuntimeException e) {
+            byteBuf.release();
+            throw e;
         }
     }
 

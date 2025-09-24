@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 public final class EmptyGeneratedChunk extends GeneratedChunk {
     public static final double[][] emptyUVCoords = new double[6][0];
-    public static final ServerBlock air = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, emptyUVCoords, true);
+    public static final ServerBlock air = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, emptyUVCoords, true, false);
 
     @Override
     protected ServerBlock getBlock(int x, int y, int z) {

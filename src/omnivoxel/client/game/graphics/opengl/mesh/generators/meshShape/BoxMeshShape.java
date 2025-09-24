@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.generators.meshShape;
 
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.generators.textureShape.BoxTextureShape;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.UniqueVertex;

@@ -352,9 +352,11 @@ public class PlayerController {
         }
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_KP_ADD)) {
             camera.setFOV(camera.getFOV() - 1);
+            state.setItem("shouldUpdateView", true);
         }
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_KP_SUBTRACT)) {
             camera.setFOV(camera.getFOV() + 1);
+            state.setItem("shouldUpdateView", true);
         }
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F3)) {
             if (!togglingDebug) {

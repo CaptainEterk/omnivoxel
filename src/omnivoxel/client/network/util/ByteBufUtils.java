@@ -2,9 +2,9 @@ package omnivoxel.client.network.util;
 
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
 import omnivoxel.client.game.graphics.opengl.mesh.vertex.Vertex;
 import omnivoxel.common.BlockShape;
+import omnivoxel.common.face.BlockFace;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -77,9 +77,8 @@ public class ByteBufUtils {
         final String shapeID = new String(shapeIDBytes);
         final BlockShape blockShape = shapeCache.getOrDefault(shapeID, BlockShape.DEFAULT_BLOCK_SHAPE);
 
-        boolean transparent = byteBuf.getByte(readerIndex) == 1;
-
-        readerIndex++;
+        boolean transparent = byteBuf.getByte(readerIndex++) == 1;
+        boolean transparentMesh = byteBuf.getByte(readerIndex++) == 1;
 
         int[][] allUVCoords = new int[6][];
         for (int f = 0; f < 6; f++) {
@@ -128,7 +127,7 @@ public class ByteBufUtils {
 
             @Override
             public boolean shouldRenderTransparentMesh() {
-                return transparent;
+                return transparentMesh;
             }
         };
     }

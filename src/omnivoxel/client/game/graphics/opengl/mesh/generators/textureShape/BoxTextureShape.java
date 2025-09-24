@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.opengl.mesh.generators.textureShape;
 
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 
 import java.util.Arrays;
 

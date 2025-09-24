@@ -1,7 +1,7 @@
 package omnivoxel.server.client.block;
 
 import omnivoxel.client.game.graphics.opengl.mesh.block.Block;
-import omnivoxel.client.game.graphics.opengl.mesh.block.face.BlockFace;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.BlockShape;
 
 public final class AirBlock extends Block {

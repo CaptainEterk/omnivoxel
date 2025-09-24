@@ -192,7 +192,7 @@ public class OpenGLRenderer implements Renderer {
     private void initOpenGL() {
         GL11C.glClearColor(0.0f, 0.61568627451f, 1.0f, 1.0f);
         GL11C.glClearDepth(1.0f);
-        GL11C.glCullFace(GL11C.GL_BACK);
+//        GL11C.glCullFace(GL11C.GL_BACK);
     }
 
     private void initFrameActions() {
@@ -323,7 +323,7 @@ public class OpenGLRenderer implements Renderer {
 
     private void openGLStateReset() {
         GL11C.glEnable(GL11C.GL_DEPTH_TEST);
-        GL11C.glEnable(GL11C.GL_CULL_FACE);
+//        GL11C.glEnable(GL11C.GL_CULL_FACE);
         GL11C.glDepthMask(true);
         GL11C.glDepthFunc(GL11C.GL_LESS);
         GL11C.glClearDepth(1.0f);

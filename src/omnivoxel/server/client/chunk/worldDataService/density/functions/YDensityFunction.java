@@ -4,7 +4,7 @@ import omnivoxel.server.client.chunk.worldDataService.Function;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 
-@Function(id = "omnivoxel:y")
+@Function(id = "y")
 public class YDensityFunction extends DensityFunction {
     public YDensityFunction(GameNode args, long seed) {
         super(args, seed);

@@ -6,7 +6,7 @@ import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 
-@Function(id = "omnivoxel:z_clamped_gradient")
+@Function(id = "z_clamped_gradient")
 public class ZClampedGradientDensityFunction extends DensityFunction {
     private final DensityFunction from;
     private final DensityFunction to;

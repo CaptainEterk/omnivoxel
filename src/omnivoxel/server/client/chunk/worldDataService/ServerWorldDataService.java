@@ -46,7 +46,7 @@ public final class ServerWorldDataService {
     private final Integer blockMaxZ;
     private final Integer depthSections;
 
-    public ServerWorldDataService(ServerBlockService blockService, Map<String, BlockShape> blockShapeCache, GameNode gameNode) {
+    public ServerWorldDataService(ServerBlockService blockService, Map<String, BlockShape> blockShapeCache, GameNode gameNode, long seed) {
         this.blockService = blockService;
 
         addDensityFunction(Noise3DDensityFunction.class);
@@ -69,14 +69,25 @@ public final class ServerWorldDataService {
         addDensityFunction(InterpolatedDensityFunction.class);
         addDensityFunction(SqueezeDensityFunction.class);
         addDensityFunction(QuarterNegativeDensityFunction.class);
+        addDensityFunction(SquareDensityFunction.class);
+        addDensityFunction(FlatCacheDensityFunction.class);
+        addDensityFunction(Cache2DDensityFunction.class);
+        addDensityFunction(CacheOnceDensityFunction.class);
+        addDensityFunction(SplineDensityFunction.class);
+        addDensityFunction(ShiftedNoiseDensityFunction.class);
+        addDensityFunction(ShiftADensityFunction.class);
+        addDensityFunction(ShiftBDensityFunction.class);
+        addDensityFunction(HalfNegativeDensityFunction.class);
+        addDensityFunction(OldBlendedNoiseDensityFunction.class);
+        addDensityFunction(ClampDensityFunction.class);
+        addDensityFunction(WeirdScaledSamplerDensityFunction.class);
+        addDensityFunction(CubeDensityFunction.class);
 
         addBlockFunction(OneBlockFunction.class);
         addBlockFunction(SequenceBlockFunction.class);
         addBlockFunction(ConditionBlockFunction.class);
 
         ObjectGameNode worldGeneratorNode = Game.checkGameNodeType(gameNode, ObjectGameNode.class);
-
-        long seed = 100L;
 
         Config gameProperties = new Config(ConstantServerSettings.GAME_LOCATION + "game.properties");
 
@@ -211,10 +222,9 @@ public final class ServerWorldDataService {
     }
 
     public ChunkInfo getChunkInfo(Position3D position3D) {
-        int[] heights = null;
+        int[] heights = new int[ConstantGameSettings.PADDED_WIDTH * ConstantGameSettings.PADDED_LENGTH];
         // TODO: Check if heights is actually used, if it isn't don't calculate it
         if (chunkMaxY != null && chunkMinY != null) {
-            heights = new int[ConstantGameSettings.PADDED_WIDTH * ConstantGameSettings.PADDED_LENGTH];
             for (int x = -1; x <= ConstantGameSettings.CHUNK_WIDTH; x++) {
                 int worldX = position3D.x() * ConstantGameSettings.CHUNK_WIDTH + x;
                 for (int z = -1; z <= ConstantGameSettings.CHUNK_LENGTH; z++) {
