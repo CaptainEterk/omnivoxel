@@ -113,8 +113,8 @@ public final class Game {
     }
 
     public static void loadBlockShapes(String gameID, ObjectGameNode worldGeneratorNode, Map<String, BlockShape> blockShapeCache) {
-        ArrayGameNode blocks_shapes = Game.checkGameNodeType(worldGeneratorNode.object().get("block_shapes"), ArrayGameNode.class);
-        for (GameNode node : blocks_shapes.nodes()) {
+        ArrayGameNode blocksShapes = Game.checkGameNodeType(worldGeneratorNode.object().get("block_shapes"), ArrayGameNode.class);
+        for (GameNode node : blocksShapes.nodes()) {
             ObjectGameNode blockShapeObjectGameNode = Game.checkGameNodeType(node, ObjectGameNode.class);
             String id = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("id"), StringGameNode.class).value();
             ArrayGameNode verticesNode = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("vertices"), ArrayGameNode.class);
@@ -148,8 +148,8 @@ public final class Game {
     }
 
     public static void loadBlockHitboxes(String gameID, ObjectGameNode worldGeneratorNode, Map<String, BlockHitbox[]> blockHitboxCache) {
-        ArrayGameNode blockShapes = Game.checkGameNodeType(worldGeneratorNode.object().get("block_hitboxes"), ArrayGameNode.class);
-        for (GameNode node : blockShapes.nodes()) {
+        ArrayGameNode blockHitboxes = Game.checkGameNodeType(worldGeneratorNode.object().get("block_hitboxes"), ArrayGameNode.class);
+        for (GameNode node : blockHitboxes.nodes()) {
             ObjectGameNode hitboxNode = Game.checkGameNodeType(node, ObjectGameNode.class);
             String id = Game.checkGameNodeType(hitboxNode.object().get("id"), StringGameNode.class).value();
 

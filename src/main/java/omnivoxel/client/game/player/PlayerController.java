@@ -42,6 +42,7 @@ public class PlayerController {
             "core:red_light_block/default",
             "core:green_light_block/default",
             "core:blue_light_block/default",
+            "core:light_block/default",
             "core:grass_block/default",
             "core:dirt/default",
             "core:bedrock/default",
