@@ -45,6 +45,10 @@ public final class ChunkGenerator {
         return chunk;
     }
 
+    public ServerWorldDataService getWorldDataService() {
+        return worldDataService;
+    }
+
 //    private void generateSurroundingChunks(Position3D position3D, int scale) {
 //        for (int x = -scale; x <= scale; x++) {
 //            for (int y = -scale; y <= scale; y++) {

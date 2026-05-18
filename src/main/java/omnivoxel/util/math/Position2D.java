@@ -15,6 +15,10 @@ public record Position2D(int x, int z) {
         return Objects.hash(x(), z());
     }
 
+    public String getPath() {
+        return x + "_" + z + ".chunk2d";
+    }
+
     public Position2D add(int x, int z) {
         return new Position2D(this.x + x, this.z + z);
     }

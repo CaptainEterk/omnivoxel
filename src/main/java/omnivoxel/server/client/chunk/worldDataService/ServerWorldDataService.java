@@ -192,6 +192,52 @@ public final class ServerWorldDataService {
         }
     }
 
+    public Chunk2D<Integer> rebuildChunkHeights(ServerWorld world, Position2D position2D) {
+        Chunk2D<Integer> chunkHeights = new SingleBlockChunk2D<>(0);
+
+        if (chunkMinY == null || chunkMaxY == null) {
+            throw new IllegalStateException("Cannot rebuild heights without chunk Y bounds");
+        }
+
+        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
+            int worldX = position2D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
+
+            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
+                int worldZ = position2D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
+
+                int highestY = blockMinY == null ? 0 : blockMinY;
+
+                boolean found = false;
+
+                for (int worldY = blockMaxY - 1; worldY >= blockMinY; worldY--) {
+                    double density;
+
+                    if (heightIsDensityFunction) {
+                        density = densityFunction.evaluate(worldX, worldY, worldZ);
+                    } else {
+                        density = heightFunction.evaluate(worldX, worldY, worldZ);
+                    }
+
+                    if (density > 0) {
+                        highestY = worldY;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    highestY = blockMinY == null ? 0 : blockMinY;
+                }
+
+                chunkHeights = chunkHeights.setBlock(x, z, highestY);
+            }
+        }
+
+        world.putChunkHeights(position2D, chunkHeights);
+
+        return chunkHeights;
+    }
+
     public boolean shouldGenerateChunk(Position3D position3D) {
         boolean withinX = (chunkMinX == null || chunkMaxX == null) ||
                 (position3D.x() >= chunkMinX && position3D.x() <= chunkMaxX);

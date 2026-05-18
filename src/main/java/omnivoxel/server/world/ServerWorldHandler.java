@@ -3,8 +3,8 @@ package omnivoxel.server.world;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.block.ServerBlockAndPosition;
-import omnivoxel.server.client.chunk.ChunkIO;
 import omnivoxel.server.client.chunk.ChunkTask;
+import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
@@ -47,6 +47,9 @@ public class ServerWorldHandler {
 
                     Position2D position2D = position3D.getPosition2D();
                     Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
+                    if (chunkHeights == null) {
+                        chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+                    }
                     int currentHighestY = chunkHeights.getBlock(x, z);
                     // TODO: Don't hardcode "omnivoxel:air"
                     if (Objects.equals(block.id(), "omnivoxel:air")) {

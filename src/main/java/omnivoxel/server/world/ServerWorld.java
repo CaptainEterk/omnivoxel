@@ -2,7 +2,7 @@ package omnivoxel.server.world;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.server.client.block.ServerBlock;
-import omnivoxel.server.client.chunk.ChunkIO;
+import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ServerWorld {
     private final Map<Position3D, ChunkValue> chunks;
-    private final Map<Position2D, Chunk2D<Integer>> chunkHeights;
+    private final Map<Position2D, Chunk2DValue> chunkHeights;
     private int request = 0;
 
     public ServerWorld() {
@@ -23,25 +23,25 @@ public class ServerWorld {
 
     public void tick() {
         for (Map.Entry<Position3D, ChunkValue> entry : chunks.entrySet()) {
-            checkForOldChunks(entry.getKey(), entry.getValue());
+            checkOldChunk3D(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<Position2D, Chunk2DValue> entry : chunkHeights.entrySet()) {
+            checkOldChunk2D(entry.getKey(), entry.getValue());
         }
 
         request++;
     }
 
-    // TODO: Remove chunkHeights too
-    private void checkForOldChunks(Position3D position3D, ChunkValue chunkValue) {
+    private void checkOldChunk3D(Position3D position3D, ChunkValue chunkValue) {
         if (chunkValue.shouldSave(this.request)) {
-            ChunkIO.write(position3D, chunks.remove(position3D).chunk);
+            ChunkIO.writeChunk(position3D, chunks.remove(position3D).chunk);
         }
     }
 
-    public Chunk2D<Integer> getChunkHeights(Position2D position2D) {
-        return chunkHeights.get(position2D);
-    }
-
-    public void putChunkHeights(Position2D position2D, Chunk2D<Integer> chunkHeights) {
-        this.chunkHeights.put(position2D, chunkHeights);
+    private void checkOldChunk2D(Position2D position2D, Chunk2DValue chunkValue) {
+        if (chunkValue.shouldSave(this.request)) {
+            ChunkIO.writeChunk2D(position2D, chunkHeights.remove(position2D).chunk);
+        }
     }
 
     public void put(Position3D position3D, Chunk<ServerBlock> chunk) {
@@ -51,6 +51,15 @@ public class ServerWorld {
     public Chunk<ServerBlock> get(Position3D position3D) {
         ChunkValue chunkValue = chunks.get(position3D);
         return chunkValue == null ? null : chunkValue.get(request);
+    }
+
+    public void putChunkHeights(Position2D position2D, Chunk2D<Integer> chunkHeights) {
+        this.chunkHeights.put(position2D, new Chunk2DValue(chunkHeights, request));
+    }
+
+    public Chunk2D<Integer> getChunkHeights(Position2D position2D) {
+        Chunk2DValue chunk2DValue = chunkHeights.get(position2D);
+        return chunk2DValue == null ? null : chunk2DValue.get(request);
     }
 
     public ServerBlock getBlock(Position3D chunkPosition, int x, int y, int z) {
@@ -87,6 +96,25 @@ public class ServerWorld {
         }
 
         public Chunk<ServerBlock> get(int request) {
+            this.request = request;
+            return chunk;
+        }
+    }
+
+    private static class Chunk2DValue {
+        private final Chunk2D<Integer> chunk;
+        private int request;
+
+        public Chunk2DValue(Chunk2D<Integer> chunk, int request) {
+            this.chunk = chunk;
+            this.request = request;
+        }
+
+        public boolean shouldSave(int request) {
+            return request - this.request > ConstantCommonSettings.CHUNK_TICK_TIMEOUT;
+        }
+
+        public Chunk2D<Integer> get(int request) {
             this.request = request;
             return chunk;
         }

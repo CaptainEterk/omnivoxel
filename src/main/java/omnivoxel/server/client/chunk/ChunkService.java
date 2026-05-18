@@ -11,6 +11,7 @@ import omnivoxel.server.client.chunk.result.generated.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.result.generated.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.world.ServerWorld;
+import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
@@ -39,11 +40,17 @@ public class ChunkService {
             if (chunkTask.serverClient() != null) {
                 Position2D position2D = chunkPosition.getPosition2D();
                 Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
-                if (chunk2D != null) {
-                    NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), ChunkIO.encodeIntegerChunk2D(chunk2D));
-                } else {
-                    Logger.error("heights is null: " + chunkPosition);
+
+                if (chunk2D == null) {
+                    Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
+                    chunk2D = chunkGenerator.getWorldDataService().rebuildChunkHeights(world, position2D);
                 }
+//                Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
+//                if (chunk2D == null) {
+//                    Logger.warn("Chunk heights are null at " + position2D + ". Is the world corrupted?");
+//                    // Search through chunks (generate if necessary) to find the chunk heights and set chunk2D to it
+//                }
+                NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), ChunkIO.encodeIntegerChunk2D(chunk2D));
 
                 NetworkService.sendBytes3D(chunkTask.serverClient().getCTX().channel(), PackageID.CHUNK, chunkPosition.x(), chunkPosition.y(), chunkPosition.z(), chunk);
             }

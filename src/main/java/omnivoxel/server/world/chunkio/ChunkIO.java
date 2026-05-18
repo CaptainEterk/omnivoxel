@@ -1,4 +1,4 @@
-package omnivoxel.server.client.chunk;
+package omnivoxel.server.world.chunkio;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -6,10 +6,9 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
-import omnivoxel.server.client.chunk.result.ChunkCacheItem;
-import omnivoxel.server.world.ChunkCacheHandler;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.bytes.ByteUtils;
+import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.AsyncWorkerThread;
 import omnivoxel.world.chunk.BiBlockChunk;
@@ -32,6 +31,43 @@ public class ChunkIO {
     public static byte[] get(Position3D position3D) throws IOException {
         Path path = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath());
         return Files.exists(path) ? Files.readAllBytes(Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath())) : null;
+    }
+
+    public static Chunk2D<Integer> decodeChunk2D(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+
+        ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
+
+        try {
+            Chunk2D<Integer> chunk2D = new omnivoxel.world.chunk2d.SingleBlockChunk2D<>(0);
+
+            int index = 0;
+
+            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
+                for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
+
+                    int value = byteBuf.getInt(index);
+                    index += Integer.BYTES;
+
+                    chunk2D = chunk2D.setBlock(x, z, value);
+                }
+            }
+
+            return chunk2D;
+
+        } finally {
+            byteBuf.release();
+        }
+    }
+
+    public static byte[] getChunk2D(Position2D position2D) throws IOException {
+        Path path = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position2D.getPath());
+
+        return Files.exists(path)
+                ? Files.readAllBytes(path)
+                : null;
     }
 
     public static Chunk<ServerBlock> decode(byte[] bytes) {
@@ -212,7 +248,11 @@ public class ChunkIO {
         return bytes;
     }
 
-    public static void write(Position3D position3D, Chunk<ServerBlock> chunk) {
-        chunkCacheAsyncWorkerThread.add(new ChunkCacheItem(position3D, chunk));
+    public static void writeChunk(Position3D position3D, Chunk<ServerBlock> chunk) {
+        chunkCacheAsyncWorkerThread.add(new Chunk3DCacheItem(position3D, chunk));
+    }
+
+    public static void writeChunk2D(Position2D position2D, Chunk2D<Integer> chunk) {
+        chunkCacheAsyncWorkerThread.add(new Chunk2DCacheItem(position2D, chunk));
     }
 }

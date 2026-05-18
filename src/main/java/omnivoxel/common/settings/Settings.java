@@ -1,5 +1,7 @@
 package omnivoxel.common.settings;
 
+import omnivoxel.util.log.Logger;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,6 +47,7 @@ public final class Settings {
                 return setting.value();
             }
         }
+        Logger.warn("No setting with name " + settingName + " found.");
         return null;
     }
 

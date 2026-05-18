@@ -15,7 +15,7 @@ import omnivoxel.common.network.NetworkHandler;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.client.ServerClient;
-import omnivoxel.server.client.chunk.ChunkIO;
+import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.log.Logger;
 
@@ -31,8 +31,6 @@ public class ServerLauncher {
     }
 
     public void run(long seed) throws IOException {
-//        Logger.setMinPriority(Logger.Priority.NORMAL);
-
         Settings settings = new Settings();
         settings.load(ConstantCommonSettings.CONFIG_LOCATION);
         int port = settings.getIntSetting("port", 1515);

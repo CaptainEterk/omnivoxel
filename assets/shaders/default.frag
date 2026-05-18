@@ -65,10 +65,10 @@ vec3 getSunDir(float time) {
     float angle = time * 0.05;
 
     return normalize(vec3(
-                     cos(angle),
-                     sin(angle),
-                     0.0
-                     ));
+    cos(angle),
+    sin(angle),
+    0.0
+    ));
 }
 
 vec3 applySun(vec3 dir, vec3 sunDir) {
@@ -236,7 +236,11 @@ float simpleNoise(vec2 pos) {
 
 void main() {
     if (meshType == 0u) {
-        FragColor = texture(blockTexture, TexCoord / TEXTURE_SIZE);
+        vec4 texColor = texture(blockTexture, TexCoord / TEXTURE_SIZE);
+
+        texColor.rgb = pow(texColor.rgb, vec3(2.2));
+
+        FragColor = texColor;
         if (FragColor.a == 0) discard;
 
         float distance = length(position - cameraPosition);\
@@ -262,6 +266,9 @@ void main() {
 
         vec3 totalLight = blockLight + vec3(directionalSky);
         totalLight = max(totalLight, vec3(ambient));
+
+        totalLight = pow(totalLight, vec3(1.2));
+
         FragColor.rgb *= totalLight;
 
         if (blockType == 1u) {
@@ -271,6 +278,7 @@ void main() {
         if (fogFactor < 1.0) {
             FragColor = mix(skyColor, FragColor, fogFactor);
         }
+        FragColor.rgb = pow(FragColor.rgb, vec3(1.0 / 2.2));
         // TODO: Mix with filter color too for water and things.
     } else if (meshType == 1u) {
         FragColor = texture(blockTexture, TexCoord);

@@ -19,6 +19,7 @@ import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.games.Game;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
+import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.game.GameParser;
@@ -28,6 +29,7 @@ import omnivoxel.util.game.nodes.ObjectGameNode;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.thread.WorkerThreadPool;
+import omnivoxel.world.chunk2d.Chunk2D;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -249,47 +251,58 @@ public class Server implements NetworkUser {
     }
 
     private void sendQueuedClientPackets() {
-        clients.forEach((id, serverClient) -> {
-            Queue<ServerBlockAndPosition> queuedReplacedBlocks = serverClient.getReplacedBlocks();
+        try {
+            for (Map.Entry<String, ServerClient> entry : clients.entrySet()) {
+                String id = entry.getKey();
+                ServerClient serverClient = entry.getValue();
+                Queue<ServerBlockAndPosition> queuedReplacedBlocks = serverClient.getReplacedBlocks();
 
-            int size = queuedReplacedBlocks.size();
-            byte[][] outBytes = new byte[size][];
-            int byteCount = 4;
-            for (int i = 0; i < size; i++) {
-                ServerBlockAndPosition block = queuedReplacedBlocks.poll();
-                if (block == null) {
-                    Logger.warn(Logger.Priority.NORMAL, "Block was null when polling from queue, this should not happen");
-                    break;
+                int size = queuedReplacedBlocks.size();
+                byte[][] outBytes = new byte[size][];
+                int byteCount = 4;
+                for (int i = 0; i < size; i++) {
+                    ServerBlockAndPosition block = queuedReplacedBlocks.poll();
+                    if (block == null) {
+                        Logger.warn(Logger.Priority.NORMAL, "Block was null when polling from queue, this should not happen");
+                        break;
+                    }
+                    byte[] blockBytes = block.serverBlock().getBlockBytes();
+                    byte[] out = new byte[16 + blockBytes.length];
+
+                    int chunkX = Math.floorDiv(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
+                    int chunkZ = Math.floorDiv(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
+
+                    int x = Math.floorMod(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
+                    int z = Math.floorMod(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
+
+                    ByteUtils.addInt(out, block.x(), 0);
+                    ByteUtils.addInt(out, block.y(), 4);
+                    ByteUtils.addInt(out, block.z(), 8);
+                    Position2D position2D = new Position2D(chunkX, chunkZ);
+                    Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
+                    if (chunk2D == null) {
+                        chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+                    }
+                    int highestY = chunk2D.getBlock(x, z);
+                    ByteUtils.addInt(out, highestY, 12);
+                    System.arraycopy(blockBytes, 0, out, 16, blockBytes.length);
+                    outBytes[i] = out;
+                    byteCount += out.length;
                 }
-                byte[] blockBytes = block.serverBlock().getBlockBytes();
-                byte[] out = new byte[16 + blockBytes.length];
 
-                int chunkX = Math.floorDiv(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
-                int chunkZ = Math.floorDiv(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
+                byte[] out = new byte[byteCount];
+                ByteUtils.addInt(out, size, 0);
 
-                int x = Math.floorMod(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
-                int z = Math.floorMod(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
+                int index = 4;
+                for (int i = 0; i < size; i++) {
+                    System.arraycopy(outBytes[i], 0, out, index, outBytes[i].length);
+                    index += outBytes[i].length;
+                }
 
-                ByteUtils.addInt(out, block.x(), 0);
-                ByteUtils.addInt(out, block.y(), 4);
-                ByteUtils.addInt(out, block.z(), 8);
-                int highestY = world.getChunkHeights(new Position2D(chunkX, chunkZ)).getBlock(x, z);
-                ByteUtils.addInt(out, highestY, 12);
-                System.arraycopy(blockBytes, 0, out, 16, blockBytes.length);
-                outBytes[i] = out;
-                byteCount += out.length;
+                NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REPLACE_BLOCK, null, out);
             }
-
-            byte[] out = new byte[byteCount];
-            ByteUtils.addInt(out, size, 0);
-
-            int index = 4;
-            for (int i = 0; i < size; i++) {
-                System.arraycopy(outBytes[i], 0, out, index, outBytes[i].length);
-                index += outBytes[i].length;
-            }
-
-            NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REPLACE_BLOCK, null, out);
-        });
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
