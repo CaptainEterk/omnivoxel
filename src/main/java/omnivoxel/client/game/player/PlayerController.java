@@ -46,7 +46,9 @@ public class PlayerController {
             "core:dirt/default",
             "core:bedrock/default",
             "core:sand/default",
-            "core:stone/default"
+            "core:stone/default",
+            "core:log/default",
+            "core:planks/default"
     };
     private final Client client;
     private final Camera camera;
