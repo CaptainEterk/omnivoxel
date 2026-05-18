@@ -49,7 +49,9 @@ public class PlayerController {
             "core:sand/default",
             "core:stone/default",
             "core:log/default",
-            "core:planks/default"
+            "core:planks/default",
+            "core:glass/default",
+            "core:ladder/default",
     };
     private final Client client;
     private final Camera camera;
