@@ -654,7 +654,7 @@ public class OpenGLRenderer implements Renderer {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
 
             textRenderer.queueText(this.menuSystem.getFont(), leftDebugText, 4, 4, 0.6f, Alignment.LEFT);
-            textRenderer.queueText(this.menuSystem.getFont(), "", window.getWidth() - 4, 4, 0.6f, Alignment.RIGHT);
+            textRenderer.queueText(this.menuSystem.getFont(), "+", window.getWidth() / 2f, window.getHeight() / 2f, 0.6f, Alignment.CENTER);
 
             textRenderer.flush();
 
@@ -672,10 +672,8 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void renderVAO(int vao, int indexCount) {
-        // Bind the VAO
         GL30C.glBindVertexArray(vao);
 
-        // Draw the elements using indices in the VAO
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
     }
 
