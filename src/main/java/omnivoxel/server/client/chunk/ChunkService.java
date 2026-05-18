@@ -42,6 +42,10 @@ public class ChunkService {
                 Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
 
                 if (chunk2D == null) {
+                    chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+                }
+
+                if (chunk2D == null) {
                     Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
                     chunk2D = chunkGenerator.getWorldDataService().rebuildChunkHeights(world, position2D);
                 }

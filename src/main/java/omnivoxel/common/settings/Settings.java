@@ -1,85 +1,70 @@
 package omnivoxel.common.settings;
 
-import omnivoxel.util.log.Logger;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.HashMap;
+import java.util.Map;
 
-// TODO: Make static
 public final class Settings {
-    private final List<Setting> settings;
-
-    public Settings() {
-        settings = new ArrayList<>();
-    }
+    private final Map<String, String> settings = new HashMap<>();
 
     public void load(String configLocation) throws IOException {
-        Files.createDirectories(Path.of(configLocation));
-        boolean newSettings = new File(configLocation + "/settings").createNewFile();
-        if (newSettings) {
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(configLocation + "/settings"));
-            bufferedOutputStream.write(ConstantClientSettings.DEFAULT_SETTING_CONTENTS.getBytes());
-            bufferedOutputStream.flush();
-        }
-        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(configLocation + "/settings"));
-        byte[] settingBytes = bufferedInputStream.readAllBytes();
-        StringBuilder settingFileContents = new StringBuilder();
-        for (byte b : settingBytes) {
-            settingFileContents.append((char) b);
-        }
-        String[] settings = settingFileContents.toString().split("[\n\r]");
-        this.settings.clear();
-        for (String setting : settings) {
-            if (setting.contains("=")) {
-                String[] keyValue = setting.split("=");
-                this.settings.add(new Setting(keyValue[0], keyValue[1]));
-            }
-        }
-    }
+        Path dir = Path.of(configLocation);
+        Files.createDirectories(dir);
 
-    public String getSetting(String settingName) {
-        for (Setting setting : settings) {
-            if (Objects.equals(setting.key(), settingName)) {
-                return setting.value();
+        File file = new File(dir.toFile(), "settings");
+
+        if (!file.exists()) {
+            try (BufferedOutputStream out =
+                         new BufferedOutputStream(new FileOutputStream(file))) {
+                out.write(ConstantClientSettings.DEFAULT_SETTING_CONTENTS.getBytes());
             }
         }
-        Logger.warn("No setting with name " + settingName + " found.");
-        return null;
+
+        settings.clear();
+
+        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
+            String content = new String(in.readAllBytes());
+            String[] lines = content.split("\\R");
+
+            for (String line : lines) {
+                line = line.trim();
+                if (!line.contains("=")) continue;
+
+                int idx = line.indexOf('=');
+                String key = line.substring(0, idx).trim();
+                String value = line.substring(idx + 1).trim();
+
+                settings.put(key, value);
+            }
+        }
     }
 
     public String getSetting(String settingName, String defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
-            return defaultValue;
-        }
-        return setting;
+        return settings.computeIfAbsent(settingName, k -> defaultValue);
     }
 
     public int getIntSetting(String settingName, int defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
+        String v = settings.computeIfAbsent(settingName, k -> String.valueOf(defaultValue));
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException e) {
             return defaultValue;
         }
-        return Integer.parseInt(setting);
     }
 
     public float getFloatSetting(String settingName, float defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
+        String v = settings.computeIfAbsent(settingName, k -> String.valueOf(defaultValue));
+        try {
+            return Float.parseFloat(v);
+        } catch (NumberFormatException e) {
             return defaultValue;
         }
-        return Float.parseFloat(setting);
     }
 
     public boolean getBooleanSetting(String settingName, boolean defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
-            return defaultValue;
-        }
-        return Boolean.parseBoolean(setting);
+        String v = settings.computeIfAbsent(settingName, k -> String.valueOf(defaultValue));
+        return Boolean.parseBoolean(v);
     }
 }
