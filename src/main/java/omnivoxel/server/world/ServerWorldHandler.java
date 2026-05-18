@@ -46,7 +46,8 @@ public class ServerWorldHandler {
                     chunk = ChunkIO.decode(ChunkIO.get(position3D));
                 }
                 if (chunk != null) {
-                    world.put(position3D, chunk.setBlock(x, y, z, block));
+                    chunk = chunk.setBlock(x, y, z, block);
+                    world.put(position3D, chunk);
 
                     Position2D position2D = position3D.getPosition2D();
                     Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
