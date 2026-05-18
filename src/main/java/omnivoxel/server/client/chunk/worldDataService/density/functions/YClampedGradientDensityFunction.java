@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.GameNode;
@@ -19,10 +19,10 @@ public class YClampedGradientDensityFunction extends DensityFunction {
 
         ObjectGameNode objectGameNode = Game.checkGameNodeType(node, ObjectGameNode.class);
         try {
-            this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low"), seed);
-            this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high"), seed);
-            this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("low_value"), seed);
-            this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("high_value"), seed);
+            this.from = WorldGenerator.getDensityFunction(objectGameNode.object().get("low"), seed);
+            this.to = WorldGenerator.getDensityFunction(objectGameNode.object().get("high"), seed);
+            this.fromValue = WorldGenerator.getDensityFunction(objectGameNode.object().get("low_value"), seed);
+            this.toValue = WorldGenerator.getDensityFunction(objectGameNode.object().get("high_value"), seed);
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
         }

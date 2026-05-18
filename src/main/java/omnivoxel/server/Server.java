@@ -16,6 +16,7 @@ import omnivoxel.server.client.chunk.ChunkService;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.games.Game;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
@@ -61,15 +62,13 @@ public class Server implements NetworkUser {
         GameNode gameNode = GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "constants.json")), null), ArrayGameNode.class));
 
         if (gameNode instanceof ObjectGameNode objectGameNode) {
+            WorldGenerator worldGenerator = new WorldGenerator(objectGameNode.object().get("world_generator"), blockShapeCache, blockHitboxCache, seed, blockService);
             Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
             workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, () ->
                     new ChunkService(
                             new ServerWorldDataService(
                                     blockService,
-                                    blockShapeCache,
-                                    blockHitboxCache,
-                                    objectGameNode.object().get("world_generator"),
-                                    seed
+                                    worldGenerator
                             ),
                             blockService,
                             world,
@@ -77,12 +76,12 @@ public class Server implements NetworkUser {
                     )::serve,
                     true
             );
+
+            this.worldHandler = new ServerWorldHandler(world, clients, workerThreadPool, worldGenerator);
+            this.settings = settings;
         } else {
             throw new IllegalArgumentException("gameNode must be an ObjectGameNode, not " + gameNode.getClass());
         }
-
-        this.worldHandler = new ServerWorldHandler(world, clients, workerThreadPool);
-        this.settings = settings;
     }
 
     @Override

@@ -47,13 +47,8 @@ public class ChunkService {
 
                 if (chunk2D == null) {
                     Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
-                    chunk2D = chunkGenerator.getWorldDataService().rebuildChunkHeights(world, position2D);
+                    chunk2D = chunkGenerator.getWorldDataService().getWorldGenerator().rebuildChunkHeights(world, position2D);
                 }
-//                Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
-//                if (chunk2D == null) {
-//                    Logger.warn("Chunk heights are null at " + position2D + ". Is the world corrupted?");
-//                    // Search through chunks (generate if necessary) to find the chunk heights and set chunk2D to it
-//                }
                 NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), ChunkIO.encodeIntegerChunk2D(chunk2D));
 
                 NetworkService.sendBytes3D(chunkTask.serverClient().getCTX().channel(), PackageID.CHUNK, chunkPosition.x(), chunkPosition.y(), chunkPosition.z(), chunk);

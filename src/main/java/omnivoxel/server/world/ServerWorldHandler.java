@@ -4,6 +4,7 @@ import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.block.ServerBlockAndPosition;
 import omnivoxel.server.client.chunk.ChunkTask;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.log.Logger;
@@ -21,11 +22,13 @@ public class ServerWorldHandler {
     private final ServerWorld world;
     private final Map<String, ServerClient> clients;
     private final WorkerThreadPool<ChunkTask> workerThreadPool;
+    private final WorldGenerator worldGenerator;
 
-    public ServerWorldHandler(ServerWorld world, Map<String, ServerClient> clients, WorkerThreadPool<ChunkTask> workerThreadPool) {
+    public ServerWorldHandler(ServerWorld world, Map<String, ServerClient> clients, WorkerThreadPool<ChunkTask> workerThreadPool, WorldGenerator worldGenerator) {
         this.world = world;
         this.clients = clients;
         this.workerThreadPool = workerThreadPool;
+        this.worldGenerator = worldGenerator;
     }
 
     public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, ServerClient client) {
@@ -50,6 +53,10 @@ public class ServerWorldHandler {
                     if (chunkHeights == null) {
                         chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
                     }
+                    if (chunkHeights == null) {
+                        Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
+                        chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);
+                    }
                     int currentHighestY = chunkHeights.getBlock(x, z);
                     // TODO: Don't hardcode "omnivoxel:air"
                     if (Objects.equals(block.id(), "omnivoxel:air")) {
@@ -61,6 +68,7 @@ public class ServerWorldHandler {
                             world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, worldY));
                         }
                     }
+                    ChunkIO.writeChunk(position3D, chunk);
                     clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));
                 } else {
                     ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ);

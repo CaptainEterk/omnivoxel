@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.block.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.block.BlockFunction;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.ArrayGameNode;
@@ -18,7 +18,7 @@ public class SequenceBlockFunction extends BlockFunction {
         ArrayGameNode args = Game.checkGameNodeType(Game.checkGameNodeType(node, ObjectGameNode.class).object().get("args"), ArrayGameNode.class);
         blockFunctions = new BlockFunction[args.nodes().length];
         for (int j = 0; j < blockFunctions.length; j++) {
-            blockFunctions[j] = ServerWorldDataService.getBlockFunction(args.nodes()[j], i);
+            blockFunctions[j] = WorldGenerator.getBlockFunction(args.nodes()[j], i);
         }
     }
 

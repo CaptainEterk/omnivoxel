@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
@@ -18,11 +18,11 @@ public class RangeChoiceDensityFunction extends DensityFunction {
         super(args, seed);
 
         if (args instanceof ObjectGameNode objectGameNode) {
-            this.input = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("input"), seed);
-            this.minInclusive = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("min_inclusive"), seed);
-            this.maxExclusive = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("max_exclusive"), seed);
-            this.whenInRange = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("in_range"), seed);
-            this.whenOutOfRange = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("out_range"), seed);
+            this.input = WorldGenerator.getDensityFunction(objectGameNode.object().get("input"), seed);
+            this.minInclusive = WorldGenerator.getDensityFunction(objectGameNode.object().get("min_inclusive"), seed);
+            this.maxExclusive = WorldGenerator.getDensityFunction(objectGameNode.object().get("max_exclusive"), seed);
+            this.whenInRange = WorldGenerator.getDensityFunction(objectGameNode.object().get("in_range"), seed);
+            this.whenOutOfRange = WorldGenerator.getDensityFunction(objectGameNode.object().get("out_range"), seed);
         } else {
             throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
         }

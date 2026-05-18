@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.ArrayGameNode;
@@ -25,7 +25,7 @@ public class SplineDensityFunction extends DensityFunction {
             throw new IllegalArgumentException("GameNode must be an ObjectGameNode");
 
         var obj = objectGameNode.object();
-        this.coordinate = ServerWorldDataService.getDensityFunction(obj.get("coordinate"), seed);
+        this.coordinate = WorldGenerator.getDensityFunction(obj.get("coordinate"), seed);
 
         GameNode[] pts = Game.checkGameNodeType(objectGameNode.object().get("points"), ArrayGameNode.class).nodes();
         if (pts == null || pts.length == 0)
@@ -36,7 +36,7 @@ public class SplineDensityFunction extends DensityFunction {
             double loc = (Game.checkGameNodeType(o.object().get("location"), DoubleGameNode.class)).value();
             double der = (Game.checkGameNodeType(o.object().get("derivative"), DoubleGameNode.class)).value();
 
-            DensityFunction valueFn = ServerWorldDataService.getDensityFunction(o.object().get("value"), seed);
+            DensityFunction valueFn = WorldGenerator.getDensityFunction(o.object().get("value"), seed);
 
             points.add(new Point(loc, valueFn, der));
         }

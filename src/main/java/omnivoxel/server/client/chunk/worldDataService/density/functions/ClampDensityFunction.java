@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.DoubleGameNode;
 import omnivoxel.util.game.nodes.GameNode;
@@ -17,7 +17,7 @@ public class ClampDensityFunction extends DensityFunction {
         super(args, seed);
 
         ObjectGameNode obj = (ObjectGameNode) args;
-        this.input = ServerWorldDataService.getDensityFunction(obj.object().get("input"), seed);
+        this.input = WorldGenerator.getDensityFunction(obj.object().get("input"), seed);
 
         this.min = getDouble(obj, "min");
         this.max = getDouble(obj, "max");
