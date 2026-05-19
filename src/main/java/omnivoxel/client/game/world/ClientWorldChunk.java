@@ -18,7 +18,7 @@ public class ClientWorldChunk {
     private Chunk<BlockWithMesh> chunkData;
     private int lastFetched;
     private ChunkLightingData chunkLightingData;
-    private AtomicBoolean cleanLighting = new AtomicBoolean(false);
+    private final AtomicBoolean cleanLighting = new AtomicBoolean(false);
 
     private ClientWorldChunk(MeshData meshData, ChunkMesh mesh, Chunk<BlockWithMesh> chunkData, ChunkLightingData chunkLightingData) {
         this.meshData = meshData;

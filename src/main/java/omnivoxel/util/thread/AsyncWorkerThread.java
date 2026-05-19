@@ -1,6 +1,5 @@
 package omnivoxel.util.thread;
 
-import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
@@ -37,11 +36,7 @@ public final class AsyncWorkerThread<T> {
         queue.add(task);
     }
 
-    public void addAll(Collection<T> tasks) {
-        queue.addAll(tasks);
-    }
-
     public void stop() {
-
+        running.set(false);
     }
 }
