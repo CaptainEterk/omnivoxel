@@ -103,8 +103,6 @@ public class ByteBufUtils {
         }
         String modID = ids[0];
 
-        final String blockID = modID.contains(":") ? modID.split(":", 2)[1] : modID;
-
         int shapeIDLength = byteBuf.getShort(readerIndex);
         readerIndex += 2;
 
@@ -158,11 +156,6 @@ public class ByteBufUtils {
         shapeCache.put(blockShape.id(), blockShape);
 
         return new BlockMesh(ids[1]) {
-            @Override
-            public String getID() {
-                return blockID;
-            }
-
             @Override
             public String getModID() {
                 return modID;

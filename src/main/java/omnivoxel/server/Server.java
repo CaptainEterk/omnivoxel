@@ -52,7 +52,7 @@ public class Server implements NetworkUser {
     private final ServerWorldHandler worldHandler;
     private final Settings settings;
 
-    public Server(Map<String, ServerClient> clients, long seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, Map<String, BlockHitbox[]> blockHitboxCache, ServerBlockService blockService, Settings settings) throws InterruptedException, IOException {
+    public Server(Map<String, ServerClient> clients, long seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, Map<String, BlockHitbox[]> blockHitboxCache, ServerBlockService blockService, Settings settings) throws IOException {
         this.clients = clients;
         this.world = world;
         this.blockShapeCache = blockShapeCache;

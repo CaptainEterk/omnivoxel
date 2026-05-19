@@ -103,7 +103,7 @@ public class ChunkMeshDataLightingGenerator {
         return true;
     }
 
-    private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D) throws InterruptedException {
+    private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D) {
         ClientWorldChunk clientWorldChunk = world.get(position3D, false, false);
         if (clientWorldChunk == null || clientWorldChunk.isCleanLighting()) {
             return null;

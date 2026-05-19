@@ -33,6 +33,10 @@ public class ChunkIO {
         return Files.exists(path) ? Files.readAllBytes(Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath())) : null;
     }
 
+    public static void stop() {
+        chunkCacheAsyncWorkerThread.stop();
+    }
+
     public static Chunk2D<Integer> decodeChunk2D(byte[] bytes) {
         if (bytes == null) {
             return null;

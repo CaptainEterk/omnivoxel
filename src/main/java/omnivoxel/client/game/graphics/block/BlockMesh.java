@@ -6,17 +6,11 @@ import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.face.BlockFace;
 
 public abstract class BlockMesh {
-    protected String state;
+    protected final String state;
 
     protected BlockMesh(String state) {
         this.state = state;
     }
-
-    protected BlockMesh() {
-        this(null);
-    }
-
-    public abstract String getID();
 
     public abstract String getModID();
 
