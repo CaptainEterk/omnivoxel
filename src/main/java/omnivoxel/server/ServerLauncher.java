@@ -30,7 +30,7 @@ public class ServerLauncher {
         new ServerLauncher().run(100L);
     }
 
-    public void run(long seed) throws IOException {
+    public void run(long seed) {
         Settings settings = new Settings();
         settings.load(ConstantCommonSettings.CONFIG_LOCATION);
         int port = settings.getIntSetting("port", 1515);
