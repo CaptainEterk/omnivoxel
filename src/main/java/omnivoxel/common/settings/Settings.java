@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+// TODO: Make settings hot-reload
 public final class Settings {
     private final Map<String, String> settings = new HashMap<>();
 

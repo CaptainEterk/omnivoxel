@@ -97,7 +97,7 @@ public class OpenGLRenderer implements Renderer {
     @Override
     public void init() throws IOException {
         // Creates an OpenGL window
-        this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantClientSettings.DEFAULT_WINDOW_TITLE, contextTasks);
+        this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantClientSettings.DEFAULT_WINDOW_TITLE, contextTasks, settings);
 
         initShader();
 

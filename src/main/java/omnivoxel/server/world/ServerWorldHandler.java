@@ -48,6 +48,7 @@ public class ServerWorldHandler {
                 if (chunk != null) {
                     chunk = chunk.setBlock(x, y, z, block);
                     world.put(position3D, chunk);
+                    ChunkIO.writeChunk(position3D, chunk);
 
                     Position2D position2D = position3D.getPosition2D();
                     Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
@@ -69,7 +70,6 @@ public class ServerWorldHandler {
                             world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, worldY));
                         }
                     }
-                    ChunkIO.writeChunk(position3D, chunk);
                     clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));
                 } else {
                     ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ);
