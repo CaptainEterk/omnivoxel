@@ -25,9 +25,8 @@ public class Camera {
     }
 
     public void rotateX(float angle) {
-        // Clamp the up-down rotation to looking straight up and looking straight down
         if (angle != pitch) {
-            pitch = org.joml.Math.clamp(-org.joml.Math.PI_OVER_2_f, Math.PI_OVER_2_f, pitch + angle);
+            pitch = Math.clamp(-Math.PI_OVER_2_f, Math.PI_OVER_2_f, pitch + angle);
         }
     }
 

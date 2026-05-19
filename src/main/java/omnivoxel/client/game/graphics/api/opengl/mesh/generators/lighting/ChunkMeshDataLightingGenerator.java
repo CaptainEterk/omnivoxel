@@ -73,23 +73,12 @@ public class ChunkMeshDataLightingGenerator {
         );
     }
 
-    private static short addLight(short uv, byte light) {
-        return (short) (
-                (uv & 0x03FF) |          // keep lower 10 bits (a + b)
-                        ((light & 0x0F) << 10)   // pack light into upper 4 bits
-        );
-    }
-
     public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
             MeshDataGenerator.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), worldDataService, blockService, world);
         }
-        try {
-            return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D());
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D());
     }
 
     private boolean calculateNeighborChunkLighting(Position3D position3D) {

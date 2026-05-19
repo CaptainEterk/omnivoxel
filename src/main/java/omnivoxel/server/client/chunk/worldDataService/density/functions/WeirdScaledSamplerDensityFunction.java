@@ -34,7 +34,6 @@ public class WeirdScaledSamplerDensityFunction extends DensityFunction {
     }
 
     private double mapScale(double value) {
-        // This maps [-1..1] input to a [min..max] scale depending on mapper type
         double min, max;
         if ("type_1".equalsIgnoreCase(rarityValueMapper)) {
             min = 0.75;
@@ -45,7 +44,6 @@ public class WeirdScaledSamplerDensityFunction extends DensityFunction {
         } else {
             throw new IllegalArgumentException("Unknown rarity_value_mapper: " + rarityValueMapper);
         }
-        // Normalize input [-1,1] -> [0,1]
         double t = (value + 1.0) / 2.0;
         return min + (max - min) * t;
     }
