@@ -75,6 +75,7 @@ public class ServerLauncher {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            ChunkIO.stop();
         }
     }
 }
