@@ -18,9 +18,9 @@ import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.games.Game;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
-import omnivoxel.server.world.chunkio.ChunkIO;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.game.GameParser;
@@ -35,10 +35,7 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server implements NetworkUser {
@@ -51,6 +48,7 @@ public class Server implements NetworkUser {
     private final ServerBlockService blockService;
     private final ServerWorldHandler worldHandler;
     private final Settings settings;
+    private final omnivoxel.server.entity.EntityStorage entityStorage;
 
     public Server(Map<String, ServerClient> clients, long seed, ServerWorld world, Map<String, BlockShape> blockShapeCache, Map<String, BlockHitbox[]> blockHitboxCache, ServerBlockService blockService, Settings settings) throws IOException {
         this.clients = clients;
@@ -58,6 +56,7 @@ public class Server implements NetworkUser {
         this.blockShapeCache = blockShapeCache;
         this.blockHitboxCache = blockHitboxCache;
         this.blockService = blockService;
+        this.entityStorage = new omnivoxel.server.entity.EntityStorage();
 
         GameNode gameNode = GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "constants.json")), null), ArrayGameNode.class));
 
@@ -106,8 +105,7 @@ public class Server implements NetworkUser {
                 break;
             case CLOSE:
                 ServerClient client = clients.get(clientID);
-                clients.remove(clientID);
-                clients.values().forEach(player -> NetworkService.sendBytes(player.getCTX().channel(), PackageID.CLOSE, null, client.getPlayerID()));
+                removeClient(client);
                 Logger.info("Client Disconnected: " + clientID + " playerID: " + ByteUtils.bytesToHex(client.getPlayerID()));
                 byteBuf.release();
                 break;
@@ -152,11 +150,73 @@ public class Server implements NetworkUser {
         }
     }
 
+    private void removeClient(ServerClient client) {
+        clients.remove(client.getClientID());
+        clients.values().forEach(player -> NetworkService.sendBytes(player.getCTX().channel(), PackageID.CLOSE, null, client.getPlayerID()));
+    }
+
     private void registerClient(ChannelHandlerContext ctx, ByteBuf byteBuf, int index, String clientID) {
         byte[] versionID = ByteUtils.getBytes(byteBuf, index, 8);
         // TODO: Replace handshake id string with a long and just use the 8 bytes from that maybe?
         if (Arrays.equals(versionID, String.format("%-8s", HANDSHAKE_ID).getBytes())) {
+            // If client already exists (reconnecting), reuse and update its context
+            if (clients.containsKey(clientID)) {
+                ServerClient existing = clients.get(clientID);
+                existing.setCTX(ctx);
+                // send player state to the reconnecting client so they can position themselves
+                NetworkService.sendDoubles(ctx.channel(), PackageID.PLAYER_STATE, null, existing.getX(), existing.getY(), existing.getZ(), existing.getPitch(), existing.getYaw());
+
+                // re-register blocks/definitions for this client
+                blockShapeCache.forEach((id, blockShape) -> NetworkService.sendBytes(existing.getCTX().channel(), PackageID.REGISTER_BLOCK_SHAPE, null, blockShape.getBytes()));
+
+                blockHitboxCache.forEach((id, blockHitboxes) -> {
+                            byte[] bytes = new byte[(Float.BYTES * 6 + Integer.BYTES + 2) * blockHitboxes.length + Integer.BYTES * 2 + id.length()];
+                            ByteUtils.addInt(bytes, id.length(), 0);
+
+                            System.arraycopy(id.getBytes(), 0, bytes, Integer.BYTES, id.length());
+
+                            ByteUtils.addInt(bytes, blockHitboxes.length, Integer.BYTES + id.length());
+
+                            int idx = id.length() + Integer.BYTES * 2;
+                            for (BlockHitbox blockHitbox : blockHitboxes) {
+                                byte[] hitboxBytes = blockHitbox.getBytes();
+                                System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
+                                idx += hitboxBytes.length;
+                            }
+
+                            NetworkService.sendBytes(existing.getCTX().channel(), PackageID.REGISTER_BLOCK_HITBOX, null, bytes);
+                        }
+                );
+
+                blockService.getAllBlocks().forEach((id, serverBlock) -> {
+                    if (existing.registerBlockID(id)) {
+                        ChannelHandlerContext ctx1 = existing.getCTX();
+                        NetworkService.sendBytes(ctx1.channel(), PackageID.REGISTER_BLOCK, null, serverBlock.getBytes());
+                    }
+                });
+
+                clients.put(clientID, existing);
+                Logger.debug("Client Reconnected: " + clientID + " playerID: " + ByteUtils.bytesToHex(existing.getPlayerID()));
+                return;
+            }
+
             ServerClient serverClient = new ServerClient(clientID, ctx);
+
+            // place new player at column height for spawn
+            try {
+                Position2D spawnCol = new Position2D(0, 0);
+                Chunk2D<Integer> chunkHeights = world.getChunkHeights(spawnCol);
+                if (chunkHeights == null) {
+                    chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(spawnCol));
+                }
+
+                int highest = 0;
+                if (chunkHeights != null) highest = chunkHeights.getBlock(0, 0);
+                serverClient.set(0, highest + 2, 0, 0, 0);
+            } catch (IOException e) {
+                // ignore and leave at default 0,0,0
+            }
+
             byte[] encodedServerPlayer = serverClient.getBytes();
 
             clients.values().forEach(player -> {
@@ -175,11 +235,11 @@ public class Server implements NetworkUser {
                         ByteUtils.addInt(bytes, blockHitboxes.length, Integer.BYTES + id.length());
 
                         int idx = id.length() + Integer.BYTES * 2;
-                for (BlockHitbox blockHitbox : blockHitboxes) {
-                    byte[] hitboxBytes = blockHitbox.getBytes();
-                    System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
-                    idx += hitboxBytes.length;
-                }
+                        for (BlockHitbox blockHitbox : blockHitboxes) {
+                            byte[] hitboxBytes = blockHitbox.getBytes();
+                            System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
+                            idx += hitboxBytes.length;
+                        }
 
                         NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REGISTER_BLOCK_HITBOX, null, bytes);
                     }
@@ -193,6 +253,9 @@ public class Server implements NetworkUser {
             });
 
             clients.put(clientID, serverClient);
+
+            // send initial player state to the connecting client
+            NetworkService.sendDoubles(ctx.channel(), PackageID.PLAYER_STATE, null, serverClient.getX(), serverClient.getY(), serverClient.getZ(), serverClient.getPitch(), serverClient.getYaw());
 
             Logger.debug("Client Connected: " + clientID + " playerID: " + ByteUtils.bytesToHex(serverClient.getPlayerID()));
         } else {
@@ -210,14 +273,16 @@ public class Server implements NetworkUser {
         while (true) {
             long startNano = System.nanoTime();
 
-            if (tick % settings.getIntSetting("lost_client_td", 20) == 0) {
-                Set<String> values = clients.keySet();
-                values.forEach(id -> {
-                    if (!NetworkService.checkChannel(clients.get(id).getCTX().channel())) {
-                        clients.remove(id);
-                        Logger.info("Client Lost Contact... Disconnecting: " + id);
+            if (tick % settings.getIntSetting("lost_client_td", 10) == 0) {
+                for (ServerClient client : clients.values()) {
+                    if (!NetworkService.checkChannel(client.getCTX().channel())) {
+                        removeClient(client);
+                        Logger.info("Client Lost Contact... Disconnecting: " + client.getClientID());
                     }
-                });
+                }
+            }
+            if (tick % settings.getIntSetting("entity_save_td", 20) == 0) {
+                entityStorage.tick();
             }
 
             for (int i = 0; i < 10; i++) {

@@ -5,7 +5,7 @@ import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.block.ServerBlockAndPosition;
 import omnivoxel.server.client.chunk.ChunkTask;
 import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
-import omnivoxel.server.world.chunkio.ChunkIO;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;

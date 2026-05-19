@@ -2,7 +2,7 @@ package omnivoxel.server.world;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.server.client.block.ServerBlock;
-import omnivoxel.server.world.chunkio.ChunkIO;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;

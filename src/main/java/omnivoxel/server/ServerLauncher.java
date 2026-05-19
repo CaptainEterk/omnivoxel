@@ -15,7 +15,7 @@ import omnivoxel.common.network.NetworkHandler;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.client.ServerClient;
-import omnivoxel.server.world.chunkio.ChunkIO;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.log.Logger;
 

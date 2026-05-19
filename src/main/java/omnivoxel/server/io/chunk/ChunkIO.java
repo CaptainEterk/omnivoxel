@@ -1,4 +1,4 @@
-package omnivoxel.server.world.chunkio;
+package omnivoxel.server.io.chunk;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -24,7 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ChunkIO {
+public final class ChunkIO {
     public static final ServerBlockService BLOCK_SERVICE = new ServerBlockService();
     private static final AsyncWorkerThread<ChunkCacheItem> chunkCacheAsyncWorkerThread = new AsyncWorkerThread<>(ChunkCacheHandler::cache, false);
 

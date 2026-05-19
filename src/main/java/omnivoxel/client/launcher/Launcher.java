@@ -40,7 +40,25 @@ public class Launcher {
 
         SecureRandom secureRandom = new SecureRandom();
         byte[] clientID = new byte[32];
-        secureRandom.nextBytes(clientID);
+        try {
+            java.nio.file.Path configDir = java.nio.file.Path.of(omnivoxel.common.settings.ConstantCommonSettings.CONFIG_LOCATION);
+            java.nio.file.Files.createDirectories(configDir);
+            java.nio.file.Path idFile = configDir.resolve("client.id");
+            if (java.nio.file.Files.exists(idFile)) {
+                byte[] existing = java.nio.file.Files.readAllBytes(idFile);
+                if (existing.length >= 32) {
+                    System.arraycopy(existing, 0, clientID, 0, 32);
+                } else {
+                    secureRandom.nextBytes(clientID);
+                    java.nio.file.Files.write(idFile, clientID);
+                }
+            } else {
+                secureRandom.nextBytes(clientID);
+                java.nio.file.Files.write(idFile, clientID);
+            }
+        } catch (java.io.IOException e) {
+            secureRandom.nextBytes(clientID);
+        }
 
         CountDownLatch connected = new CountDownLatch(1);
 

@@ -95,6 +95,15 @@ public class PlayerController {
         this.camera = camera;
         this.blockService = blockService;
         camera.setPosition(x, y, z);
+        double[] init = client.consumeInitialPlayerState();
+        if (init != null) {
+            this.x = init[0];
+            this.y = init[1];
+            this.z = init[2];
+            this.pitch = init[3];
+            this.yaw = init[4];
+            camera.setPosition(this.x, this.y, this.z);
+        }
         this.settings = settings;
         this.contextTasks = contextTasks;
         this.state = state;

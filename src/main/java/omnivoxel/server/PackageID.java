@@ -19,6 +19,7 @@ public enum PackageID {
     REGISTER_BLOCK_HITBOX,
     REPLACE_BLOCK,
     HEIGHTS,
+    PLAYER_STATE,
 
     // TODO: Implement UDP Client/Server (using TCP for now)
     // UDP

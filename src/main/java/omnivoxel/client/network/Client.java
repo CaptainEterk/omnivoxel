@@ -49,6 +49,7 @@ public final class Client implements NetworkUser {
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
+    private volatile double[] initialPlayerState = null;
     private final Queue<Position3D> queuedChunkTasks = new LinkedBlockingDeque<>();
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
@@ -81,6 +82,10 @@ public final class Client implements NetworkUser {
                     break;
                 case HEIGHTS:
                     receiveChunkHeights(byteBuf);
+                    break;
+                case PLAYER_STATE:
+                    receivePlayerState(byteBuf);
+                    byteBuf.release();
                     break;
                 case ENTITY_UPDATE:
                     updateEntity(byteBuf);
@@ -189,6 +194,26 @@ public final class Client implements NetworkUser {
             clientRunning.set(false);
             throw e;
         }
+    }
+
+    private void receivePlayerState(ByteBuf byteBuf) {
+        int index = 8;
+        double x = byteBuf.getDouble(index);
+        index += Double.BYTES;
+        double y = byteBuf.getDouble(index);
+        index += Double.BYTES;
+        double z = byteBuf.getDouble(index);
+        index += Double.BYTES;
+        double pitch = byteBuf.getDouble(index);
+        index += Double.BYTES;
+        double yaw = byteBuf.getDouble(index);
+        this.initialPlayerState = new double[]{x, y, z, pitch, yaw};
+    }
+
+    public double[] consumeInitialPlayerState() {
+        double[] s = initialPlayerState;
+        initialPlayerState = null;
+        return s;
     }
 
     private void updateEntity(ByteBuf byteBuf) {

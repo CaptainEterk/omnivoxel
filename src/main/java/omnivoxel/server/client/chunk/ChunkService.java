@@ -11,7 +11,7 @@ import omnivoxel.server.client.chunk.result.generated.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.result.generated.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.world.ServerWorld;
-import omnivoxel.server.world.chunkio.ChunkIO;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;

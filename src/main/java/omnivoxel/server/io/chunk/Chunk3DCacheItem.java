@@ -1,4 +1,4 @@
-package omnivoxel.server.world.chunkio;
+package omnivoxel.server.io.chunk;
 
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.util.math.Position3D;

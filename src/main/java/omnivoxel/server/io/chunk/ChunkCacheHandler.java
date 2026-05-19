@@ -1,4 +1,4 @@
-package omnivoxel.server.world.chunkio;
+package omnivoxel.server.io.chunk;
 
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.server.client.block.ServerBlock;

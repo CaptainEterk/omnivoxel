@@ -16,7 +16,7 @@ import java.util.Set;
 public class ServerClient extends MobEntity implements ServerItem {
     public final Set<String> registeredIDs;
     private final String clientID;
-    private final ChannelHandlerContext ctx;
+    private ChannelHandlerContext ctx;
     private final byte[] playerID;
     private final Queue<ServerBlockAndPosition> replacedBlocks = new ArrayDeque<>();
 
@@ -27,6 +27,10 @@ public class ServerClient extends MobEntity implements ServerItem {
         playerID = new byte[32];
         new SecureRandom().nextBytes(playerID);
         registeredIDs = new HashSet<>();
+    }
+
+    public void setCTX(ChannelHandlerContext ctx) {
+        this.ctx = ctx;
     }
 
     @Override
