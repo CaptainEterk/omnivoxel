@@ -175,11 +175,11 @@ public class Server implements NetworkUser {
                         ByteUtils.addInt(bytes, blockHitboxes.length, Integer.BYTES + id.length());
 
                         int idx = id.length() + Integer.BYTES * 2;
-                        for (int i = 0; i < blockHitboxes.length; i++) {
-                            byte[] hitboxBytes = blockHitboxes[i].getBytes();
-                            System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
-                            idx += hitboxBytes.length;
-                        }
+                for (BlockHitbox blockHitbox : blockHitboxes) {
+                    byte[] hitboxBytes = blockHitbox.getBytes();
+                    System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
+                    idx += hitboxBytes.length;
+                }
 
                         NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REGISTER_BLOCK_HITBOX, null, bytes);
                     }
