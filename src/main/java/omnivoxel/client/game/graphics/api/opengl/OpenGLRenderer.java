@@ -93,7 +93,6 @@ public class OpenGLRenderer implements Renderer {
         this.cameraCullingService = cameraCullingService;
     }
 
-    // TODO: Create a constructor for as much of this as possible
     @Override
     public void init() throws IOException {
         // Creates an OpenGL window
@@ -164,6 +163,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("shouldUpdateVisibleMeshes", true);
         state.setItem("shouldCheckNewChunks", false);
         state.setItem("shouldAttemptFreeChunks", false);
+        state.setItem("shouldToggleWindowFullscreen", false);
 
         state.setItem("shouldRenderWireframe", false);
         state.setItem("seeDebug", true);
@@ -375,6 +375,10 @@ public class OpenGLRenderer implements Renderer {
 
         if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
             attemptFreeChunks();
+        }
+
+        if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
+            window.toggleFullscreen();
         }
     }
 

@@ -61,13 +61,14 @@ public class ServerWorldHandler {
                     }
                     int currentHighestY = chunkHeights.getBlock(x, z);
                     // TODO: Don't hardcode "omnivoxel:air"
+                    // TODO: Calculate heights correctly (use the same logic as rebuilding the heightmap)
                     if (Objects.equals(block.id(), "omnivoxel:air")) {
                         if (worldY == currentHighestY) {
-                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, worldY));
+                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
                         }
                     } else {
                         if (worldY > currentHighestY) {
-                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, worldY));
+                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
                         }
                     }
                     clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));

@@ -26,7 +26,7 @@ public abstract class MobEntity extends GravityEntity {
         return yaw;
     }
 
-    public void setYaw(float yaw) {
+    public void setYaw(double yaw) {
         this.yaw = yaw;
     }
 
@@ -34,7 +34,7 @@ public abstract class MobEntity extends GravityEntity {
         return pitch;
     }
 
-    public void setPitch(float pitch) {
+    public void setPitch(double pitch) {
         this.pitch = pitch;
     }
 }

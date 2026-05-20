@@ -40,25 +40,7 @@ public class Launcher {
 
         SecureRandom secureRandom = new SecureRandom();
         byte[] clientID = new byte[32];
-        try {
-            java.nio.file.Path configDir = java.nio.file.Path.of(omnivoxel.common.settings.ConstantCommonSettings.CONFIG_LOCATION);
-            java.nio.file.Files.createDirectories(configDir);
-            java.nio.file.Path idFile = configDir.resolve("client.id");
-            if (java.nio.file.Files.exists(idFile)) {
-                byte[] existing = java.nio.file.Files.readAllBytes(idFile);
-                if (existing.length >= 32) {
-                    System.arraycopy(existing, 0, clientID, 0, 32);
-                } else {
-                    secureRandom.nextBytes(clientID);
-                    java.nio.file.Files.write(idFile, clientID);
-                }
-            } else {
-                secureRandom.nextBytes(clientID);
-                java.nio.file.Files.write(idFile, clientID);
-            }
-        } catch (java.io.IOException e) {
-            secureRandom.nextBytes(clientID);
-        }
+//        secureRandom.nextBytes(clientID);
 
         CountDownLatch connected = new CountDownLatch(1);
 
@@ -80,19 +62,20 @@ public class Launcher {
         world.setClient(client);
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
 
+        BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
+        Camera camera = new Camera(new Frustum(), state);
+        PlayerController playerController = new PlayerController(client, camera, settings, contextTasks, state, world, blockService);
+
+        client.setPlayer(playerController);
+
         if (connected.await(5L, TimeUnit.SECONDS)) {
             client.setListeners(world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData(), state);
             AtomicBoolean gameRunning = new AtomicBoolean(true);
-            BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
-
-            Camera camera = new Camera(new Frustum(), state);
 
             GameLoop gameLoop = new GameLoop(camera, world, gameRunning, contextTasks, client, state, settings);
 
             try {
                 gameLoop.init();
-
-                PlayerController playerController = new PlayerController(client, camera, settings, contextTasks, state, world, blockService, gameLoop.getRenderer().getWindow());
 
                 Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");
                 tickLoopThread.start();

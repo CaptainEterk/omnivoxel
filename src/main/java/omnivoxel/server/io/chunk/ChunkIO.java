@@ -6,6 +6,9 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
+import omnivoxel.server.io.CacheHandler;
+import omnivoxel.server.io.CacheIO;
+import omnivoxel.server.io.CacheItem;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.math.Position2D;
@@ -26,15 +29,10 @@ import java.util.Map;
 
 public final class ChunkIO {
     public static final ServerBlockService BLOCK_SERVICE = new ServerBlockService();
-    private static final AsyncWorkerThread<ChunkCacheItem> chunkCacheAsyncWorkerThread = new AsyncWorkerThread<>(ChunkCacheHandler::cache, false);
 
     public static byte[] get(Position3D position3D) throws IOException {
         Path path = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath());
         return Files.exists(path) ? Files.readAllBytes(Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath())) : null;
-    }
-
-    public static void stop() {
-        chunkCacheAsyncWorkerThread.stop();
     }
 
     public static Chunk2D<Integer> decodeChunk2D(byte[] bytes) {
@@ -214,7 +212,6 @@ public final class ChunkIO {
                 runLength = 1;
             }
 
-            // flush final run
             if (runLength > 0) {
                 byteBuf.writeInt(currentPaletteID);
                 byteBuf.writeInt(runLength);
@@ -253,10 +250,10 @@ public final class ChunkIO {
     }
 
     public static void writeChunk(Position3D position3D, Chunk<ServerBlock> chunk) {
-        chunkCacheAsyncWorkerThread.add(new Chunk3DCacheItem(position3D, chunk));
+        CacheIO.add(new Chunk3DCacheItem(position3D, chunk));
     }
 
     public static void writeChunk2D(Position2D position2D, Chunk2D<Integer> chunk) {
-        chunkCacheAsyncWorkerThread.add(new Chunk2DCacheItem(position2D, chunk));
+        CacheIO.add(new Chunk2DCacheItem(position2D, chunk));
     }
 }

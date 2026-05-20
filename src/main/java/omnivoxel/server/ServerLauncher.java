@@ -15,6 +15,8 @@ import omnivoxel.common.network.NetworkHandler;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.client.ServerClient;
+import omnivoxel.server.entity.EntityStorage;
+import omnivoxel.server.io.CacheIO;
 import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.log.Logger;
@@ -44,11 +46,9 @@ public class ServerLauncher {
         Map<String, BlockShape> blockShapeCache = new HashMap<>();
         Map<String, BlockHitbox[]> blockHitboxCache = new HashMap<>();
 
-        ServerWorld world = new ServerWorld();
-
         try {
             Map<String, ServerClient> clients = new ConcurrentHashMap<>();
-            Server server = new Server(clients, seed, world, blockShapeCache, blockHitboxCache, ChunkIO.BLOCK_SERVICE, settings);
+            Server server = new Server(clients, seed, new ServerWorld(), new EntityStorage(), blockShapeCache, blockHitboxCache, ChunkIO.BLOCK_SERVICE, settings);
             Thread thread = new Thread(server::run, "Server Tick Loop");
             thread.start();
 
@@ -75,7 +75,7 @@ public class ServerLauncher {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
-            ChunkIO.stop();
+            CacheIO.stop();
         }
     }
 }

@@ -35,9 +35,11 @@ public class NetworkService {
     public static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {
         if (checkChannel(channel, id)) {
             ByteBuf buffer = Unpooled.buffer();
-            buffer.writeInt(Integer.BYTES + clientID.length + numbers.length * Double.BYTES);
+            buffer.writeInt(Integer.BYTES + (clientID == null ? 0 : clientID.length) + numbers.length * Double.BYTES);
             buffer.writeInt(id.ordinal());
-            buffer.writeBytes(clientID);
+            if (clientID != null) {
+                buffer.writeBytes(clientID);
+            }
             for (double i : numbers) {
                 buffer.writeDouble(i);
             }

@@ -61,14 +61,12 @@ public class PlayerController {
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
     private final Hitbox hitbox;
-    private final Window window;
     private double speed;
     @NotNull
     private MovementMode movementMode = MovementMode.FALL_COLLIDE;
 
-    // TODO: When the server sends a load state package or something like that, it should position
     private double x;
-    private double y = 145;
+    private double y;
     private double z;
     private double velocityX;
     private double velocityY;
@@ -90,25 +88,15 @@ public class PlayerController {
     private int selectedBlock = 0;
     private boolean selectingBlockDown;
 
-    public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Window>> contextTasks, State state, ClientWorld world, BlockService<BlockWithMesh> blockService, Window window) {
+    public PlayerController(Client client, Camera camera, Settings settings, BlockingQueue<Consumer<Window>> contextTasks, State state, ClientWorld world, BlockService<BlockWithMesh> blockService) {
         this.client = client;
         this.camera = camera;
         this.blockService = blockService;
         camera.setPosition(x, y, z);
-        double[] init = client.consumeInitialPlayerState();
-        if (init != null) {
-            this.x = init[0];
-            this.y = init[1];
-            this.z = init[2];
-            this.pitch = init[3];
-            this.yaw = init[4];
-            camera.setPosition(this.x, this.y, this.z);
-        }
         this.settings = settings;
         this.contextTasks = contextTasks;
         this.state = state;
         this.world = world;
-        this.window = window;
         hitbox = new Hitbox(-0.4f, -1.5f, -0.4f, 0.4f, 0.3f, 0.4f);
     }
 
@@ -589,7 +577,6 @@ public class PlayerController {
             velocityZ += moveZ;
         }
 
-        // Handle actions
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F1)) {
             if (!togglingWireframe) {
                 state.setItem("shouldRenderWireframe", !state.getItem("shouldRenderWireframe", Boolean.class));
@@ -624,8 +611,7 @@ public class PlayerController {
         }
         if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F11)) {
             if (!togglingFullscreen) {
-                window.toggleFullscreen();
-
+                state.setItem("shouldToggleWindowFullscreen", true);
                 mouseInput.clearDelta();
             }
             togglingFullscreen = true;
@@ -648,6 +634,14 @@ public class PlayerController {
 
     public void setMouseInput(MouseInput mouseInput) {
         this.mouseInput = mouseInput;
+    }
+
+    public void set(double x, double y, double z, double pitch, double yaw) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.pitch = pitch;
+        this.yaw = yaw;
     }
 
     private enum MovementMode {

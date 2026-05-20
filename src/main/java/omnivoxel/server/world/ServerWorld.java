@@ -3,11 +3,13 @@ package omnivoxel.server.world;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.io.chunk.ChunkIO;
+import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,6 +48,23 @@ public class ServerWorld {
 
     public void put(Position3D position3D, Chunk<ServerBlock> chunk) {
         chunks.put(position3D, new ChunkValue(chunk, request));
+    }
+
+    public Chunk2D<Integer> getStoredChunkHeights(Position2D position2D) {
+        try {
+            Chunk2D<Integer> chunk2D = getChunkHeights(position2D);
+
+            if (chunk2D == null) {
+                chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+            }
+
+            if (chunk2D == null) {
+                Logger.warn("Chunk heights are null at " + position2D + ".");
+            }
+            return chunk2D;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public Chunk<ServerBlock> get(Position3D position3D) {

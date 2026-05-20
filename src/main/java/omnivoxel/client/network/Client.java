@@ -13,6 +13,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ModelEntityMeshDa
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.LightingChunkMeshDataTask;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
+import omnivoxel.client.game.player.PlayerController;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
@@ -38,6 +39,8 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 import org.joml.Matrix4f;
 
+import javax.naming.OperationNotSupportedException;
+import java.rmi.UnexpectedException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -49,7 +52,6 @@ public final class Client implements NetworkUser {
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
-    private volatile double[] initialPlayerState = null;
     private final Queue<Position3D> queuedChunkTasks = new LinkedBlockingDeque<>();
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
@@ -59,6 +61,7 @@ public final class Client implements NetworkUser {
     private EventLoopGroup group;
     private Channel channel;
     private long lastFlushedTime = System.currentTimeMillis();
+    private PlayerController player = null;
 
     public Client(byte[] clientID, ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, Settings settings) {
         this.clientID = clientID;
@@ -82,10 +85,6 @@ public final class Client implements NetworkUser {
                     break;
                 case HEIGHTS:
                     receiveChunkHeights(byteBuf);
-                    break;
-                case PLAYER_STATE:
-                    receivePlayerState(byteBuf);
-                    byteBuf.release();
                     break;
                 case ENTITY_UPDATE:
                     updateEntity(byteBuf);
@@ -184,6 +183,19 @@ public final class Client implements NetworkUser {
 
                     byteBuf.release();
                     break;
+                case PLAYER_STATE:
+                    double[] data = new double[5];
+                    for (int i = 0; i < 5; i++) {
+                        data[i] = byteBuf.getDouble(8 + i * Double.BYTES);
+                    }
+                    double x = data[0];
+                    double y = data[1];
+                    double z = data[2];
+                    double pitch = data[3];
+                    double yaw = data[4];
+                    player.set(x, y, z, pitch, yaw);
+                    byteBuf.release();
+                    break;
                 default:
                     Logger.error(Logger.Priority.HIGH, "Unexpected package key: " + packageID);
                     byteBuf.release();
@@ -194,26 +206,6 @@ public final class Client implements NetworkUser {
             clientRunning.set(false);
             throw e;
         }
-    }
-
-    private void receivePlayerState(ByteBuf byteBuf) {
-        int index = 8;
-        double x = byteBuf.getDouble(index);
-        index += Double.BYTES;
-        double y = byteBuf.getDouble(index);
-        index += Double.BYTES;
-        double z = byteBuf.getDouble(index);
-        index += Double.BYTES;
-        double pitch = byteBuf.getDouble(index);
-        index += Double.BYTES;
-        double yaw = byteBuf.getDouble(index);
-        this.initialPlayerState = new double[]{x, y, z, pitch, yaw};
-    }
-
-    public double[] consumeInitialPlayerState() {
-        double[] s = initialPlayerState;
-        initialPlayerState = null;
-        return s;
     }
 
     private void updateEntity(ByteBuf byteBuf) {
@@ -447,5 +439,13 @@ public final class Client implements NetworkUser {
                 )::generateLightingMeshData,
                 true
         );
+    }
+
+    public void setPlayer(PlayerController player) {
+        if (this.player == null) {
+            this.player = player;
+        } else {
+            throw new IllegalArgumentException("Cannot set player twice");
+        }
     }
 }

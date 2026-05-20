@@ -3,7 +3,9 @@ package omnivoxel.server.entity;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.hitbox.Hitbox;
+import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.ServerItem;
+import omnivoxel.server.io.entity.EntityIO;
 import omnivoxel.util.math.DoublePosition3D;
 
 import java.security.SecureRandom;
@@ -25,6 +27,10 @@ public abstract class Entity implements ServerItem {
         this.hitbox = hitbox;
         entityID = new byte[32];
         new SecureRandom().nextBytes(entityID);
+    }
+
+    public static Entity decode(byte[] ignoredBytes) {
+        throw new UnsupportedOperationException("You cannot decode an Entity.");
     }
 
     protected float getFriction() {
@@ -52,7 +58,7 @@ public abstract class Entity implements ServerItem {
         return x;
     }
 
-    public void setX(float x) {
+    public void setX(double x) {
         this.x = x;
     }
 
@@ -60,7 +66,7 @@ public abstract class Entity implements ServerItem {
         return y;
     }
 
-    public void setY(float y) {
+    public void setY(double y) {
         this.y = y;
     }
 
@@ -68,7 +74,7 @@ public abstract class Entity implements ServerItem {
         return z;
     }
 
-    public void setZ(float z) {
+    public void setZ(double z) {
         this.z = z;
     }
 
@@ -76,7 +82,7 @@ public abstract class Entity implements ServerItem {
         return velocityX;
     }
 
-    public void setVelocityX(float velocityX) {
+    public void setVelocityX(double velocityX) {
         this.velocityX = velocityX;
     }
 
@@ -84,7 +90,7 @@ public abstract class Entity implements ServerItem {
         return velocityY;
     }
 
-    public void setVelocityY(float velocityY) {
+    public void setVelocityY(double velocityY) {
         this.velocityY = velocityY;
     }
 
@@ -92,7 +98,7 @@ public abstract class Entity implements ServerItem {
         return velocityZ;
     }
 
-    public void setVelocityZ(float velocityZ) {
+    public void setVelocityZ(double velocityZ) {
         this.velocityZ = velocityZ;
     }
 
