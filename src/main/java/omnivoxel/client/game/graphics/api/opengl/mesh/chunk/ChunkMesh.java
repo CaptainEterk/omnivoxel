@@ -20,5 +20,13 @@ public interface ChunkMesh extends Mesh {
 
     int transparentIndexCount();
 
+    int decorationVAO();
+
+    int decorationVBO();
+
+    int decorationEBO();
+
+    int decorationIndexCount();
+
     MeshData meshData();
 }

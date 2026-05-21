@@ -44,6 +44,7 @@ public class OpenGLRenderer implements Renderer {
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f().identity();
     private static final int FPS_SAMPLES = 60;
     private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
+    private final List<PositionedChunk> decorationRenderedChunksInFrustum = new ArrayList<>();
     private final List<PositionedChunk> transparentRenderedChunksInFrustum = new ArrayList<>();
     // Client
     private final Client client;
@@ -76,6 +77,7 @@ public class OpenGLRenderer implements Renderer {
     private boolean renderTracksWindowSize;
     private int renderFilter;
     private List<DistanceChunk> solidRenderedChunks;
+    private List<DistanceChunk> decorationRenderedChunks;
     private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
@@ -177,6 +179,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("total_rendered_chunks", 1);
 
         solidRenderedChunks = new ArrayList<>();
+        decorationRenderedChunks = new ArrayList<>();
         transparentRenderedChunks = new ArrayList<>();
 
         periodicTimeExecutorCollection = new ExecutorCollection<>();
@@ -230,6 +233,9 @@ public class OpenGLRenderer implements Renderer {
         calculateFrustumChunks();
 
         renderSolidChunks();
+        OpenGLChecks.checkError("frame");
+        renderDecorationChunks();
+        OpenGLChecks.checkError("frame2");
         renderTransparentChunks();
 
         bufferizeChunks();
@@ -346,6 +352,7 @@ public class OpenGLRenderer implements Renderer {
         List<DistanceChunk> chunks;
         if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
             solidRenderedChunks.clear();
+            decorationRenderedChunks.clear();
             transparentRenderedChunks.clear();
 
             int renderDistance = settings.getIntSetting("render_distance", 100);
@@ -359,6 +366,9 @@ public class OpenGLRenderer implements Renderer {
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
                     if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
                         solidRenderedChunks.add(chunk);
+                    }
+                    if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
+                        decorationRenderedChunks.add(chunk);
                     }
                     if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
                         transparentRenderedChunks.add(chunk);
@@ -411,6 +421,13 @@ public class OpenGLRenderer implements Renderer {
             }
         }
 
+        decorationRenderedChunksInFrustum.clear();
+        for (DistanceChunk decorationRenderedChunk : decorationRenderedChunks) {
+            if (camera.getFrustum().isChunkInFrustum(decorationRenderedChunk.pos())) {
+                decorationRenderedChunksInFrustum.add(new PositionedChunk(decorationRenderedChunk.pos(), world.get(decorationRenderedChunk.pos(), false, false)));
+            }
+        }
+
         transparentRenderedChunksInFrustum.clear();
         for (DistanceChunk transparentRenderedChunk : transparentRenderedChunks) {
             if (camera.getFrustum().isChunkInFrustum(transparentRenderedChunk.pos())) {
@@ -443,9 +460,20 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("geometry_culled_chunks", occluded);
     }
 
+    private void renderDecorationChunks() {
+        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+        GL11C.glDisable(GL11C.GL_CULL_FACE);
+        for (PositionedChunk positionedChunk : decorationRenderedChunksInFrustum) {
+            Position3D position3D = positionedChunk.pos();
+            if (positionedChunk.chunk().getMesh().decorationVAO() > 0 && positionedChunk.chunk().getMesh().decorationIndexCount() > 0) {
+                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                renderVAO(positionedChunk.chunk().getMesh().decorationVAO(), positionedChunk.chunk().getMesh().decorationIndexCount());
+            }
+        }
+    }
+
     private void renderTransparentChunks() {
         GL11C.glDepthFunc(GL11C.GL_LESS);
-        GL11C.glDisable(GL11C.GL_CULL_FACE);
         GL11C.glDepthMask(false);
         GL11C.glEnable(GL11C.GL_BLEND);
         GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
@@ -553,7 +581,7 @@ public class OpenGLRenderer implements Renderer {
                             Position: %.2f %.2f %.2f
                             Delta Time: %.4f
                             Chunks:
-                            \t- Rendered: %d/%d/%d
+                            \t- Rendered: %d/%d/%d/%d
                             \t- Loaded: %d
                             \t- Should be loaded: %d
                             \t- Bufferized Chunks: %d
@@ -608,8 +636,9 @@ public class OpenGLRenderer implements Renderer {
                     camera.getY(),
                     camera.getZ(),
                     state.getItem("deltaTime", Double.class),
-                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(),
+                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size()+decorationRenderedChunksInFrustum.size(),
                     solidRenderedChunksInFrustum.size(),
+                    decorationRenderedChunksInFrustum.size(),
                     transparentRenderedChunksInFrustum.size(),
                     world.size(),
                     state.getItem("total_rendered_chunks", Integer.class),

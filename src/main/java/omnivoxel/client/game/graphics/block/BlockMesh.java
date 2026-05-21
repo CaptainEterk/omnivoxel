@@ -28,6 +28,8 @@ public abstract class BlockMesh {
 
     public abstract boolean shouldRenderTransparentMesh();
 
+    public abstract boolean shouldRenderDecorationMesh();
+
     public abstract boolean shouldRenderFace(BlockFace face, BlockMesh adjacentBlockMesh);
 
     public String getState() {

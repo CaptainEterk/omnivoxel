@@ -202,6 +202,11 @@ public class ByteBufUtils {
             public boolean shouldRenderTransparentMesh() {
                 return transparentMesh;
             }
+
+            @Override
+            public boolean shouldRenderDecorationMesh() {
+                return modID.equals("core:ladder");
+            }
         };
     }
 }

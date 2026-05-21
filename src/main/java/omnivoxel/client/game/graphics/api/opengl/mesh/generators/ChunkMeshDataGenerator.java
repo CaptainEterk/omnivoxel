@@ -63,8 +63,11 @@ public class ChunkMeshDataGenerator {
         List<Integer> indices = new ArrayList<>();
         List<Integer> transparentVertices = new ArrayList<>();
         List<Integer> transparentIndices = new ArrayList<>();
+        List<Integer> decorationVertices = new ArrayList<>();
+        List<Integer> decorationIndices = new ArrayList<>();
         Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
         Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
+        Map<UniqueVertex, Integer> decorationVertexIndexMap = new HashMap<>();
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
@@ -87,6 +90,25 @@ public class ChunkMeshDataGenerator {
                                     transparentVertices,
                                     transparentIndices,
                                     transparentVertexIndexMap,
+                                    chunkLightingData,
+                                    blockMeshes,
+                                    position3D
+                            );
+                        } else if (blockMesh.shouldRenderDecorationMesh()) {
+                            generateBlockMeshData(
+                                    x,
+                                    y,
+                                    z,
+                                    blockMesh,
+                                    blockMeshes[index + BlockFace.TOP.getPaddedNeighborOffset()],
+                                    blockMeshes[index + BlockFace.BOTTOM.getPaddedNeighborOffset()],
+                                    blockMeshes[index + BlockFace.NORTH.getPaddedNeighborOffset()],
+                                    blockMeshes[index + BlockFace.SOUTH.getPaddedNeighborOffset()],
+                                    blockMeshes[index + BlockFace.EAST.getPaddedNeighborOffset()],
+                                    blockMeshes[index + BlockFace.WEST.getPaddedNeighborOffset()],
+                                    decorationVertices,
+                                    decorationIndices,
+                                    decorationVertexIndexMap,
                                     chunkLightingData,
                                     blockMeshes,
                                     position3D
@@ -120,8 +142,10 @@ public class ChunkMeshDataGenerator {
         ByteBuffer indexBuffer = MeshDataGenerator.createIntBuffer(indices);
         ByteBuffer transparentVertexBuffer = MeshDataGenerator.createIntBuffer(transparentVertices);
         ByteBuffer transparentIndexBuffer = MeshDataGenerator.createIntBuffer(transparentIndices);
+        ByteBuffer decorationVertexBuffer = MeshDataGenerator.createIntBuffer(decorationVertices);
+        ByteBuffer decorationIndexBuffer = MeshDataGenerator.createIntBuffer(decorationIndices);
 
-        return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, position3D);
+        return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, decorationVertexBuffer, decorationIndexBuffer, position3D);
     }
 
     private void generateBlockMeshData(
@@ -163,6 +187,7 @@ public class ChunkMeshDataGenerator {
         if (adjacentBlockMesh.isTransparent() && !Objects.equals(adjacentBlockMesh.getModID(), originalBlockMesh.getModID())) {
             return true;
         }
+
         BlockShape adjBlockShape = adjacentBlockMesh.getShape(top, bottom, north, south, east, west);
         return !(originalShape.solid()[face.ordinal()] && adjBlockShape.solid()[face.ordinal()])
                 && originalBlockMesh.shouldRenderFace(face, adjacentBlockMesh);

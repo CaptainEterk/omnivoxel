@@ -47,6 +47,26 @@ public class EmptyChunkMesh implements ChunkMesh {
     }
 
     @Override
+    public int decorationVAO() {
+        return 0;
+    }
+
+    @Override
+    public int decorationVBO() {
+        return 0;
+    }
+
+    @Override
+    public int decorationEBO() {
+        return 0;
+    }
+
+    @Override
+    public int decorationIndexCount() {
+        return 0;
+    }
+
+    @Override
     public MeshData meshData() {
         return meshData;
     }
