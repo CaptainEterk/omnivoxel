@@ -145,12 +145,8 @@ public class Server implements NetworkUser {
                     int length = byteBuf.getInt(index + Integer.BYTES * 3);
                     byte[] bytes = new byte[length];
                     byteBuf.getBytes(index + Integer.BYTES * 4, bytes);
-                    StringBuilder blockID = new StringBuilder();
-                    for (byte b : bytes) {
-                        blockID.append((char) b);
-                    }
-                    Logger.info("Replacing block: " + bx + " " + by + " " + bz + " with " + blockID);
-                    worldHandler.replaceBlock(bx, by, bz, blockService.getBlock(blockID.toString()), clients.get(clientID));
+                    String blockID = new String(bytes);
+                    worldHandler.replaceBlock(bx, by, bz, blockService.getBlock(blockID), clients.get(clientID));
 
                     byteBuf.release();
                     break;
@@ -185,9 +181,9 @@ public class Server implements NetworkUser {
                 int z = random.nextInt(-ConstantCommonSettings.CHUNK_SIZE, ConstantCommonSettings.CHUNK_SIZE - 1);
                 Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(new Position2D(IndexCalculator.chunkX(x), IndexCalculator.chunkZ(z)));
                 int height = chunkHeights.getBlock(IndexCalculator.localX(x), IndexCalculator.localZ(z));
-                playerEntity.set(IndexCalculator.localX(x)+0.5, height+3, IndexCalculator.localZ(z)+0.5);
+                playerEntity.set(IndexCalculator.localX(x) + 0.5, height + 3, IndexCalculator.localZ(z) + 0.5);
                 serverClient = new ServerClient(clientID, ctx, playerEntity);
-                long entityID =  entityManager.getNewEntityID();
+                long entityID = entityManager.getNewEntityID();
                 entityManager.writeClientToEntityTranslation(clientID, entityID);
                 entityStorage.put(new Position3D(0, 5, 0), playerEntity, entityID);
             } else {
@@ -261,7 +257,7 @@ public class Server implements NetworkUser {
 
             }
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 0; i++) {
                 worldHandler.replaceBlock((int) Math.floor(Math.random() * 16), (int) Math.floor(Math.random() * 8) + 100, (int) Math.floor(Math.random() * 16), ServerBlock.AIR, null);
             }
 

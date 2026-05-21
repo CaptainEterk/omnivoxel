@@ -36,13 +36,13 @@ public class ServerWorld {
 
     private void checkOldChunk3D(Position3D position3D, ChunkValue chunkValue) {
         if (chunkValue.shouldSave(this.request)) {
-            ChunkIO.writeChunk(position3D, chunks.remove(position3D).chunk);
+            ChunkIO.writeChunk(position3D, chunks.remove(position3D).chunk, false);
         }
     }
 
     private void checkOldChunk2D(Position2D position2D, Chunk2DValue chunkValue) {
         if (chunkValue.shouldSave(this.request)) {
-            ChunkIO.writeChunk2D(position2D, chunkHeights.remove(position2D).chunk);
+            ChunkIO.writeChunk2D(position2D, chunkHeights.remove(position2D).chunk, false);
         }
     }
 

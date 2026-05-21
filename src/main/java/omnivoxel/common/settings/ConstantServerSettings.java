@@ -10,4 +10,5 @@ public final class ConstantServerSettings {
     public static final String PLAYER_SAVE_LOCATION = WORLD_SAVE_LOCATION + "players/";
 
     public static final String GAME_LOCATION = ConstantCommonSettings.FILE_LOCATION + "game/";
+    public static final int NECESSARY_CACHE_SIZE = 100;
 }

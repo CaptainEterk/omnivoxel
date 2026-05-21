@@ -566,6 +566,8 @@ public class OpenGLRenderer implements Renderer {
                             \t- Velocity X: %.2f
                             \t- Velocity Y: %.2f
                             \t- Velocity Z: %.2f
+                            \t- Pitch: %.2f
+                            \t- Yaw: %.2f
                             \t- On Ground: %b
                             \t- Friction Factor: %.2f
                             \t- Movement Mode: %s
@@ -619,6 +621,8 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("velocity_x", Double.class),
                     state.getItem("velocity_y", Double.class),
                     state.getItem("velocity_z", Double.class),
+                    state.getItem("pitch", Double.class),
+                    state.getItem("yaw", Double.class),
                     state.getItem("on_ground", Boolean.class),
                     state.getItem("friction_factor", Double.class),
                     state.getItem("movement_mode", String.class),

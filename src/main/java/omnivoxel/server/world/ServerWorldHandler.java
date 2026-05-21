@@ -43,35 +43,41 @@ public class ServerWorldHandler {
                 Position3D position3D = new Position3D(chunkX, chunkY, chunkZ);
                 Chunk<ServerBlock> chunk = world.get(position3D);
                 if (chunk == null) {
+                    Logger.debug("Decoding chunk " + chunkX + " " + chunkY +  " " + chunkZ);
                     chunk = ChunkIO.decode(ChunkIO.get(position3D));
                 }
                 if (chunk != null) {
-                    chunk = chunk.setBlock(x, y, z, block);
-                    world.put(position3D, chunk);
-                    ChunkIO.writeChunk(position3D, chunk);
+                    Logger.debug("chunk isn't null " + chunk.getBlock(x, y, z).id() + " " + block.id());
+                    if (!Objects.equals(chunk.getBlock(x, y, z).id(), block.id())) {
+                        chunk = chunk.setBlock(x, y, z, block);
+                        world.put(position3D, chunk);
+                        ChunkIO.writeChunk(position3D, chunk, true);
 
-                    Position2D position2D = position3D.getPosition2D();
-                    Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
-                    if (chunkHeights == null) {
-                        chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
-                    }
-                    if (chunkHeights == null) {
-                        Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
-                        chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);
-                    }
-                    int currentHighestY = chunkHeights.getBlock(x, z);
-                    // TODO: Don't hardcode "omnivoxel:air"
-                    // TODO: Calculate heights correctly (use the same logic as rebuilding the heightmap)
-                    if (Objects.equals(block.id(), "omnivoxel:air")) {
-                        if (worldY == currentHighestY) {
-                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
+                        Logger.info("Replacing block in chunk: " + chunkX + " " + chunkY + " " + chunkZ + " at " + x + " " + y + " " + z + " with " + block.id());
+
+                        Position2D position2D = position3D.getPosition2D();
+                        Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
+                        if (chunkHeights == null) {
+                            chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
                         }
-                    } else {
-                        if (worldY > currentHighestY) {
-                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
+                        if (chunkHeights == null) {
+                            Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
+                            chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);
                         }
+                        int currentHighestY = chunkHeights.getBlock(x, z);
+                        // TODO: Don't hardcode "omnivoxel:air"
+                        // TODO: Calculate heights correctly (use the same logic as rebuilding the heightmap)
+                        if (Objects.equals(block.id(), "omnivoxel:air")) {
+                            if (worldY == currentHighestY) {
+                                world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
+                            }
+                        } else {
+                            if (worldY > currentHighestY) {
+                                world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
+                            }
+                        }
+                        clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));
                     }
-                    clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));
                 } else {
                     ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ);
                     if (!workerThreadPool.hasTask(task)) {

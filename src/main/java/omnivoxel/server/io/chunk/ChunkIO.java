@@ -249,11 +249,11 @@ public final class ChunkIO {
         return bytes;
     }
 
-    public static void writeChunk(Position3D position3D, Chunk<ServerBlock> chunk) {
-        CacheIO.add(new Chunk3DCacheItem(position3D, chunk));
+    public static void writeChunk(Position3D position3D, Chunk<ServerBlock> chunk, boolean necessary) {
+        CacheIO.add(new Chunk3DCacheItem(position3D, chunk), necessary);
     }
 
-    public static void writeChunk2D(Position2D position2D, Chunk2D<Integer> chunk) {
-        CacheIO.add(new Chunk2DCacheItem(position2D, chunk));
+    public static void writeChunk2D(Position2D position2D, Chunk2D<Integer> chunk, boolean necessary) {
+        CacheIO.add(new Chunk2DCacheItem(position2D, chunk), necessary);
     }
 }

@@ -96,4 +96,11 @@ public class Camera {
             this.z = z;
         }
     }
+
+    public void setRotation(double pitch, double yaw) {
+        if (pitch != this.pitch || yaw != this.yaw) {
+            this.pitch = pitch;
+            this.yaw = yaw;
+        }
+    }
 }

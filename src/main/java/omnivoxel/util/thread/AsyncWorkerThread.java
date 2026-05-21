@@ -10,9 +10,11 @@ public final class AsyncWorkerThread<T> {
     private final Consumer<T> consumer;
     private final BlockingQueue<T> queue;
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private final int necessaryLimit;
 
-    public AsyncWorkerThread(Consumer<T> consumer, boolean daemon) {
+    public AsyncWorkerThread(Consumer<T> consumer, boolean daemon, int necessaryLimit) {
         this.consumer = consumer;
+        this.necessaryLimit = necessaryLimit;
         queue = new LinkedBlockingDeque<>();
         Thread thread = new Thread(this::run);
         thread.setDaemon(daemon);
@@ -21,7 +23,7 @@ public final class AsyncWorkerThread<T> {
 
     private void run() {
         try {
-            while (!Thread.interrupted() && running.get()) {
+            while (!Thread.interrupted() && (queue.isEmpty() || running.get())) {
                 T item = queue.poll(100L, TimeUnit.MILLISECONDS);
                 if (item != null) {
                     consumer.accept(item);
@@ -32,11 +34,17 @@ public final class AsyncWorkerThread<T> {
         }
     }
 
-    public void add(T task) {
-        queue.add(task);
+    public void add(T task, boolean necessary) {
+        if (necessary || queue.size() < necessaryLimit) {
+            queue.add(task);
+        }
     }
 
     public void stop() {
         running.set(false);
+    }
+
+    public int size() {
+        return queue.size();
     }
 }

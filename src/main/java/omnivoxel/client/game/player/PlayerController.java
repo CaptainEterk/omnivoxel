@@ -337,6 +337,8 @@ public class PlayerController {
         state.setItem("velocity_z", velocityZ);
         state.setItem("on_ground", onGround);
         state.setItem("movement_mode", movementMode.toString());
+        state.setItem("pitch", pitch);
+        state.setItem("yaw", yaw);
 
         if (shouldUpdate) {
             state.setItem("shouldUpdateView", true);
@@ -640,8 +642,8 @@ public class PlayerController {
         this.x = x;
         this.y = y;
         this.z = z;
-        this.pitch = pitch;
-        this.yaw = yaw;
+        camera.setRotation(pitch, yaw);
+        state.setItem("shouldUpdateView", true);
     }
 
     private enum MovementMode {
