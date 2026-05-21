@@ -13,12 +13,13 @@ public record ServerBlock(
         double[][] uvCoords,
         boolean transparent,
         boolean transparentMesh,
+        boolean decorationMesh,
         byte[] lightEmitting,
         byte[] lightDiffusing,
         String blockHitbox
 ) implements ServerItem {
     // TODO: Don't hardcode omnivoxel:air/default
-    public static final ServerBlock AIR = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, new double[6][0], true, false, new byte[3], new byte[]{1, 1, 1, 1}, "omnivoxel:empty");
+    public static final ServerBlock AIR = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, new double[6][0], true, false, false, new byte[3], new byte[]{1, 1, 1, 1}, "omnivoxel:empty");
 
     public ServerBlock {
         if (uvCoords.length != 6) {
@@ -42,13 +43,7 @@ public record ServerBlock(
             uvCoordByteCount += uvCoords.length * Double.BYTES;
         }
 
-        int size = 2 + idBytes.length
-                + 2 + shapeBytes.length
-                + 2 + hitboxBytes.length
-                + 1 + 1
-                + uvCoordByteCount
-                + 3
-                + 4;
+        int size = idBytes.length + shapeBytes.length + hitboxBytes.length + uvCoordByteCount + 16;
 
         ByteBuffer buffer = ByteBuffer.allocate(size);
 
@@ -64,6 +59,8 @@ public record ServerBlock(
         buffer.put((byte) (transparent ? 1 : 0));
 
         buffer.put((byte) (transparentMesh ? 1 : 0));
+
+        buffer.put((byte) (decorationMesh ? 1 : 0));
 
         for (double[] uvCoords : this.uvCoords) {
             buffer.putShort((short) uvCoords.length);

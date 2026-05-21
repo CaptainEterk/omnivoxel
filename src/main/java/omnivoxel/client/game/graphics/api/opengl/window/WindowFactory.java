@@ -73,24 +73,15 @@ public final class WindowFactory {
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
 
-        // Create the window
         long window = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL);
         if (window == MemoryUtil.NULL) {
             throw new RuntimeException("Failed to create the GLFW window");
         }
 
-        // Make the OpenGL context current
         GLFW.glfwMakeContextCurrent(window);
 
-        // Enable v-sync
         GLFW.glfwSwapInterval(settings.getBooleanSetting("vsync", true) ? 1 : 0);
 
-        /*
-         This line is critical for LWJGL's interoperation with GLFW's OpenGL context,
-         or any context that is managed externally.
-         LWJGL detects the context that is current in the current thread,
-         creates the GLCapabilities instance and makes the OpenGL bindings available for use.
-        */
         GLCapabilities caps = GL.createCapabilities();
 
         if (ConstantClientSettings.OPENGL_DEBUG) {
@@ -115,7 +106,6 @@ public final class WindowFactory {
             Logger.info("OpenGL debug logging disabled");
         }
 
-        // Mouse motion
         if (GLFW.glfwRawMouseMotionSupported()) {
             GLFW.glfwSetInputMode(window, GLFW.GLFW_RAW_MOUSE_MOTION, GLFW.GLFW_TRUE);
         }

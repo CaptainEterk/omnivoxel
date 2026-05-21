@@ -10,7 +10,6 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.client.ServerClient;
-import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.block.ServerBlockAndPosition;
 import omnivoxel.server.client.chunk.ChunkService;
 import omnivoxel.server.client.chunk.ChunkTask;
@@ -254,11 +253,7 @@ public class Server implements NetworkUser {
                 }
             }
             if (tick % settings.getIntSetting("entity_save_td", 20) == 0) {
-
-            }
-
-            for (int i = 0; i < 0; i++) {
-                worldHandler.replaceBlock((int) Math.floor(Math.random() * 16), (int) Math.floor(Math.random() * 8) + 100, (int) Math.floor(Math.random() * 16), ServerBlock.AIR, null);
+                // TODO: Actually save entities
             }
 
             world.tick();

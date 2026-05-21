@@ -126,6 +126,7 @@ public class ByteBufUtils {
 
         boolean transparent = byteBuf.getByte(readerIndex++) == 1;
         boolean transparentMesh = byteBuf.getByte(readerIndex++) == 1;
+        boolean decorationMesh = byteBuf.getByte(readerIndex++) == 1;
 
         int[][] allUVCoords = new int[6][];
         for (int f = 0; f < 6; f++) {
@@ -205,7 +206,7 @@ public class ByteBufUtils {
 
             @Override
             public boolean shouldRenderDecorationMesh() {
-                return modID.equals("core:ladder");
+                return decorationMesh;
             }
         };
     }
