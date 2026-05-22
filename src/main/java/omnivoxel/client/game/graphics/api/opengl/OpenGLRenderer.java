@@ -241,10 +241,10 @@ public class OpenGLRenderer implements Renderer {
 
         blitToWindowFramebuffer();
 
-//        addFrameAction(this::prepareGuiRendering);
-//        addFrameAction(this.menuSystem::tick);
-//        addFrameAction(this::resetGuiRendering);
-        renderDebugText();
+        prepareGuiRendering();
+        menuSystem.tick();
+        resetGuiRendering();
+//        renderDebugText();
         openGLStateReset();
 
         cleanupOpenGL();
