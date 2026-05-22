@@ -28,6 +28,8 @@ public class ByteBufUtils {
         Vertex[][] vertices = new Vertex[6][];
         int[][] indices = new int[6][];
         boolean[] solid = new boolean[6];
+        boolean[] coverable = new boolean[6];
+        boolean[] coversOppositeSelfFace = new boolean[6];
 
         for (int face = 0; face < 6; face++) {
             int vCount = byteBuf.readUnsignedShort();
@@ -48,9 +50,11 @@ public class ByteBufUtils {
             indices[face] = idx;
 
             solid[face] = byteBuf.readByte() != 0;
+            coverable[face] = byteBuf.readByte() != 0;
+            coversOppositeSelfFace[face] = byteBuf.readByte() != 0;
         }
 
-        BlockShape blockShape = new BlockShape(id, vertices, indices, solid);
+        BlockShape blockShape = new BlockShape(id, vertices, indices, solid, coverable, coversOppositeSelfFace);
 
         shapeCache.put(id, blockShape);
     }
@@ -124,9 +128,9 @@ public class ByteBufUtils {
         final BlockHitbox[] hitbox = hitboxCache.getOrDefault(hitboxID, BlockHitbox.EMPTY_BLOCK_HITBOX);
         hitboxCache.put(hitboxID, hitbox);
 
-        boolean transparent = byteBuf.getByte(readerIndex++) == 1;
         boolean transparentMesh = byteBuf.getByte(readerIndex++) == 1;
         boolean decorationMesh = byteBuf.getByte(readerIndex++) == 1;
+        boolean isSelfOccluded = byteBuf.getByte(readerIndex++) == 1;
 
         int[][] allUVCoords = new int[6][];
         for (int f = 0; f < 6; f++) {
@@ -164,19 +168,13 @@ public class ByteBufUtils {
 
             // TODO: Add rules for block shape
             @Override
-            public BlockShape getShape(BlockMesh top, BlockMesh bottom, BlockMesh north, BlockMesh south, BlockMesh east, BlockMesh west) {
+            public BlockShape getShape() {
                 return blockShape;
             }
 
             @Override
             public BlockHitbox[] getHitbox() {
                 return hitbox;
-            }
-
-            // TODO: Make "transparent" face dependent
-            @Override
-            public boolean shouldRenderFace(BlockFace face, BlockMesh adjacentBlockMesh) {
-                return !modID.equals("omnivoxel:air") && !adjacentBlockMesh.getModID().equals(modID) && adjacentBlockMesh.isTransparent();
             }
 
             @Override
@@ -195,11 +193,6 @@ public class ByteBufUtils {
             }
 
             @Override
-            public boolean isTransparent() {
-                return transparent;
-            }
-
-            @Override
             public boolean shouldRenderTransparentMesh() {
                 return transparentMesh;
             }
@@ -207,6 +200,11 @@ public class ByteBufUtils {
             @Override
             public boolean shouldRenderDecorationMesh() {
                 return decorationMesh;
+            }
+
+            @Override
+            public boolean isSelfOccluded() {
+                return isSelfOccluded;
             }
         };
     }

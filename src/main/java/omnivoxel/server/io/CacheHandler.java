@@ -21,7 +21,6 @@ import java.util.Set;
 
 public class CacheHandler {
     public static void cache(CacheItem item) {
-        System.out.println(CacheIO.size());
         Path path;
         byte[] bytes;
         switch (item) {

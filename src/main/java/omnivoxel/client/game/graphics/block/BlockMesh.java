@@ -14,7 +14,7 @@ public abstract class BlockMesh {
 
     public abstract String getModID();
 
-    public abstract BlockShape getShape(BlockMesh top, BlockMesh bottom, BlockMesh north, BlockMesh south, BlockMesh east, BlockMesh west);
+    public abstract BlockShape getShape();
 
     public abstract BlockHitbox[] getHitbox();
 
@@ -24,13 +24,11 @@ public abstract class BlockMesh {
 
     public abstract byte getLightEmitting(LightChannels channel);
 
-    public abstract boolean isTransparent();
-
     public abstract boolean shouldRenderTransparentMesh();
 
     public abstract boolean shouldRenderDecorationMesh();
 
-    public abstract boolean shouldRenderFace(BlockFace face, BlockMesh adjacentBlockMesh);
+    public abstract boolean isSelfOccluded();
 
     public String getState() {
         return state;

@@ -155,14 +155,14 @@ public class ChunkMeshDataGenerator {
             BlockMesh[] blockMeshes,
             Position3D chunkPosition) {
 
-        BlockShape shape = blockMesh.getShape(top, bottom, north, south, east, west);
+        BlockShape shape = blockMesh.getShape();
 
-        boolean renderTop = shouldRenderFaceCached(blockMesh, shape, top, BlockFace.TOP, top, bottom, north, south, east, west);
-        boolean renderBottom = shouldRenderFaceCached(blockMesh, shape, bottom, BlockFace.BOTTOM, top, bottom, north, south, east, west);
-        boolean renderNorth = shouldRenderFaceCached(blockMesh, shape, north, BlockFace.NORTH, top, bottom, north, south, east, west);
-        boolean renderSouth = shouldRenderFaceCached(blockMesh, shape, south, BlockFace.SOUTH, top, bottom, north, south, east, west);
-        boolean renderEast = shouldRenderFaceCached(blockMesh, shape, east, BlockFace.EAST, top, bottom, north, south, east, west);
-        boolean renderWest = shouldRenderFaceCached(blockMesh, shape, west, BlockFace.WEST, top, bottom, north, south, east, west);
+        boolean renderTop = shouldRenderFaceCached(blockMesh, shape, top, BlockFace.TOP);
+        boolean renderBottom = shouldRenderFaceCached(blockMesh, shape, bottom, BlockFace.BOTTOM);
+        boolean renderNorth = shouldRenderFaceCached(blockMesh, shape, north, BlockFace.NORTH);
+        boolean renderSouth = shouldRenderFaceCached(blockMesh, shape, south, BlockFace.SOUTH);
+        boolean renderEast = shouldRenderFaceCached(blockMesh, shape, east, BlockFace.EAST);
+        boolean renderWest = shouldRenderFaceCached(blockMesh, shape, west, BlockFace.WEST);
 
         if (renderTop)
             addFacePrecomputedShape(x, y, z, blockMesh, shape, BlockFace.TOP, vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
@@ -178,19 +178,35 @@ public class ChunkMeshDataGenerator {
             addFacePrecomputedShape(x, y, z, blockMesh, shape, BlockFace.WEST, vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
     }
 
-    private boolean shouldRenderFaceCached(BlockMesh originalBlockMesh, BlockShape originalShape, BlockMesh adjacentBlockMesh, BlockFace face,
-                                           BlockMesh top, BlockMesh bottom, BlockMesh north, BlockMesh south, BlockMesh east, BlockMesh west) {
+    private boolean shouldRenderFaceCached(BlockMesh originalBlockMesh, BlockShape originalShape, BlockMesh adjacentBlockMesh, BlockFace face) {
         if (adjacentBlockMesh == null) {
+            Logger.warn("Adjacent block mesh is null");
             return true;
         }
 
-        if (adjacentBlockMesh.isTransparent() && !Objects.equals(adjacentBlockMesh.getModID(), originalBlockMesh.getModID())) {
+        if (!originalShape.coverable()[face.ordinal()]) {
             return true;
         }
 
-        BlockShape adjBlockShape = adjacentBlockMesh.getShape(top, bottom, north, south, east, west);
-        return !(originalShape.solid()[face.ordinal()] && adjBlockShape.solid()[face.ordinal()])
-                && originalBlockMesh.shouldRenderFace(face, adjacentBlockMesh);
+        if (adjacentBlockMesh.getShape().solid()[face.opposite().ordinal()]) {
+            return false;
+        }
+
+        if (originalBlockMesh.isSelfOccluded() && originalBlockMesh.getModID().equals(adjacentBlockMesh.getModID())) {
+            return false;
+        }
+
+        if (originalShape.id().equals(adjacentBlockMesh.getShape().id()) && originalShape.coversOppositeSelfFace()[face.opposite().ordinal()]) {
+            return false;
+        }
+
+//        if (adjacentBlockMesh.isTransparent() && originalBlockMesh.isTransparent() && !Objects.equals(adjacentBlockMesh.getModID(), originalBlockMesh.getModID())) {
+//            return true;
+//        }
+//
+//        return !((originalShape.solid()[face.ordinal()] || originalBlockMesh.isTransparent()) && adjacentBlockMesh.getShape().solid()[face.ordinal()]);
+////                && originalBlockMesh.shouldRenderFace(face, adjacentBlockMesh);
+        return true;
     }
 
     private void addFacePrecomputedShape(
@@ -405,9 +421,9 @@ public class ChunkMeshDataGenerator {
         int sampleY = by + ny;
         int sampleZ = bz + nz;
 
-        boolean side1 = isAmbientOccluder(blockMeshes, sampleX + tx1, sampleY + ty1, sampleZ + tz1);
-        boolean side2 = isAmbientOccluder(blockMeshes, sampleX + tx2, sampleY + ty2, sampleZ + tz2);
-        boolean corner = isAmbientOccluder(blockMeshes, sampleX + tx1 + tx2, sampleY + ty1 + ty2, sampleZ + tz1 + tz2);
+        boolean side1 = isAmbientOccluder(blockMeshes, sampleX + tx1, sampleY + ty1, sampleZ + tz1, face);
+        boolean side2 = isAmbientOccluder(blockMeshes, sampleX + tx2, sampleY + ty2, sampleZ + tz2, face);
+        boolean corner = isAmbientOccluder(blockMeshes, sampleX + tx1 + tx2, sampleY + ty1 + ty2, sampleZ + tz1 + tz2, face);
 
         if (side1 && side2) {
             return 1;
@@ -420,7 +436,7 @@ public class ChunkMeshDataGenerator {
         return coordinate < 0.5f ? -1 : 1;
     }
 
-    private boolean isAmbientOccluder(BlockMesh[] blockMeshes, int x, int y, int z) {
+    private boolean isAmbientOccluder(BlockMesh[] blockMeshes, int x, int y, int z, BlockFace face) {
         if (x < -1 || x > ConstantCommonSettings.CHUNK_WIDTH ||
                 y < -1 || y > ConstantCommonSettings.CHUNK_HEIGHT ||
                 z < -1 || z > ConstantCommonSettings.CHUNK_LENGTH) {
@@ -428,7 +444,7 @@ public class ChunkMeshDataGenerator {
         }
 
         BlockMesh blockMesh = blockMeshes[IndexCalculator.calculateBlockIndexPadded(x, y, z)];
-        return blockMesh != null && !blockMesh.isTransparent();
+        return blockMesh != null && blockMesh.getShape().solid()[face.ordinal()] && blockMesh.getShape().coverable()[face.ordinal()];
     }
 
     private int booleanValue(boolean value) {

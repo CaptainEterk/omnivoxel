@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolean[] solid) {
+public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolean[] solid, boolean[] coverable, boolean[] coversOppositeSelfFace) {
     public static final String DEFAULT_BLOCK_SHAPE_STRING = "omnivoxel:default_block_shape";
     public static final String EMPTY_BLOCK_SHAPE_STRING = "omnivoxel:empty_block_shape";
     // Default unit cube vertices
@@ -63,52 +63,50 @@ public record BlockShape(String id, Vertex[][] vertices, int[][] indices, boolea
             {0, 1, 2, 2, 3, 0},
     };
     private static final boolean[] CUBE_SOLID = {true, true, true, true, true, true};
-    public static final BlockShape DEFAULT_BLOCK_SHAPE = new BlockShape(BlockShape.DEFAULT_BLOCK_SHAPE_STRING, CUBE_VERTICES, CUBE_INDICES, CUBE_SOLID);
+    private static final boolean[] CUBE_COVERABLE = {true, true, true, true, true, true};
+    private static final boolean[] CUBE_COVERS_OPPOSITE_SELF_FACE = {true, true, true, true, true, true};
+    public static final BlockShape DEFAULT_BLOCK_SHAPE = new BlockShape(BlockShape.DEFAULT_BLOCK_SHAPE_STRING, CUBE_VERTICES, CUBE_INDICES, CUBE_SOLID, CUBE_COVERABLE, CUBE_COVERS_OPPOSITE_SELF_FACE);
     private static final Vertex[][] EMPTY_VERTICES = new Vertex[6][0];
     private static final int[][] EMPTY_INDICES = new int[6][0];
     private static final boolean[] EMPTY_SOLID = new boolean[6];
+    private static final boolean[] EMPTY_COVERABLE = new boolean[6];
+    private static final boolean[] EMPTY_COVERS_OPPOSITE_SELF_FACE = new boolean[6];
     public static final BlockShape EMPTY_BLOCK_SHAPE =
-            new BlockShape(BlockShape.EMPTY_BLOCK_SHAPE_STRING, EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID);
+            new BlockShape(BlockShape.EMPTY_BLOCK_SHAPE_STRING, EMPTY_VERTICES, EMPTY_INDICES, EMPTY_SOLID, EMPTY_COVERABLE, EMPTY_COVERS_OPPOSITE_SELF_FACE);
 
     public byte[] getBytes() {
-        // Encode key
         byte[] idBytes = id == null ? new byte[0] : id.getBytes(StandardCharsets.UTF_8);
         int idLen = idBytes.length;
 
-        // First, compute required capacity
-        int capacity = 2 + idLen; // key length + key bytes
+        int capacity = 2 + idLen;
         for (int face = 0; face < 6; face++) {
-            capacity += Short.BYTES; // vertex count
-            capacity += vertices[face].length * (3 * Float.BYTES); // vertex data
-            capacity += Short.BYTES; // index count
-            capacity += indices[face].length * Integer.BYTES; // indices
-            capacity += 1; // solid flag
+            capacity += Short.BYTES;
+            capacity += vertices[face].length * (3 * Float.BYTES);
+            capacity += Short.BYTES;
+            capacity += indices[face].length * Integer.BYTES;
+            capacity += 3;
         }
 
         ByteBuffer buffer = ByteBuffer.allocate(capacity).order(ByteOrder.BIG_ENDIAN);
 
-        // Write key
         buffer.putShort((short) idLen);
         buffer.put(idBytes);
 
-        // Write shape data
         for (int face = 0; face < 6; face++) {
-            // vertices
             buffer.putShort((short) vertices[face].length);
             for (Vertex v : vertices[face]) {
                 buffer.putFloat(v.px());
                 buffer.putFloat(v.py());
                 buffer.putFloat(v.pz());
             }
-
-            // indices
             buffer.putShort((short) indices[face].length);
             for (int idx : indices[face]) {
                 buffer.putInt(idx);
             }
 
-            // solid
             buffer.put((byte) (solid[face] ? 1 : 0));
+            buffer.put((byte) (coverable[face] ? 1 : 0));
+            buffer.put((byte) (coversOppositeSelfFace[face] ? 1 : 0));
         }
 
         return buffer.array();

@@ -20,4 +20,16 @@ public enum BlockFace {
     public int getPaddedNeighborOffset() {
         return paddedNeighborOffset;
     }
+
+    public BlockFace opposite() {
+        return switch (this) {
+            case TOP -> BOTTOM;
+            case BOTTOM -> TOP;
+            case NORTH -> SOUTH;
+            case SOUTH -> NORTH;
+            case EAST -> WEST;
+            case WEST -> EAST;
+            case NONE -> NONE;
+        };
+    }
 }

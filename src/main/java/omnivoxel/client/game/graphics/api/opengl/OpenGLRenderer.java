@@ -28,6 +28,7 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.util.executor.ExecutorCollection;
+import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.time.PeriodicTimeExecutor;
 import omnivoxel.util.time.Timer;
@@ -233,9 +234,7 @@ public class OpenGLRenderer implements Renderer {
         calculateFrustumChunks();
 
         renderSolidChunks();
-        OpenGLChecks.checkError("frame");
         renderDecorationChunks();
-        OpenGLChecks.checkError("frame2");
         renderTransparentChunks();
 
         bufferizeChunks();
@@ -460,7 +459,42 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("geometry_culled_chunks", occluded);
     }
 
+    private void setMipmapping(boolean mipmapped) {
+        if (mipmapped) {
+            // Enable mipmaps
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MIN_FILTER,
+                    GL11C.GL_NEAREST_MIPMAP_LINEAR);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MAG_FILTER,
+                    GL11C.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    1000);
+        } else {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MIN_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MAG_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_BASE_LEVEL,
+                    0);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    0);
+        }
+    }
+
     private void renderDecorationChunks() {
+        GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
+        setMipmapping(false);
         GL11C.glDepthFunc(GL11C.GL_LEQUAL);
         GL11C.glDisable(GL11C.GL_CULL_FACE);
         for (PositionedChunk positionedChunk : decorationRenderedChunksInFrustum) {
@@ -470,6 +504,7 @@ public class OpenGLRenderer implements Renderer {
                 renderVAO(positionedChunk.chunk().getMesh().decorationVAO(), positionedChunk.chunk().getMesh().decorationIndexCount());
             }
         }
+        setMipmapping(true);
     }
 
     private void renderTransparentChunks() {
@@ -636,7 +671,7 @@ public class OpenGLRenderer implements Renderer {
                     camera.getY(),
                     camera.getZ(),
                     state.getItem("deltaTime", Double.class),
-                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size()+decorationRenderedChunksInFrustum.size(),
+                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size() + decorationRenderedChunksInFrustum.size(),
                     solidRenderedChunksInFrustum.size(),
                     decorationRenderedChunksInFrustum.size(),
                     transparentRenderedChunksInFrustum.size(),

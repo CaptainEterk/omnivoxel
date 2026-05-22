@@ -56,9 +56,9 @@ public final class Game {
                 String blockState = Game.checkGameNodeType(objectStateNode.object().get("id"), StringGameNode.class).value();
                 String blockShape = Game.checkGameNodeType(objectStateNode.object().get("block_shape"), StringGameNode.class).value();
                 String blockHitbox = Game.checkGameNodeType(objectStateNode.object().get("block_hitbox"), StringGameNode.class).value();
-                boolean transparent = Game.checkGameNodeType(objectStateNode.object().get("transparent"), BooleanGameNode.class).value();
                 boolean transparentMesh = Game.checkGameNodeType(objectStateNode.object().get("transparent_mesh"), BooleanGameNode.class).value();
                 boolean decorationMesh = Game.checkGameNodeType(objectStateNode.object().get("decoration_mesh"), BooleanGameNode.class).value();
+                boolean isSelfOccluded = Game.checkGameNodeType(objectStateNode.object().get("self_occluded"), BooleanGameNode.class).value();
                 ObjectGameNode texture = Game.checkGameNodeType(objectStateNode.object().get("texture"), ObjectGameNode.class);
                 ArrayGameNode lightEmittingNode = Game.checkGameNodeType(objectStateNode.object().get("light_emitting"), ArrayGameNode.class);
                 byte[] lightEmitting = new byte[3];
@@ -106,7 +106,7 @@ public final class Game {
                     throw new IllegalArgumentException("\"" + uvMapping + "\" is not a valid uv_mapping");
                 }
 
-                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparent, transparentMesh, decorationMesh, lightEmitting, lightDefusing, blockHitbox));
+                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparentMesh, decorationMesh, isSelfOccluded, lightEmitting, lightDefusing, blockHitbox));
             }
         }
 
@@ -135,14 +135,46 @@ public final class Game {
                 indices[i] = vs;
             }
 
+            boolean[] solid;
             ArrayGameNode solidNode = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("solid"), ArrayGameNode.class);
-            GameNode[] nodes = solidNode.nodes();
-            boolean[] solid = new boolean[nodes.length];
-            for (int i = 0; i < nodes.length; i++) {
-                solid[i] = Game.checkGameNodeType(nodes[i], BooleanGameNode.class).value();
+            if (solidNode != null && solidNode.nodes().length == 6) {
+                GameNode[] solidNodes = solidNode.nodes();
+                solid = new boolean[solidNodes.length];
+                for (int i = 0; i < solidNodes.length; i++) {
+                    solid[i] = Game.checkGameNodeType(solidNodes[i], BooleanGameNode.class).value();
+                }
+            } else {
+                Logger.warn("Property \"solid\" for block shape " + id + " must have a length of 6 (one for each face)");
+                solid = new boolean[6];
             }
 
-            blockShapeCache.put(gameID + ":" + id, new BlockShape(gameID + ":" + id, vertices, indices, solid));
+            boolean[] coverable;
+            ArrayGameNode coverableNode = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("coverable"), ArrayGameNode.class);
+            if (coverableNode != null && coverableNode.nodes().length == 6) {
+                GameNode[] coverableNodes = coverableNode.nodes();
+                coverable = new boolean[coverableNodes.length];
+                for (int i = 0; i < coverableNodes.length; i++) {
+                    coverable[i] = Game.checkGameNodeType(coverableNodes[i], BooleanGameNode.class).value();
+                }
+            } else {
+                Logger.warn("Property \"coverable\" for block shape " + id + " must have a length of 6 (one for each face)");
+                coverable = new boolean[6];
+            }
+
+            boolean[] coversOppositeSelfFace;
+            ArrayGameNode coversOppositeSelfFaceNode = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("covers_opposite_self_face"), ArrayGameNode.class);
+            if (coversOppositeSelfFaceNode != null && coversOppositeSelfFaceNode.nodes().length == 6) {
+                GameNode[] coversOppositeSelfFaceNodes = coversOppositeSelfFaceNode.nodes();
+                coversOppositeSelfFace = new boolean[coversOppositeSelfFaceNodes.length];
+                for (int i = 0; i < coversOppositeSelfFaceNodes.length; i++) {
+                    coversOppositeSelfFace[i] = Game.checkGameNodeType(coversOppositeSelfFaceNodes[i], BooleanGameNode.class).value();
+                }
+            } else {
+                Logger.warn("Property \"covers_opposite_self_face\" for block shape " + id + " must have a length of 6 (one for each face)");
+                coversOppositeSelfFace = new boolean[6];
+            }
+
+            blockShapeCache.put(gameID + ":" + id, new BlockShape(gameID + ":" + id, vertices, indices, solid, coverable, coversOppositeSelfFace));
         }
 
         blockShapeCache.put(BlockShape.EMPTY_BLOCK_SHAPE_STRING, BlockShape.EMPTY_BLOCK_SHAPE);

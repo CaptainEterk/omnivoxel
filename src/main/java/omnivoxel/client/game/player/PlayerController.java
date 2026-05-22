@@ -39,6 +39,7 @@ public class PlayerController {
     private static final byte COLLISION_Z = 4;
     private static final byte COLLISION_DONE = 0b111;
     private static final String[] blocks = new String[]{
+            "core:flower/default",
             "core:red_light_block/default",
             "core:green_light_block/default",
             "core:blue_light_block/default",
@@ -52,7 +53,10 @@ public class PlayerController {
             "core:planks/default",
             "core:glass/default",
             "core:ladder/default",
+            "core:planks_slab/top",
+            "core:planks_slab/bottom"
     };
+    private static final double MAX_STEP_HEIGHT = 0.5;
     private final Client client;
     private final Camera camera;
     private final Settings settings;
@@ -64,7 +68,6 @@ public class PlayerController {
     private double speed;
     @NotNull
     private MovementMode movementMode = MovementMode.FALL_COLLIDE;
-
     private double x;
     private double y;
     private double z;
@@ -328,7 +331,7 @@ public class PlayerController {
         }
         state.setItem("friction_factor", frictionFactor);
 
-        boolean shouldUpdate = velocityX != 0 || velocityY != 0 || velocityZ != 0 || changeRot.get();
+        boolean shouldUpdate = Math.abs(velocityX) > 0.001 || Math.abs(velocityY) > 0.001 || Math.abs(velocityZ) > 0.001 || changeRot.get();
 
         handleMovement(deltaTime, movementMode != MovementMode.FLY);
 
@@ -485,19 +488,25 @@ public class PlayerController {
             if ((collisionDone & COLLISION_X) == 0) {
                 double targetX = x + velocityX * stepDeltaTime;
                 if (isSolidAt(targetX, y, z)) {
-                    double low = x;
-                    double high = targetX;
-                    for (int iter = 0; iter < collisionCount; iter++) {
-                        double mid = (low + high) * 0.5;
-                        if (isSolidAt(mid, y, z)) {
-                            high = mid;
-                        } else {
-                            low = mid;
+                    if (onGround && !isSolidAt(targetX, y + MAX_STEP_HEIGHT, z)) {
+                        y += MAX_STEP_HEIGHT;
+                        x = targetX;
+                        collisionDone &= ~COLLISION_X;
+                    } else {
+                        double low = x;
+                        double high = targetX;
+                        for (int iter = 0; iter < collisionCount; iter++) {
+                            double mid = (low + high) * 0.5;
+                            if (isSolidAt(mid, y, z)) {
+                                high = mid;
+                            } else {
+                                low = mid;
+                            }
                         }
+                        x = low;
+                        velocityX = 0;
+                        collisionDone |= COLLISION_X;
                     }
-                    x = low;
-                    velocityX = 0;
-                    collisionDone |= COLLISION_X;
                 } else {
                     x = targetX;
                     collisionDone &= ~COLLISION_X;
@@ -507,19 +516,25 @@ public class PlayerController {
             if ((collisionDone & COLLISION_Z) == 0) {
                 double targetZ = z + velocityZ * stepDeltaTime;
                 if (isSolidAt(x, y, targetZ)) {
-                    double low = z;
-                    double high = targetZ;
-                    for (int iter = 0; iter < collisionCount; iter++) {
-                        double mid = (low + high) * 0.5;
-                        if (isSolidAt(x, y, mid)) {
-                            high = mid;
-                        } else {
-                            low = mid;
+                    if (onGround && !isSolidAt(x, y + MAX_STEP_HEIGHT, targetZ)) {
+                        y += MAX_STEP_HEIGHT;
+                        z = targetZ;
+                        collisionDone &= ~COLLISION_Z;
+                    } else {
+                        double low = z;
+                        double high = targetZ;
+                        for (int iter = 0; iter < collisionCount; iter++) {
+                            double mid = (low + high) * 0.5;
+                            if (isSolidAt(x, y, mid)) {
+                                high = mid;
+                            } else {
+                                low = mid;
+                            }
                         }
+                        z = low;
+                        velocityZ = 0;
+                        collisionDone |= COLLISION_Z;
                     }
-                    z = low;
-                    velocityZ = 0;
-                    collisionDone |= COLLISION_Z;
                 } else {
                     z = targetZ;
                     collisionDone &= ~COLLISION_Z;
