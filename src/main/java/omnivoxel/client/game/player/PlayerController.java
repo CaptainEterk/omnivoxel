@@ -54,7 +54,8 @@ public class PlayerController {
             "core:glass/default",
             "core:ladder/default",
             "core:planks_slab/top",
-            "core:planks_slab/bottom"
+            "core:planks_slab/bottom",
+            "core:planks_vertical_slab/default"
     };
     private static final double MAX_STEP_HEIGHT = 0.5;
     private final Client client;
@@ -155,13 +156,15 @@ public class PlayerController {
                     if (block != null) {
                         BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
                         BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
-                            if (bh.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
-                                if (bh.volumeProperties().isVolume()) {
-                                    if (speed > bh.volumeProperties().speed()) {
-                                        speed = bh.volumeProperties().speed();
+                            BlockHitbox rotatedHitbox = bh.rotateY(rotation);
+                            if (rotatedHitbox.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
+                                if (rotatedHitbox.volumeProperties().isVolume()) {
+                                    if (speed > rotatedHitbox.volumeProperties().speed()) {
+                                        speed = rotatedHitbox.volumeProperties().speed();
                                     }
-                                    if (!onGround && bh.volumeProperties().isGround()) {
+                                    if (!onGround && rotatedHitbox.volumeProperties().isGround()) {
                                         onGround = true;
                                     }
                                 }
@@ -215,9 +218,11 @@ public class PlayerController {
                     if (block != null) {
                         BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
                         BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
-                            if (bh.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
-                                if (!bh.volumeProperties().isVolume()) {
+                            BlockHitbox rotatedHitbox = bh.rotateY(rotation);
+                            if (rotatedHitbox.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
+                                if (!rotatedHitbox.volumeProperties().isVolume()) {
                                     return true;
                                 }
                             }
@@ -242,6 +247,11 @@ public class PlayerController {
         BooleanRef changeRot = new BooleanRef(false);
         if (mouseButtonInput.isMouseLocked()) {
             handleInput(deltaTime, changeRot, movementMode != MovementMode.FALL_COLLIDE);
+            Position3D currentObservedBlock = findObservedBlock(false);
+            state.setItem("has_observed_block", currentObservedBlock != null);
+            if (currentObservedBlock != null) {
+                state.setItem("observed_block", currentObservedBlock);
+            }
 
             if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
                 if (!leftMouseDown) {
@@ -275,21 +285,18 @@ public class PlayerController {
                         int chunkY = IndexCalculator.chunkY(observedBlock.y());
                         int chunkZ = IndexCalculator.chunkZ(observedBlock.z());
 
-                        int localX = IndexCalculator.localX(observedBlock.x());
-                        int localY = IndexCalculator.localY(observedBlock.y());
-                        int localZ = IndexCalculator.localZ(observedBlock.z());
-
-                        Block block = world.get(new Position3D(chunkX, chunkY, chunkZ), false, false).getChunkData().getBlock(localX, localY, localZ);
-                        BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
+                        BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
+                        BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
                         BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                        byte rotation = blockMesh.isRotatable() ? rotationFromYaw() : 0;
 
-                        float lx = (float) (x - Math.floor(x));
-                        float ly = (float) (y - Math.floor(y));
-                        float lz = (float) (z - Math.floor(z));
+                        float lx = (float) (x - observedBlock.x());
+                        float ly = (float) (y - observedBlock.y());
+                        float lz = (float) (z - observedBlock.z());
 
                         boolean isColliding = false;
                         for (BlockHitbox bh : blockHitbox) {
-                            if (bh.isColliding(hitbox, lx, ly, lz)) {
+                            if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
                                 isColliding = true;
                                 break;
                             }
@@ -298,7 +305,7 @@ public class PlayerController {
                         if (isColliding) {
                             Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
                         } else {
-                            client.sendRequest(new BlockReplaceRequest(observedBlock, blockService.getBlock(blocks[selectedBlock])));
+                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, rotation));
                         }
                     }
                 }
@@ -309,6 +316,7 @@ public class PlayerController {
                 contextTasks.add(mouseButtonInput::unlockMouse);
             }
         } else if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
+            state.setItem("has_observed_block", false);
             contextTasks.add(mouseButtonInput::lockMouse);
         }
         mouseInput.clearDelta();
@@ -403,9 +411,10 @@ public class PlayerController {
             } else {
                 BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
                 BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                byte rotation = blockMesh.isRotatable() ? clientWorldChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
                 boolean intersects = false;
                 for (BlockHitbox bh : blockHitbox) {
-                    if (bh.intersectsRay(originX, originY, originZ, dirX, dirY, dirZ, x, y, z)) {
+                    if (bh.rotateY(rotation).intersectsRay(originX, originY, originZ, dirX, dirY, dirZ, x, y, z)) {
                         intersects = true;
                         break;
                     }
@@ -442,6 +451,14 @@ public class PlayerController {
             }
         }
         return null;
+    }
+
+    private byte rotationFromYaw() {
+        double normalizedYaw = yaw % (Math.PI * 2.0);
+        if (normalizedYaw < 0) {
+            normalizedYaw += Math.PI * 2.0;
+        }
+        return (byte) ((3 - Math.round(normalizedYaw / (Math.PI / 2.0))) & 3);
     }
 
     private void handleMovement(double deltaTime, boolean collide) {

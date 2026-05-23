@@ -3,7 +3,6 @@ package omnivoxel.server.client.chunk.result.generated;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.network.NetworkService;
 import omnivoxel.common.settings.ConstantCommonSettings;
-import omnivoxel.server.BlockIDCount;
 import omnivoxel.server.PackageID;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
@@ -29,20 +28,23 @@ public abstract class GeneratedChunk {
         Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(ServerBlock.AIR);
         List<ServerBlock> palette = new ArrayList<>();
         int[] chunk = new int[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
+        byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
         int chunkByteOffset = 0;
         for (int x = -1; x < ConstantCommonSettings.CHUNK_WIDTH + 1; x++) {
             for (int z = -1; z < ConstantCommonSettings.CHUNK_LENGTH + 1; z++) {
                 for (int y = -1; y < ConstantCommonSettings.CHUNK_HEIGHT + 1; y++) {
                     ServerBlock block = generatedChunk.getBlock(x, y, z);
+                    byte rotation = generatedChunk.getBlockRotation(x, y, z);
                     if (!palette.contains(block)) {
                         palette.add(block);
                     }
                     if (x > 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                             y > 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
                             z > 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
-                        chunkOut = chunkOut.setBlock(x, y, z, block);
+                        chunkOut = chunkOut.setBlock(x, y, z, block, rotation);
                     }
                     chunk[chunkByteOffset] = palette.indexOf(block);
+                    rotations[chunkByteOffset] = rotation;
                     chunkByteOffset++;
                 }
             }
@@ -57,31 +59,42 @@ public abstract class GeneratedChunk {
             });
         }
 
-        List<BlockIDCount> chunkData = new ArrayList<>();
-        int count = 0;
-        int currentID = 0;
-        for (int id : chunk) {
-            if (currentID != id) {
-                chunkData.add(new BlockIDCount(currentID, count));
-                currentID = id;
-                count = 1;
-            } else {
+        List<Integer> runBlockIDs = new ArrayList<>();
+        List<Integer> runCounts = new ArrayList<>();
+        List<Byte> runRotations = new ArrayList<>();
+        int currentID = chunk[0];
+        byte currentRotation = rotations[0];
+        int count = 1;
+        for (int i = 1; i < chunk.length; i++) {
+            if (chunk[i] == currentID && rotations[i] == currentRotation) {
                 count++;
+                continue;
             }
+            runBlockIDs.add(currentID);
+            runCounts.add(count);
+            runRotations.add(currentRotation);
+            currentID = chunk[i];
+            currentRotation = rotations[i];
+            count = 1;
         }
-        chunkData.add(new BlockIDCount(currentID, count));
+        runBlockIDs.add(currentID);
+        runCounts.add(count);
+        runRotations.add(currentRotation);
 
-        byte[] chunkBytes = new byte[chunkData.size() * 8];
-        for (int i = 0; i < chunkData.size(); i++) {
-            BlockIDCount blockIDCount = chunkData.get(i);
-            chunkBytes[i * 8] = (byte) (blockIDCount.blockID() >> 24);
-            chunkBytes[i * 8 + 1] = (byte) (blockIDCount.blockID() >> 16);
-            chunkBytes[i * 8 + 2] = (byte) (blockIDCount.blockID() >> 8);
-            chunkBytes[i * 8 + 3] = (byte) (blockIDCount.blockID());
-            chunkBytes[i * 8 + 4] = (byte) (blockIDCount.count() >> 24);
-            chunkBytes[i * 8 + 5] = (byte) (blockIDCount.count() >> 16);
-            chunkBytes[i * 8 + 6] = (byte) (blockIDCount.count() >> 8);
-            chunkBytes[i * 8 + 7] = (byte) (blockIDCount.count());
+        byte[] chunkBytes = new byte[runBlockIDs.size() * 9];
+        for (int i = 0; i < runBlockIDs.size(); i++) {
+            int blockID = runBlockIDs.get(i);
+            int blockCount = runCounts.get(i);
+            int offset = i * 9;
+            chunkBytes[offset] = (byte) (blockID >> 24);
+            chunkBytes[offset + 1] = (byte) (blockID >> 16);
+            chunkBytes[offset + 2] = (byte) (blockID >> 8);
+            chunkBytes[offset + 3] = (byte) blockID;
+            chunkBytes[offset + 4] = (byte) (blockCount >> 24);
+            chunkBytes[offset + 5] = (byte) (blockCount >> 16);
+            chunkBytes[offset + 6] = (byte) (blockCount >> 8);
+            chunkBytes[offset + 7] = (byte) blockCount;
+            chunkBytes[offset + 8] = runRotations.get(i);
         }
 
         List<byte[]> paletteBytesList = new ArrayList<>();
@@ -113,4 +126,8 @@ public abstract class GeneratedChunk {
     abstract public ServerBlock getBlock(int x, int y, int z);
 
     abstract public GeneratedChunk setBlock(int x, int y, int z, @NotNull ServerBlock block);
+
+    abstract public byte getBlockRotation(int x, int y, int z);
+
+    abstract public GeneratedChunk setBlockRotation(int x, int y, int z, byte rotation);
 }

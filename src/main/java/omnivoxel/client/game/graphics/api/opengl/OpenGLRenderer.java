@@ -5,7 +5,10 @@ import omnivoxel.client.game.graphics.Renderer;
 import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
+import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
+import omnivoxel.client.game.graphics.block.BlockMesh;
+import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
@@ -23,13 +26,17 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.common.annotations.NotNull;
+import omnivoxel.common.BlockShape;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
+import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.executor.ExecutorCollection;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
+import omnivoxel.world.chunk.Chunk;
 import omnivoxel.util.time.PeriodicTimeExecutor;
 import omnivoxel.util.time.Timer;
 import org.joml.Matrix4f;
@@ -42,6 +49,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class OpenGLRenderer implements Renderer {
+    private record WireframeShapeMesh(int vao, int vbo, int ebo, int indexCount) {
+    }
+
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f().identity();
     private static final int FPS_SAMPLES = 60;
     private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
@@ -82,6 +92,7 @@ public class OpenGLRenderer implements Renderer {
     private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
+    private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
 
     public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
         this.state = state;
@@ -150,6 +161,7 @@ public class OpenGLRenderer implements Renderer {
         this.shaderProgram.setUniform("fogFar", settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE);
         this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
         this.shaderProgram.setUniform("blockTexture", 0);
+        this.shaderProgram.setUniform("highlightColor", 0.0f, 0.0f, 0.0f, 0.7f);
         this.shaderProgram.unbind();
 
         this.textShaderProgram.bind();
@@ -167,6 +179,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("shouldCheckNewChunks", false);
         state.setItem("shouldAttemptFreeChunks", false);
         state.setItem("shouldToggleWindowFullscreen", false);
+        state.setItem("has_observed_block", false);
 
         state.setItem("shouldRenderWireframe", false);
         state.setItem("seeDebug", true);
@@ -236,15 +249,16 @@ public class OpenGLRenderer implements Renderer {
         renderSolidChunks();
         renderDecorationChunks();
         renderTransparentChunks();
+        renderBlockHighlight();
 
         bufferizeChunks();
 
         blitToWindowFramebuffer();
 
-        prepareGuiRendering();
-        menuSystem.tick();
-        resetGuiRendering();
-//        renderDebugText();
+//        prepareGuiRendering();
+//        menuSystem.tick();
+//        resetGuiRendering();
+        renderDebugText();
         openGLStateReset();
 
         cleanupOpenGL();
@@ -524,6 +538,160 @@ public class OpenGLRenderer implements Renderer {
             }
         }
         state.setItem("geometry_culled_chunks", state.getItem("geometry_culled_chunks", Integer.class) + occluded);
+    }
+
+    private void renderBlockHighlight() {
+        if (!Boolean.TRUE.equals(state.getItem("has_observed_block", Boolean.class))) {
+            return;
+        }
+
+        Position3D observedBlock = state.getItem("observed_block", Position3D.class);
+        if (observedBlock == null) {
+            return;
+        }
+
+        int chunkX = IndexCalculator.chunkX(observedBlock.x());
+        int chunkY = IndexCalculator.chunkY(observedBlock.y());
+        int chunkZ = IndexCalculator.chunkZ(observedBlock.z());
+        int localX = IndexCalculator.localX(observedBlock.x());
+        int localY = IndexCalculator.localY(observedBlock.y());
+        int localZ = IndexCalculator.localZ(observedBlock.z());
+
+        ClientWorldChunk clientWorldChunk = world.get(new Position3D(chunkX, chunkY, chunkZ), false, false);
+        if (clientWorldChunk == null) {
+            return;
+        }
+
+        Chunk<BlockWithMesh> chunk = clientWorldChunk.getChunkData();
+        if (chunk == null) {
+            return;
+        }
+
+        BlockWithMesh block = chunk.getBlock(localX, localY, localZ);
+        if (block == null) {
+            return;
+        }
+
+        BlockMesh blockMesh = block.blockMesh();
+        if (blockMesh == null || BlockShape.EMPTY_BLOCK_SHAPE_STRING.equals(blockMesh.getShape().id())) {
+            return;
+        }
+
+        WireframeShapeMesh wireframeMesh = wireframeShapeMeshes.computeIfAbsent(blockMesh.getShape().id(), ignored -> createWireframeShapeMesh(blockMesh.getShape()));
+        if (wireframeMesh.indexCount() == 0) {
+            return;
+        }
+
+        byte rotation = blockMesh.isRotatable() ? chunk.getBlockRotation(localX, localY, localZ) : 0;
+        Matrix4f model = new Matrix4f()
+                .translate(observedBlock.x(), observedBlock.y(), observedBlock.z())
+                .translate(0.5f, 0.0f, 0.5f)
+                .rotateY((float) ((rotation & 3) * Math.PI / 2.0))
+                .translate(-0.5f, 0.0f, -0.5f);
+
+        shaderProgram.setUniformUnsigned("meshType", 3);
+        shaderProgram.setUniform("model", model);
+        shaderProgram.setUniform("highlightColor", 0.0f, 0.0f, 0.0f, 0.5f);
+
+        GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+        GL11C.glDepthMask(false);
+        GL11C.glDisable(GL11C.GL_CULL_FACE);
+        GL11C.glEnable(GL11C.GL_BLEND);
+        GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
+        GL11C.glLineWidth(2.0f);
+
+        GL30C.glBindVertexArray(wireframeMesh.vao());
+        GL11C.glDrawElements(GL11C.GL_LINES, wireframeMesh.indexCount(), GL11C.GL_UNSIGNED_INT, 0);
+        GL30C.glBindVertexArray(0);
+
+        GL11C.glLineWidth(1.0f);
+        GL11C.glDepthMask(true);
+    }
+
+    private WireframeShapeMesh createWireframeShapeMesh(BlockShape shape) {
+        List<Float> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+        Map<Vertex, Integer> vertexIndices = new HashMap<>();
+        Set<Long> edges = new HashSet<>();
+
+        for (BlockFace face : BlockFace.values()) {
+            if (face == BlockFace.NONE) {
+                continue;
+            }
+
+            Vertex[] faceVertices = shape.vertices()[face.ordinal()];
+            for (int i = 0; i < faceVertices.length; i++) {
+                int a = getWireframeVertexIndex(faceVertices[i], vertices, vertexIndices);
+                int b = getWireframeVertexIndex(faceVertices[(i + 1) % faceVertices.length], vertices, vertexIndices);
+                addWireframeEdge(a, b, edges, indices);
+            }
+        }
+
+        if (vertices.isEmpty() || indices.isEmpty()) {
+            return new WireframeShapeMesh(0, 0, 0, 0);
+        }
+
+        int vao = GL30C.glGenVertexArrays();
+        GL30C.glBindVertexArray(vao);
+
+        int vbo = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vbo);
+        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, toFloatArray(vertices), GL15C.GL_STATIC_DRAW);
+
+        int ebo = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GL15C.glBufferData(GL15C.GL_ELEMENT_ARRAY_BUFFER, toIntArray(indices), GL15C.GL_STATIC_DRAW);
+
+        GL20C.glEnableVertexAttribArray(3);
+        GL20C.glVertexAttribPointer(3, 3, GL11C.GL_FLOAT, false, 3 * Float.BYTES, 0L);
+
+        GL30C.glBindVertexArray(0);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
+        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        OpenGLChecks.checkError("bufferize block highlight wireframe");
+        return new WireframeShapeMesh(vao, vbo, ebo, indices.size());
+    }
+
+    private int getWireframeVertexIndex(Vertex vertex, List<Float> vertices, Map<Vertex, Integer> vertexIndices) {
+        Integer index = vertexIndices.get(vertex);
+        if (index != null) {
+            return index;
+        }
+
+        int newIndex = vertexIndices.size();
+        vertexIndices.put(vertex, newIndex);
+        vertices.add(vertex.px());
+        vertices.add(vertex.py());
+        vertices.add(vertex.pz());
+        return newIndex;
+    }
+
+    private void addWireframeEdge(int a, int b, Set<Long> edges, List<Integer> indices) {
+        int min = Math.min(a, b);
+        int max = Math.max(a, b);
+        long edge = ((long) min << 32) | (max & 0xFFFFFFFFL);
+        if (edges.add(edge)) {
+            indices.add(min);
+            indices.add(max);
+        }
+    }
+
+    private float[] toFloatArray(List<Float> list) {
+        float[] out = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            out[i] = list.get(i);
+        }
+        return out;
+    }
+
+    private int[] toIntArray(List<Integer> list) {
+        int[] out = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            out[i] = list.get(i);
+        }
+        return out;
     }
 
     private void bufferizeChunks() {
@@ -841,6 +1009,19 @@ public class OpenGLRenderer implements Renderer {
         if (fullscreenQuad != null) {
             fullscreenQuad.cleanup();
         }
+
+        for (WireframeShapeMesh wireframeShapeMesh : wireframeShapeMeshes.values()) {
+            if (wireframeShapeMesh.vao() > 0) {
+                GL30C.glDeleteVertexArrays(wireframeShapeMesh.vao());
+            }
+            if (wireframeShapeMesh.vbo() > 0) {
+                GL15C.glDeleteBuffers(wireframeShapeMesh.vbo());
+            }
+            if (wireframeShapeMesh.ebo() > 0) {
+                GL15C.glDeleteBuffers(wireframeShapeMesh.ebo());
+            }
+        }
+        wireframeShapeMeshes.clear();
 
         if (renderFramebuffer != null) {
             renderFramebuffer.cleanup();

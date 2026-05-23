@@ -16,6 +16,15 @@ public record BlockHitbox(float minX, float minY, float minZ, float maxX, float 
         return bytes;
     }
 
+    public BlockHitbox rotateY(byte rotation) {
+        return switch (rotation & 3) {
+            case 1 -> new BlockHitbox(minZ, minY, 1.0f - maxX, maxZ, maxY, 1.0f - minX, volumeProperties);
+            case 2 -> new BlockHitbox(1.0f - maxX, minY, 1.0f - maxZ, 1.0f - minX, maxY, 1.0f - minZ, volumeProperties);
+            case 3 -> new BlockHitbox(1.0f - maxZ, minY, minX, 1.0f - minZ, maxY, maxX, volumeProperties);
+            default -> this;
+        };
+    }
+
     public boolean isColliding(Hitbox hitbox, float ox, float oy, float oz) {
         return hitboxIntersectsAABB(
                 hitbox.minX() + ox,

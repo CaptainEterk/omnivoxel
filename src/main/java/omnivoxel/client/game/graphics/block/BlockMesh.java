@@ -30,6 +30,8 @@ public abstract class BlockMesh {
 
     public abstract boolean isSelfOccluded();
 
+    public abstract boolean isRotatable();
+
     public String getState() {
         return state;
     }

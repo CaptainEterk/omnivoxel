@@ -15,4 +15,14 @@ public final class EmptyGeneratedChunk extends GeneratedChunk {
     public GeneratedChunk setBlock(int x, int y, int z, @NotNull ServerBlock block) {
         return new ModifiedGeneratedChunk(x, y, z, block, this);
     }
+
+    @Override
+    public byte getBlockRotation(int x, int y, int z) {
+        return 0;
+    }
+
+    @Override
+    public GeneratedChunk setBlockRotation(int x, int y, int z, byte rotation) {
+        return new ModifiedGeneratedChunk(x, y, z, ServerBlock.AIR, rotation, this);
+    }
 }

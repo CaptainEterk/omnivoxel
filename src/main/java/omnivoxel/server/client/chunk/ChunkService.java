@@ -100,6 +100,7 @@ public class ChunkService {
                     int lz = z < 0 ? ConstantCommonSettings.CHUNK_LENGTH - 1 : (z == ConstantCommonSettings.CHUNK_LENGTH ? 0 : z);
 
                     builtChunk = builtChunk.setBlock(x, y, z, chunk.getBlock(lx, ly, lz));
+                    builtChunk = builtChunk.setBlockRotation(x, y, z, chunk.getBlockRotation(lx, ly, lz));
                 }
             }
         }

@@ -131,6 +131,7 @@ public class ByteBufUtils {
         boolean transparentMesh = byteBuf.getByte(readerIndex++) == 1;
         boolean decorationMesh = byteBuf.getByte(readerIndex++) == 1;
         boolean isSelfOccluded = byteBuf.getByte(readerIndex++) == 1;
+        boolean rotatable = byteBuf.getByte(readerIndex++) == 1;
 
         int[][] allUVCoords = new int[6][];
         for (int f = 0; f < 6; f++) {
@@ -205,6 +206,11 @@ public class ByteBufUtils {
             @Override
             public boolean isSelfOccluded() {
                 return isSelfOccluded;
+            }
+
+            @Override
+            public boolean isRotatable() {
+                return rotatable;
             }
         };
     }

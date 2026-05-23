@@ -59,6 +59,8 @@ public final class Game {
                 boolean transparentMesh = Game.checkGameNodeType(objectStateNode.object().get("transparent_mesh"), BooleanGameNode.class).value();
                 boolean decorationMesh = Game.checkGameNodeType(objectStateNode.object().get("decoration_mesh"), BooleanGameNode.class).value();
                 boolean isSelfOccluded = Game.checkGameNodeType(objectStateNode.object().get("self_occluded"), BooleanGameNode.class).value();
+                BooleanGameNode rotatableNode = Game.checkGameNodeType(objectStateNode.object().get("rotatable"), BooleanGameNode.class);
+                boolean rotatable = rotatableNode != null && rotatableNode.value();
                 ObjectGameNode texture = Game.checkGameNodeType(objectStateNode.object().get("texture"), ObjectGameNode.class);
                 ArrayGameNode lightEmittingNode = Game.checkGameNodeType(objectStateNode.object().get("light_emitting"), ArrayGameNode.class);
                 byte[] lightEmitting = new byte[3];
@@ -106,7 +108,7 @@ public final class Game {
                     throw new IllegalArgumentException("\"" + uvMapping + "\" is not a valid uv_mapping");
                 }
 
-                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparentMesh, decorationMesh, isSelfOccluded, lightEmitting, lightDefusing, blockHitbox));
+                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparentMesh, decorationMesh, isSelfOccluded, rotatable, lightEmitting, lightDefusing, blockHitbox));
             }
         }
 

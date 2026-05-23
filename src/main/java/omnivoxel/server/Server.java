@@ -143,9 +143,10 @@ public class Server implements NetworkUser {
                     int bz = byteBuf.getInt(index + Integer.BYTES * 2);
                     int length = byteBuf.getInt(index + Integer.BYTES * 3);
                     byte[] bytes = new byte[length];
-                    byteBuf.getBytes(index + Integer.BYTES * 4, bytes);
+                    byte rotation = (byte) (byteBuf.getByte(index + Integer.BYTES * 4) & 3);
+                    byteBuf.getBytes(index + Integer.BYTES * 4 + 1, bytes);
                     String blockID = new String(bytes);
-                    worldHandler.replaceBlock(bx, by, bz, blockService.getBlock(blockID), clients.get(clientID));
+                    worldHandler.replaceBlock(bx, by, bz, blockService.getBlock(blockID), rotation, clients.get(clientID));
 
                     byteBuf.release();
                     break;
@@ -298,7 +299,7 @@ public class Server implements NetworkUser {
                         break;
                     }
                     byte[] blockBytes = block.serverBlock().getBlockBytes();
-                    byte[] out = new byte[16 + blockBytes.length];
+                    byte[] out = new byte[17 + blockBytes.length];
 
                     int chunkX = Math.floorDiv(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
                     int chunkZ = Math.floorDiv(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
@@ -316,7 +317,8 @@ public class Server implements NetworkUser {
                     }
                     int highestY = chunk2D.getBlock(x, z);
                     ByteUtils.addInt(out, highestY, 12);
-                    System.arraycopy(blockBytes, 0, out, 16, blockBytes.length);
+                    out[16] = (byte) (block.rotation() & 3);
+                    System.arraycopy(blockBytes, 0, out, 17, blockBytes.length);
                     outBytes[i] = out;
                     byteCount += out.length;
                 }

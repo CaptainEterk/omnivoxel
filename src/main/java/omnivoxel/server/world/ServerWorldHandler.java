@@ -31,9 +31,10 @@ public class ServerWorldHandler {
         this.worldGenerator = worldGenerator;
     }
 
-    public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, ServerClient client) {
+    public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, byte rotation, ServerClient client) {
         try {
             if (canModify(worldX, worldY, worldZ, client)) {
+                rotation = block.rotatable() ? (byte) (rotation & 3) : 0;
                 int chunkX = IndexCalculator.chunkX(worldX);
                 int chunkY = IndexCalculator.chunkY(worldY);
                 int chunkZ = IndexCalculator.chunkZ(worldZ);
@@ -48,8 +49,8 @@ public class ServerWorldHandler {
                 }
                 if (chunk != null) {
                     Logger.debug("chunk isn't null " + chunk.getBlock(x, y, z).id() + " " + block.id());
-                    if (!Objects.equals(chunk.getBlock(x, y, z).id(), block.id())) {
-                        chunk = chunk.setBlock(x, y, z, block);
+                    if (!Objects.equals(chunk.getBlock(x, y, z).id(), block.id()) || chunk.getBlockRotation(x, y, z) != rotation) {
+                        chunk = chunk.setBlock(x, y, z, block, rotation);
                         world.put(position3D, chunk);
                         ChunkIO.writeChunk(position3D, chunk, true);
 
@@ -76,7 +77,8 @@ public class ServerWorldHandler {
                                 world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
                             }
                         }
-                        clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block)));
+                        byte finalRotation = rotation;
+                        clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block, finalRotation)));
                     }
                 } else {
                     ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ);

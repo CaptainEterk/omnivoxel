@@ -19,11 +19,11 @@ public class MenuSystem {
     public MenuSystem(MenuRenderer menuRenderer, TextRenderer textRenderer) {
         this.menuRenderer = menuRenderer;
         this.textRenderer = textRenderer;
-        ComponentGroup debugScreen = new ComponentGroup(ComponentPositionOrigin.TOP_LEFT);
-//        debugScreen.addComponent("left", new LayoutComponent(new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT)));
-        debugScreen.addComponent("left", new TextComponent("Hello World!", new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT), 0.6f, Alignment.LEFT));
-        debugScreen.addComponent("right", new TextComponent("Hello World!", new ComponentPosition(100, 0, ComponentPositionOrigin.TOP_RIGHT), 0.6f, Alignment.RIGHT));
-        menuRenderer.addComponent("omnivoxel:debug_screen", debugScreen);
+//        ComponentGroup debugScreen = new ComponentGroup(ComponentPositionOrigin.TOP_LEFT);
+////        debugScreen.addComponent("left", new LayoutComponent(new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT)));
+//        debugScreen.addComponent("left", new TextComponent("Hello World!", new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT), 0.6f, Alignment.LEFT));
+//        debugScreen.addComponent("right", new TextComponent("Hello World!", new ComponentPosition(100, 0, ComponentPositionOrigin.TOP_RIGHT), 0.6f, Alignment.RIGHT));
+//        menuRenderer.addComponent("omnivoxel:debug_screen", debugScreen);
     }
 
     public void tick() {

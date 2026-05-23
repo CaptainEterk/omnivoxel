@@ -97,11 +97,15 @@ public final class MeshDataGenerator {
         }
     }
 
-    public static BlockMesh[] unpackChunkPadded(ByteBuf byteBuf, Position3D pos, ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world) {
+    public record PaddedBlockMeshes(BlockMesh[] blockMeshes, byte[] rotations) {
+    }
+
+    public static PaddedBlockMeshes unpackChunkPadded(ByteBuf byteBuf, Position3D pos, ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world) {
         if (AIR == null) {
             AIR = new BlockWithMesh("omnivoxel:air", worldDataService.getBlock("omnivoxel:air"));
         }
 
+        byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
         Block[] palette = new Block[byteBuf.getShort(24)];
 
         int index = 26;
@@ -131,20 +135,23 @@ public final class MeshDataGenerator {
         for (int i = 0; i < ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED; ) {
             int blockID = byteBuf.getInt(index);
             int blockCount = byteBuf.getInt(index + 4);
-            index += 8;
+            byte rotation = (byte) (byteBuf.getByte(index + 8) & 3);
+            index += 9;
 
             BlockMesh blockMesh = worldDataService.getBlock(palette[blockID].id());
 
             for (int j = 0; j < blockCount; j++) {
                 int paddedIndex = i + j;
                 blockMeshes[paddedIndex] = blockMesh;
+                rotations[paddedIndex] = rotation;
 
                 if (x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
 
                     center = center.setBlock(x, y, z,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (x == -1 && y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
 
@@ -152,7 +159,8 @@ public final class MeshDataGenerator {
                             ConstantCommonSettings.CHUNK_WIDTH - 1,
                             y,
                             z,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (x == ConstantCommonSettings.CHUNK_WIDTH &&
                         y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
@@ -161,7 +169,8 @@ public final class MeshDataGenerator {
                             0,
                             y,
                             z,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (z == -1 && x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT) {
 
@@ -169,7 +178,8 @@ public final class MeshDataGenerator {
                             x,
                             y,
                             ConstantCommonSettings.CHUNK_LENGTH - 1,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (z == ConstantCommonSettings.CHUNK_LENGTH &&
                         x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT) {
@@ -178,7 +188,8 @@ public final class MeshDataGenerator {
                             x,
                             y,
                             0,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (y == -1 && x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
 
@@ -186,7 +197,8 @@ public final class MeshDataGenerator {
                             x,
                             ConstantCommonSettings.CHUNK_HEIGHT - 1,
                             z,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 } else if (y == ConstantCommonSettings.CHUNK_HEIGHT &&
                         x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
@@ -195,7 +207,8 @@ public final class MeshDataGenerator {
                             x,
                             0,
                             z,
-                            blockService.getBlock(palette[blockID].id()));
+                            blockService.getBlock(palette[blockID].id()),
+                            rotation);
                 }
 
                 y++;
@@ -223,7 +236,7 @@ public final class MeshDataGenerator {
         world.addChunkData(pos.add(0, 0, -1), negZ, true);
         world.addChunkData(pos.add(0, 0, 1), posZ, true);
 
-        return blockMeshes;
+        return new PaddedBlockMeshes(blockMeshes, rotations);
     }
 
     public List<MeshDataTask> generateMeshData(MeshDataTask meshDataTask, int queueSize) {

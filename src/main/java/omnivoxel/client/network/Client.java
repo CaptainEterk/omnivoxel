@@ -138,6 +138,8 @@ public final class Client implements NetworkUser {
                         }
                         index += 4;
 
+                        byte rotation = (byte) (byteBuf.getByte(index++) & 3);
+
                         short paletteLength = byteBuf.getShort(index);
                         index += 2;
 
@@ -158,8 +160,8 @@ public final class Client implements NetworkUser {
                             if (chunkData != null) {
                                 clientWorldChunk.setCleanLighting(false);
                                 BlockWithMesh block = blockService.getBlock(blockID.toString());
-                                if (chunkData.getBlock(x, y, z) != block) {
-                                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block));
+                                if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
+                                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
                                     lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition));
 
                                     if (x == 0)
@@ -367,12 +369,13 @@ public final class Client implements NetworkUser {
                 break;
             case BLOCK_REPLACE:
                 BlockReplaceRequest blockReplaceRequest = (BlockReplaceRequest) request;
-                byte[] bytes = new byte[Integer.BYTES * 4 + blockReplaceRequest.newBlock().id().length()];
+                byte[] bytes = new byte[Integer.BYTES * 4 + 1 + blockReplaceRequest.newBlock().id().length()];
                 ByteUtils.addInt(bytes, blockReplaceRequest.position3D().x(), 0);
                 ByteUtils.addInt(bytes, blockReplaceRequest.position3D().y(), Integer.BYTES);
                 ByteUtils.addInt(bytes, blockReplaceRequest.position3D().z(), Integer.BYTES * 2);
                 ByteUtils.addInt(bytes, blockReplaceRequest.newBlock().id().length(), Integer.BYTES * 3);
-                System.arraycopy(blockReplaceRequest.newBlock().id().getBytes(), 0, bytes, Integer.BYTES * 4, blockReplaceRequest.newBlock().id().length());
+                bytes[Integer.BYTES * 4] = (byte) (blockReplaceRequest.rotation() & 3);
+                System.arraycopy(blockReplaceRequest.newBlock().id().getBytes(), 0, bytes, Integer.BYTES * 4 + 1, blockReplaceRequest.newBlock().id().length());
                 NetworkService.sendBytes(channel, PackageID.REPLACE_BLOCK, clientID, bytes);
                 break;
             default:

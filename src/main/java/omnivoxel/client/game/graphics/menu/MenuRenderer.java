@@ -35,8 +35,8 @@ public class MenuRenderer {
             textRenderer.queueText(font, textComponent.text(), componentPosition.x() + offsetX, componentPosition.y() + offsetY, textComponent.scale(), textComponent.alignment());
         } else if (component instanceof LayoutComponent layoutComponent) {
             layoutComponent.getComponents().forEach((id, componentValue) -> renderComponent(componentValue.getComponent(), textRenderer, offsetX + layoutComponent.position().x() + componentValue.x(), offsetY + layoutComponent.position().y() + componentValue.y()));
-        } else if (component instanceof ComponentGroup componentGroup) {
-            componentGroup.getComponents().forEach((id, c) -> renderComponent(c, textRenderer, offsetX + componentGroup.position().x(), offsetY + componentGroup.position().y()));
+//        } else if (component instanceof ComponentGroup componentGroup) {
+//            componentGroup.getComponents().forEach((id, c) -> renderComponent(c, textRenderer, offsetX + componentGroup.position().x(), offsetY + componentGroup.position().y()));
         }
     }
 

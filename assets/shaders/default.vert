@@ -117,5 +117,8 @@ void main() {
     } else if (meshType == 2u) {
         skyUV = aPos * 0.5 + 0.5;
         gl_Position = vec4(aPos, 0.0, 1.0);
+    } else if (meshType == 3u) {
+        position = (model * vec4(vPosition, 1.0)).xyz;
+        gl_Position = projection * view * vec4(position, 1.0);
     }
 }

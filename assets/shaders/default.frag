@@ -30,6 +30,7 @@ uniform float time;
 
 uniform sampler2D blockTexture;
 uniform float skyIntensity;
+uniform vec4 highlightColor;
 
 // SKY SHADER
 vec3 skyColor(vec3 dir, vec3 sunDir) {
@@ -284,5 +285,7 @@ void main() {
         FragColor = texture(blockTexture, TexCoord);
     } else if (meshType == 2u) {
         FragColor = skyColorMain();
+    } else if (meshType == 3u) {
+        FragColor = highlightColor;
     }
 }

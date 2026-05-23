@@ -29,6 +29,7 @@ import java.util.Map;
 
 public final class ChunkIO {
     public static final ServerBlockService BLOCK_SERVICE = new ServerBlockService();
+    private static final int ROTATION_CHUNK_MAGIC = 0x4F565231;
 
     public static byte[] get(Position3D position3D) throws IOException {
         Path path = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION + position3D.getPath());
@@ -80,6 +81,7 @@ public final class ChunkIO {
         ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
 
         try {
+            boolean hasRotations = byteBuf.getInt(0) == ROTATION_CHUNK_MAGIC;
             short paletteCount = byteBuf.getShort(20);
             ServerBlock[] palette = new ServerBlock[paletteCount];
 
@@ -108,12 +110,13 @@ public final class ChunkIO {
             for (int i = 0; i < totalBlocks; ) {
                 int blockID = byteBuf.getInt(index);
                 int blockCount = byteBuf.getInt(index + 4);
-                index += 8;
+                byte rotation = hasRotations ? (byte) (byteBuf.getByte(index + 8) & 3) : 0;
+                index += hasRotations ? 9 : 8;
 
                 ServerBlock block = palette[blockID];
                 for (int j = 0; j < blockCount && i + j < totalBlocks; j++) {
                     if (x < W) {
-                        chunk = chunk.setBlock(x, y, z, block);
+                        chunk = chunk.setBlock(x, y, z, block, rotation);
                     }
 
                     y++;
@@ -143,7 +146,8 @@ public final class ChunkIO {
         ByteBuf byteBuf = Unpooled.buffer();
 
         try {
-            byteBuf.writeLong(0L);
+            byteBuf.writeInt(ROTATION_CHUNK_MAGIC);
+            byteBuf.writeInt(0);
             byteBuf.writeLong(0L);
             byteBuf.writeInt(0);
 
@@ -186,6 +190,7 @@ public final class ChunkIO {
             // ------------------------------------------------------------
 
             int currentPaletteID = -1;
+            byte currentRotation = 0;
             int runLength = 0;
 
             for (int i = 0; i < totalBlocks; i++) {
@@ -197,8 +202,9 @@ public final class ChunkIO {
                 ServerBlock block = chunk.getBlock(x, y, z);
 
                 int paletteID = paletteMap.get(block);
+                byte rotation = chunk.getBlockRotation(x, y, z);
 
-                if (paletteID == currentPaletteID) {
+                if (paletteID == currentPaletteID && rotation == currentRotation) {
                     runLength++;
                     continue;
                 }
@@ -206,15 +212,18 @@ public final class ChunkIO {
                 if (runLength > 0) {
                     byteBuf.writeInt(currentPaletteID);
                     byteBuf.writeInt(runLength);
+                    byteBuf.writeByte(currentRotation);
                 }
 
                 currentPaletteID = paletteID;
+                currentRotation = rotation;
                 runLength = 1;
             }
 
             if (runLength > 0) {
                 byteBuf.writeInt(currentPaletteID);
                 byteBuf.writeInt(runLength);
+                byteBuf.writeByte(currentRotation);
             }
 
             byte[] out = new byte[byteBuf.readableBytes()];
