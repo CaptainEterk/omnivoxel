@@ -40,7 +40,7 @@ public class Launcher {
 
         SecureRandom secureRandom = new SecureRandom();
         byte[] clientID = new byte[32];
-//        secureRandom.nextBytes(clientID);
+        secureRandom.nextBytes(clientID);
 
         CountDownLatch connected = new CountDownLatch(1);
 

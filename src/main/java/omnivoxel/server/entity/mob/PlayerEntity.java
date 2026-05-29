@@ -7,17 +7,14 @@ import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.bytes.ByteUtils;
 
 public class PlayerEntity extends MobEntity implements ServerItem {
-    private final String id;
-
     public PlayerEntity(String id) {
-        super(id, new Hitbox(0, 0, 0, 1, 2, 1));
-        this.id = id;
+        super(id, id, new Hitbox(0, 0, 0, 1, 2, 1));
     }
 
     public static Entity decode(byte[] bytes) {
-        int index = 4;
+        int index = 0;
         int idLength = ByteUtils.getInt(bytes, index);
-        index += 4;
+        index += Integer.BYTES;
         byte[] idBytes = new byte[idLength];
         System.arraycopy(bytes, index, idBytes, 0, idLength);
         index += idLength;
@@ -37,17 +34,21 @@ public class PlayerEntity extends MobEntity implements ServerItem {
 
     @Override
     public byte[] getBytes() {
-        byte[] nameBytes = id.getBytes();
-        int totalSize = Integer.BYTES
-                + Double.BYTES * 5
-                + Integer.BYTES
-                + nameBytes.length;
+        byte[] idBytes = entityID.getBytes();
+
+        int totalSize = Integer.BYTES + Integer.BYTES + idBytes.length + Double.BYTES * 5;
 
         byte[] out = new byte[totalSize];
         int offset = 0;
 
-        ByteUtils.addInt(out, EntityType.Type.PLAYER.ordinal(), offset);
+        ByteUtils.addInt(out, EntityType.PLAYER.ordinal(), offset);
         offset += Integer.BYTES;
+
+        ByteUtils.addInt(out, idBytes.length, offset);
+        offset += Integer.BYTES;
+
+        System.arraycopy(idBytes, 0, out, offset, idBytes.length);
+        offset += idBytes.length;
 
         ByteUtils.addDouble(out, x, offset);
         offset += Double.BYTES;
@@ -58,17 +59,12 @@ public class PlayerEntity extends MobEntity implements ServerItem {
         ByteUtils.addDouble(out, pitch, offset);
         offset += Double.BYTES;
         ByteUtils.addDouble(out, yaw, offset);
-        offset += Double.BYTES;
-
-        ByteUtils.addInt(out, nameBytes.length, offset);
-        offset += Integer.BYTES;
-
-        System.arraycopy(nameBytes, 0, out, offset, nameBytes.length);
 
         return out;
     }
 
-    public String getId() {
-        return id;
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.PLAYER;
     }
 }

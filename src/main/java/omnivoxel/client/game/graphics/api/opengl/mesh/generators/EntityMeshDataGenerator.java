@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataNoDefinition;
@@ -16,120 +16,21 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.cache.IDCache;
+import omnivoxel.util.log.Logger;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
 public class EntityMeshDataGenerator {
-    private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
-    private final Set<String> queuedEntityMeshData;
+    private final IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache;
+    private final Set<EntityType> queuedEntityMeshData;
 
-    public EntityMeshDataGenerator(IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData) {
+    public EntityMeshDataGenerator(IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<EntityType> queuedEntityMeshData) {
         this.entityMeshDefinitionCache = entityMeshDefinitionCache;
         this.queuedEntityMeshData = queuedEntityMeshData;
     }
 
-    private void addPoint(
-            List<Float> vertices,
-            List<Integer> indices,
-            Map<UniqueVertex, Integer> vertexIndexMap,
-            Vertex position,
-            float tx, float ty,
-            BlockFace normal
-    ) {
-        UniqueVertex vertex = new UniqueVertex(position, new TextureVertex(tx, ty), normal);
-
-        if (!vertexIndexMap.containsKey(vertex)) {
-            int index = vertices.size() / 5;
-            vertexIndexMap.put(vertex, index);
-
-            vertices.add(position.px());
-            vertices.add(position.py());
-            vertices.add(position.pz());
-
-            vertices.add(tx);
-            vertices.add(ty);
-        }
-
-        indices.add(vertexIndexMap.get(vertex));
-    }
-
-    private GeneralEntityMeshData generate(ClientEntity entity, float width, float height, float length, float x, float y, float z) {
-        List<Float> vertices = new ArrayList<>();
-        List<Integer> indices = new ArrayList<>();
-        Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
-
-        float[][] cubeOffsets = {
-                {-1, -1, 1}, {1, -1, 1}, {1, 1, 1}, {-1, 1, 1}, // Front
-                {1, -1, -1}, {-1, -1, -1}, {-1, 1, -1}, {1, 1, -1}, // Back
-                {-1, -1, -1}, {-1, -1, 1}, {-1, 1, 1}, {-1, 1, -1}, // Left
-                {1, -1, 1}, {1, -1, -1}, {1, 1, -1}, {1, 1, 1}, // Right
-                {-1, 1, 1}, {1, 1, 1}, {1, 1, -1}, {-1, 1, -1}, // Top
-                {-1, -1, -1}, {1, -1, -1}, {1, -1, 1}, {-1, -1, 1}  // Bottom
-        };
-
-        int[][] faceIndices = {
-                {16, 17, 18, 18, 19, 16}, // Top
-                {20, 21, 22, 22, 23, 20}, // Bottom
-                {0, 1, 2, 2, 3, 0},       // North (Front)
-                {4, 5, 6, 6, 7, 4},       // South (Back)
-                {12, 13, 14, 14, 15, 12}, // East (Right)
-                {8, 9, 10, 10, 11, 8}     // West (Left)
-        };
-
-        BlockFace[] faces = {
-                BlockFace.TOP, BlockFace.BOTTOM,
-                BlockFace.NORTH, BlockFace.SOUTH,
-                BlockFace.EAST, BlockFace.WEST
-        };
-
-        float[][][] uvMap = {
-                {
-                        {0.000f, 0.0f}, {0.125f, 0.0f}, {0.125f, 0.5f},
-                        {0.125f, 0.5f}, {0.000f, 0.5f}, {0.000f, 0.0f}
-                },
-                {
-                        {0.125f, 0.0f}, {0.250f, 0.0f}, {0.250f, 0.5f},
-                        {0.250f, 0.5f}, {0.125f, 0.5f}, {0.125f, 0.0f}
-                },
-                {
-                        {0.375f, 0.5f}, {0.250f, 0.5f}, {0.250f, 0.0f},
-                        {0.250f, 0.0f}, {0.375f, 0.0f}, {0.375f, 0.5f}
-                },
-                {
-                        {0.125f, 1.0f}, {0.000f, 1.0f}, {0.000f, 0.5f},
-                        {0.000f, 0.5f}, {0.125f, 0.5f}, {0.125f, 1.0f}
-                },
-                {
-                        {0.375f, 1.0f}, {0.250f, 1.0f}, {0.250f, 0.5f},
-                        {0.250f, 0.5f}, {0.375f, 0.5f}, {0.375f, 1.0f}
-                },
-                {
-                        {0.250f, 1.0f}, {0.125f, 1.0f}, {0.125f, 0.5f},
-                        {0.125f, 0.5f}, {0.250f, 0.5f}, {0.250f, 1.0f}
-                },
-        };
-
-        for (int f = 0; f < 6; f++) {
-            BlockFace face = faces[f];
-            for (int i = 0; i < 6; i++) {
-                int index = faceIndices[f][i];
-                float[] offset = cubeOffsets[index];
-                Vertex position = new Vertex(offset[0] * width, offset[1] * height, offset[2] * length);
-
-                float[] uv = uvMap[f][i];
-
-                addPoint(vertices, indices, vertexIndexMap, position, uv[0], uv[1], face);
-            }
-        }
-
-        ByteBuffer vertexBuffer = MeshDataGenerator.createFloatBuffer(vertices);
-        ByteBuffer indexBuffer = MeshDataGenerator.createIntBuffer(indices);
-
-        return new GeneralEntityMeshData(vertexBuffer, indexBuffer, entity);
-    }
-
-    public GeneralEntityMeshData generate(ClientEntity entity, MeshShape[] meshShapes) {
+    public GeneralEntityMeshData generate(EntityMeshWrapper entity, MeshShape[] meshShapes) {
         List<Float> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         Map<UniqueVertex, Integer> vertexIndexMap = new HashMap<>();
@@ -144,15 +45,16 @@ public class EntityMeshDataGenerator {
         return new GeneralEntityMeshData(vertexBuffer, indexBuffer, entity);
     }
 
-    public ClientEntity generateMeshData(ClientEntity entity) {
-        EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entity.getType().toString(), null);
+    public EntityMeshWrapper generateMeshData(EntityMeshWrapper entityMeshWrapper) {
+        EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entityMeshWrapper.entity().getEntityType(), null);
 
         EntityMeshData entityMeshData = null;
 
         if (definition == null) {
-            queuedEntityMeshData.add(entity.getType().toString());
+            Logger.debug("Creating mesh definition for entity: " + entityMeshWrapper.entity().getEntityType());
+            queuedEntityMeshData.add(entityMeshWrapper.entity().getEntityType());
 
-            if (entity.getType().type() == EntityType.Type.PLAYER) {
+            if (entityMeshWrapper.entity().getEntityType() == EntityType.PLAYER) {
                 BoxTextureShape texture = new BoxTextureShape(256, 32);
 
                 BoxTextureShape bodyTexture = texture.copy()
@@ -203,15 +105,15 @@ public class EntityMeshDataGenerator {
                         .setCoords(BlockFace.EAST, 208, 8, 8, 24)
                         .setCoords(BlockFace.WEST, 216, 8, 8, 24);
 
-                GeneralEntityMeshData body = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1.5f, 0.5f, bodyTexture)});
+                GeneralEntityMeshData body = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1.5f, 0.5f, bodyTexture)});
 
-                GeneralEntityMeshData head = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0.5f, 0, 1, 1, 1, headTexture)});
+                GeneralEntityMeshData head = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0, 0.5f, 0, 1, 1, 1, headTexture)});
 
-                GeneralEntityMeshData leftArm = generate(entity, new MeshShape[]{new BoxMeshShape(-0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftArmTexture)});
-                GeneralEntityMeshData rightArm = generate(entity, new MeshShape[]{new BoxMeshShape(0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightArmTexture)});
+                GeneralEntityMeshData leftArm = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(-0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftArmTexture)});
+                GeneralEntityMeshData rightArm = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0.25f, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightArmTexture)});
 
-                GeneralEntityMeshData leftLeg = generate(entity, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftLegTexture)});
-                GeneralEntityMeshData rightLeg = generate(entity, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightLegTexture)});
+                GeneralEntityMeshData leftLeg = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, leftLegTexture)});
+                GeneralEntityMeshData rightLeg = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0, -0.75f, 0, 0.5f, 1.5f, 0.5f, rightLegTexture)});
 
                 body.addChild(head);
                 body.addChild(leftArm);
@@ -220,7 +122,7 @@ public class EntityMeshDataGenerator {
                 body.addChild(rightLeg);
 
                 entityMeshData = body;
-            } else if (entity.getType().type() == EntityType.Type.PIG) {
+            } else if (entityMeshWrapper.entity().getEntityType() == EntityType.PIG) {
                 BoxTextureShape texture = new BoxTextureShape(256, 32);
 
                 BoxTextureShape bodyTexture = texture.copy()
@@ -231,23 +133,21 @@ public class EntityMeshDataGenerator {
                         .setCoords(BlockFace.EAST, 0, 0, 0, 0)
                         .setCoords(BlockFace.WEST, 0, 0, 0, 0);
 
-                entityMeshData = generate(entity, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1, 1, bodyTexture)});
+                entityMeshData = generate(entityMeshWrapper, new MeshShape[]{new BoxMeshShape(0, 0, 0, 1, 1, 1, bodyTexture)});
             }
 
-            entityMeshDefinitionCache.put(entity.getType().toString(), new EntityMeshDataNoDefinition(entityMeshData));
+            entityMeshDefinitionCache.put(entityMeshWrapper.entity().getEntityType(), new EntityMeshDataNoDefinition(entityMeshData));
         } else {
-            entityMeshData = new ModelEntityMeshData(entity);
-            entity.setMesh(new EntityMesh(definition, entityMeshData));
+            entityMeshData = new ModelEntityMeshData(entityMeshWrapper);
+            entityMeshWrapper.entity().setMesh(new EntityMesh(definition, entityMeshData));
         }
 
         if (entityMeshData != null) {
-            if (entity.getMeshData() instanceof ModelEntityMeshData modelEntityMeshData) {
-                entityMeshData.setModel(modelEntityMeshData.getModel());
-            }
-
-            entity.setMeshData(entityMeshData);
+            entityMeshWrapper.setMeshData(entityMeshData);
+        } else {
+            Logger.warn("Entity mesh data is null.");
         }
 
-        return entity;
+        return entityMeshWrapper;
     }
 }

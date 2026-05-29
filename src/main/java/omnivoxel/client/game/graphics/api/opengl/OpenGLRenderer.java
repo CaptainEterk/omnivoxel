@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.Renderer;
 import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
@@ -34,7 +34,6 @@ import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.executor.ExecutorCollection;
-import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.util.time.PeriodicTimeExecutor;
@@ -417,11 +416,11 @@ public class OpenGLRenderer implements Renderer {
     private void renderEntities() {
         GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
         shaderProgram.setUniformUnsigned("meshType", 1);
-        Map<String, ClientEntity> entityMeshes = world.getEntities();
+        Map<String, EntityMeshWrapper> entityMeshes = world.getEntities();
 
         entityMeshes.forEach((id, clientEntity) -> {
 //            if (camera.getFrustum().isEntityInFrustum(clientEntity, camera)) {
-            renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
+            renderEntityMesh(clientEntity.entity().getMesh(), IDENTITY_MATRIX);
 //            }
         });
     }
@@ -803,6 +802,7 @@ public class OpenGLRenderer implements Renderer {
                             \t- Friction Factor: %.2f
                             \t- Movement Mode: %s
                             \t- Selected Block: %s
+                            \t- Observed Block: %s
                             Pipelines:
                             \t- Queued Meshes: %d
                             \t- Queued Mesh Data's: %d
@@ -859,6 +859,7 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("friction_factor", Double.class),
                     state.getItem("movement_mode", String.class),
                     state.getItem("selected_block", String.class),
+                    state.getItem("observed_block_id", String.class),
                     0,
                     0,
                     0,

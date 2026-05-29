@@ -1,6 +1,6 @@
 package omnivoxel.client.game.world;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.OpenGLChecks;
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
@@ -15,6 +15,7 @@ import omnivoxel.client.network.request.ChunkRequest;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
+import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
@@ -31,31 +32,32 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
+// TODO: Make this only store world data, no queues, etc...
 public class ClientWorld {
     private final Set<Position3D> queuedChunks;
-    // TODO: nonBufferizedChunks is a messy solution, fix it
-    private final Queue<MeshData> nonBufferizedChunks;
+    // TODO: nonBufferizedMeshDataQueue is a messy solution, fix it
+    private final Queue<MeshData> nonBufferizedMeshDataQueue;
     private final Set<Position3D> newChunks;
     private final State state;
     private final Map<Position3D, ClientWorldChunk> chunks;
-    private final Map<String, ClientEntity> entities;
-    private final IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache;
-    private final Set<String> queuedEntityMeshData;
+    private final Map<String, EntityMeshWrapper> entities;
+    private final IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache;
+    private final Set<EntityType> queuedEntityMeshData;
     private final AtomicBoolean chunkKeysChanged = new AtomicBoolean(true);
     private final Set<Position3D> chunkRequests;
     private final Set<Position3D> inflightRequests;
     private final Map<Position2D, Chunk2D<Integer>> chunkHeights;
+    private final Settings settings;
     private Position3D[] cachedKeys = null;
     private Client client;
     private boolean requesting = true;
     private int tick = 0;
-    private final Settings settings;
 
     public ClientWorld(State state, Settings settings) {
         this.state = state;
         this.settings = settings;
         queuedChunks = ConcurrentHashMap.newKeySet();
-        nonBufferizedChunks = new ConcurrentLinkedDeque<>();
+        nonBufferizedMeshDataQueue = new ConcurrentLinkedDeque<>();
         this.chunks = new ConcurrentHashMap<>();
         this.entityMeshDefinitionCache = new IDCache<>();
 
@@ -124,7 +126,7 @@ public class ClientWorld {
                 count++;
             }
         } while (bufferizing && count < settings.getIntSetting("bufferize_chunks_per_frame", Integer.MAX_VALUE) && System.nanoTime() < endTime);
-        state.setItem("bufferizing_queue_size", nonBufferizedChunks.size());
+        state.setItem("bufferizing_queue_size", nonBufferizedMeshDataQueue.size());
         return count;
     }
 
@@ -137,11 +139,11 @@ public class ClientWorld {
     }
 
     public boolean bufferize(MeshGenerator meshGenerator) {
-        if (!nonBufferizedChunks.isEmpty()) {
-            MeshData meshData = nonBufferizedChunks.poll();
+        if (!nonBufferizedMeshDataQueue.isEmpty()) {
+            MeshData meshData = nonBufferizedMeshDataQueue.poll();
             if (meshData instanceof GeneralEntityMeshData entityMeshData) {
-                entityMeshData.entity().setMesh(meshGenerator.bufferizeEntityMesh(entityMeshData));
-                entityMeshDefinitionCache.put(entityMeshData.entity().getType().toString(), entityMeshData.entity().getMesh().getDefinition());
+                entityMeshData.entity().entity().setMesh(meshGenerator.bufferizeEntityMesh(entityMeshData));
+                entityMeshDefinitionCache.put(entityMeshData.entity().entity().getEntityType(), entityMeshData.entity().entity().getMesh().getDefinition());
             } else if (meshData instanceof ChunkMeshData chunkMeshData) {
                 ChunkMesh chunkMesh = meshGenerator.bufferizeChunkMesh(chunkMeshData);
                 ClientWorldChunk clientWorldChunk = chunks.putIfAbsent(chunkMeshData.chunkPosition(), new ClientWorldChunk(chunkMesh));
@@ -167,7 +169,7 @@ public class ClientWorld {
         } else {
             clientWorldChunk.setMeshData(meshData);
         }
-        nonBufferizedChunks.add(meshData);
+        nonBufferizedMeshDataQueue.add(meshData);
         newChunks.add(position3D);
         state.setItem("shouldCheckNewChunks", true);
     }
@@ -264,21 +266,27 @@ public class ClientWorld {
         }
     }
 
-    public void addEntity(ClientEntity entity) {
-        entities.put(entity.getUUID(), entity);
-        nonBufferizedChunks.add(entity.getMeshData());
+    public void addEntity(EntityMeshWrapper entity) {
+        entities.put(entity.entity().getEntityID(), entity);
+        if (entity.getMeshData() != null) {
+            nonBufferizedMeshDataQueue.add(entity.getMeshData());
+        }
     }
 
-    public Map<String, ClientEntity> getEntities() {
+    public Map<String, EntityMeshWrapper> getEntities() {
         return entities;
     }
 
-    public IDCache<String, EntityMeshDataDefinition> getEntityMeshDefinitionCache() {
-        return this.entityMeshDefinitionCache;
+    public IDCache<EntityType, EntityMeshDataDefinition> getEntityMeshDefinitionCache() {
+        return entityMeshDefinitionCache;
     }
 
-    public Set<String> getQueuedEntityMeshData() {
-        return this.queuedEntityMeshData;
+    public Set<EntityType> getQueuedEntityMeshData() {
+        return queuedEntityMeshData;
+    }
+
+    public boolean isEntityMeshDataQueued(EntityType entityType) {
+        return queuedEntityMeshData.contains(entityType);
     }
 
     public void removeEntity(String entityID) {
@@ -287,5 +295,9 @@ public class ClientWorld {
 
     public int chunkRequestCount() {
         return chunkRequests.size();
+    }
+
+    public EntityMeshWrapper getEntity(String entityID) {
+        return entities.get(entityID);
     }
 }

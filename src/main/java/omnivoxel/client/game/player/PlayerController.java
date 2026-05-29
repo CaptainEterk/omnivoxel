@@ -247,18 +247,19 @@ public class PlayerController {
         BooleanRef changeRot = new BooleanRef(false);
         if (mouseButtonInput.isMouseLocked()) {
             handleInput(deltaTime, changeRot, movementMode != MovementMode.FALL_COLLIDE);
-            Position3D currentObservedBlock = findObservedBlock(false);
+            Position3DAndBlockRotation currentObservedBlock = findObservedBlock(false);
             state.setItem("has_observed_block", currentObservedBlock != null);
             if (currentObservedBlock != null) {
-                state.setItem("observed_block", currentObservedBlock);
+                state.setItem("observed_block", currentObservedBlock.position);
+                state.setItem("observed_block_id", currentObservedBlock.block.id());
             }
 
             if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
                 if (!leftMouseDown) {
                     leftMouseDown = true;
-                    Position3D observedBlock = findObservedBlock(false);
+                    Position3DAndBlockRotation observedBlock = findObservedBlock(false);
                     if (observedBlock != null) {
-                        client.sendRequest(new BlockReplaceRequest(observedBlock, blockService.getBlock("omnivoxel:air/default")));
+                        client.sendRequest(new BlockReplaceRequest(observedBlock.position, blockService.getBlock("omnivoxel:air/default"), observedBlock.block, (byte) 0, observedBlock.rotation));
                     }
                 }
             } else {
@@ -279,8 +280,9 @@ public class PlayerController {
             if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
                 if (!rightMouseDown) {
                     rightMouseDown = true;
-                    Position3D observedBlock = findObservedBlock(true);
-                    if (observedBlock != null) {
+                    Position3DAndBlockRotation observedPositionAndBlock = findObservedBlock(true);
+                    if (observedPositionAndBlock != null) {
+                        Position3D observedBlock = observedPositionAndBlock.position;
                         int chunkX = IndexCalculator.chunkX(observedBlock.x());
                         int chunkY = IndexCalculator.chunkY(observedBlock.y());
                         int chunkZ = IndexCalculator.chunkZ(observedBlock.z());
@@ -305,7 +307,7 @@ public class PlayerController {
                         if (isColliding) {
                             Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
                         } else {
-                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, rotation));
+                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, observedPositionAndBlock.block, rotation, observedPositionAndBlock.rotation));
                         }
                     }
                 }
@@ -361,7 +363,7 @@ public class PlayerController {
         }
     }
 
-    private Position3D findObservedBlock(boolean getBlockOn) {
+    private Position3DAndBlockRotation findObservedBlock(boolean getBlockOn) {
         int maxDistance = 6;
         double originX = this.x;
         double originY = this.y;
@@ -422,9 +424,9 @@ public class PlayerController {
 
                 if (intersects) {
                     if (getBlockOn) {
-                        return lastAir;
+                        return new Position3DAndBlockRotation(lastAir, block, rotation);
                     }
-                    return new Position3D(x, y, z);
+                    return new Position3DAndBlockRotation(new Position3D(x, y, z), block, rotation);
                 }
             }
 
@@ -682,6 +684,9 @@ public class PlayerController {
         FALL_COLLIDE,
         FLY_COLLIDE,
         FLY
+    }
+
+    private record Position3DAndBlockRotation(Position3D position, Block block, byte rotation) {
     }
 
     private static class BooleanRef {

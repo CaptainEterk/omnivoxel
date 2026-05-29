@@ -4,12 +4,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting.ChunkMeshDataLightingGenerator;
-import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ModelEntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.LightingChunkMeshDataTask;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
@@ -26,29 +25,28 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.PackageID;
+import omnivoxel.server.entity.Entity;
 import omnivoxel.server.entity.EntityType;
+import omnivoxel.server.io.entity.EntityIO;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
+import omnivoxel.world.block.Block;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 import org.joml.Matrix4f;
 
-import javax.naming.OperationNotSupportedException;
-import java.rmi.UnexpectedException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // TODO: Clean this up
 public final class Client implements NetworkUser {
-    private final Map<String, ClientEntity> entities;
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
@@ -56,6 +54,7 @@ public final class Client implements NetworkUser {
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
     private final Settings settings;
+    private final Map<Position3D, Block> pendingBlocks;
     private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private WorkerThreadPool<LightingChunkMeshDataTask> lightingGenerators;
     private EventLoopGroup group;
@@ -69,7 +68,7 @@ public final class Client implements NetworkUser {
         this.world = world;
         this.blockService = blockService;
         this.settings = settings;
-        entities = new ConcurrentHashMap<>();
+        pendingBlocks = new HashMap<>();
     }
 
     public boolean isClientRunning() {
@@ -92,7 +91,7 @@ public final class Client implements NetworkUser {
                     break;
                 case CLOSE:
                     String playerID = ByteUtils.bytesToHex(ByteUtils.getBytes(byteBuf, 8, 32));
-                    entities.remove(playerID);
+                    world.removeEntity(playerID);
                     Logger.info("Removed Player: " + playerID);
                     world.removeEntity(playerID);
                     byteBuf.release();
@@ -122,20 +121,7 @@ public final class Client implements NetworkUser {
                         int worldZ = byteBuf.getInt(index + 8);
                         index += 12;
 
-                        int chunkX = Math.floorDiv(worldX, ConstantCommonSettings.CHUNK_WIDTH);
-                        int chunkY = Math.floorDiv(worldY, ConstantCommonSettings.CHUNK_HEIGHT);
-                        int chunkZ = Math.floorDiv(worldZ, ConstantCommonSettings.CHUNK_LENGTH);
-
-                        int x = Math.floorMod(worldX, ConstantCommonSettings.CHUNK_WIDTH);
-                        int y = Math.floorMod(worldY, ConstantCommonSettings.CHUNK_HEIGHT);
-                        int z = Math.floorMod(worldZ, ConstantCommonSettings.CHUNK_LENGTH);
-
                         int highestY = byteBuf.getByte(index);
-                        Position2D chunkPosition2D = new Position2D(chunkX, chunkZ);
-                        Chunk2D<Integer> skylightChunk = world.getChunkHeights(chunkPosition2D);
-                        if (skylightChunk != null) {
-                            world.setChunkHeights(chunkPosition2D, skylightChunk.setBlock(x, z, highestY));
-                        }
                         index += 4;
 
                         byte rotation = (byte) (byteBuf.getByte(index++) & 3);
@@ -145,42 +131,10 @@ public final class Client implements NetworkUser {
 
                         byte[] idBytes = new byte[paletteLength];
                         byteBuf.getBytes(index, idBytes);
-                        StringBuilder blockID = new StringBuilder();
-                        for (byte b : idBytes) {
-                            blockID.append((char) b);
-                        }
+                        String blockID = new String(idBytes);
                         index += paletteLength;
 
-                        Position3D chunkPosition = new Position3D(chunkX, chunkY, chunkZ);
-
-                        ClientWorldChunk clientWorldChunk = world.get(chunkPosition, false, false);
-                        if (clientWorldChunk != null) {
-                            Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData();
-
-                            if (chunkData != null) {
-                                clientWorldChunk.setCleanLighting(false);
-                                BlockWithMesh block = blockService.getBlock(blockID.toString());
-                                if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
-                                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
-                                    lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition));
-
-                                    if (x == 0)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(-1, 0, 0)));
-                                    if (x == ConstantCommonSettings.CHUNK_WIDTH - 1)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(1, 0, 0)));
-
-                                    if (y == 0)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, -1, 0)));
-                                    if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 1, 0)));
-
-                                    if (z == 0)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, -1)));
-                                    if (z == ConstantCommonSettings.CHUNK_LENGTH - 1)
-                                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, 1)));
-                                }
-                            }
-                        }
+                        replaceBlock(worldX, worldY, worldZ, highestY, blockID, rotation);
                     }
 
                     byteBuf.release();
@@ -210,8 +164,58 @@ public final class Client implements NetworkUser {
         }
     }
 
+    private void replaceBlock(int worldX, int worldY, int worldZ, int highestY, String blockID, byte rotation) {
+        int chunkX = Math.floorDiv(worldX, ConstantCommonSettings.CHUNK_WIDTH);
+        int chunkY = Math.floorDiv(worldY, ConstantCommonSettings.CHUNK_HEIGHT);
+        int chunkZ = Math.floorDiv(worldZ, ConstantCommonSettings.CHUNK_LENGTH);
+
+        int x = Math.floorMod(worldX, ConstantCommonSettings.CHUNK_WIDTH);
+        int y = Math.floorMod(worldY, ConstantCommonSettings.CHUNK_HEIGHT);
+        int z = Math.floorMod(worldZ, ConstantCommonSettings.CHUNK_LENGTH);
+        Position2D chunkPosition2D = new Position2D(chunkX, chunkZ);
+        Chunk2D<Integer> skylightChunk = world.getChunkHeights(chunkPosition2D);
+        if (skylightChunk != null) {
+            world.setChunkHeights(chunkPosition2D, skylightChunk.setBlock(x, z, highestY));
+        }
+
+        Position3D chunkPosition = new Position3D(chunkX, chunkY, chunkZ);
+
+        ClientWorldChunk clientWorldChunk = world.get(chunkPosition, false, false);
+        if (clientWorldChunk != null) {
+            Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData();
+
+            if (chunkData != null) {
+                clientWorldChunk.setCleanLighting(false);
+                BlockWithMesh block = blockService.getBlock(blockID);
+                if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
+                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
+                    lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition));
+
+                    if (x == 0)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(-1, 0, 0)));
+                    if (x == ConstantCommonSettings.CHUNK_WIDTH - 1)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(1, 0, 0)));
+
+                    if (y == 0)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, -1, 0)));
+                    if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 1, 0)));
+
+                    if (z == 0)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, -1)));
+                    if (z == ConstantCommonSettings.CHUNK_LENGTH - 1)
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, 1)));
+                }
+            }
+        }
+    }
+
     private void updateEntity(ByteBuf byteBuf) {
         int offset = 8;
+
+        // entity type
+        int entityType = byteBuf.getInt(offset);
+        offset += Integer.BYTES;
 
         int idLength = byteBuf.getInt(offset);
         offset += Integer.BYTES;
@@ -220,40 +224,68 @@ public final class Client implements NetworkUser {
         byteBuf.getBytes(offset, entityIDBytes);
         offset += idLength;
 
-        String entityID = ByteUtils.bytesToHex(entityIDBytes);
-        ClientEntity entity = entities.get(entityID);
-        if (entity == null) {
+        String entityID = new String(entityIDBytes);
+
+        EntityMeshWrapper entityMeshWrapper = world.getEntity(entityID);
+        if (entityMeshWrapper == null) {
             Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
             return;
         }
 
-        offset += Integer.BYTES;
-
         double x = byteBuf.getDouble(offset);
         offset += Double.BYTES;
+
         double y = byteBuf.getDouble(offset);
         offset += Double.BYTES;
+
         double z = byteBuf.getDouble(offset);
         offset += Double.BYTES;
+
         double pitch = byteBuf.getDouble(offset);
         offset += Double.BYTES;
+
         double yaw = byteBuf.getDouble(offset);
+
+        Entity entity = entityMeshWrapper.entity();
 
         entity.set(x, y, z, pitch, yaw);
 
         if (entity.getMesh() != null) {
-            entity.getMeshData().setModel(new Matrix4f().identity()
-                    .translate((float) x, (float) (y - 0.75f / 2), (float) z)
-                    .scale(0.5f)
-                    .rotateY((float) -yaw));
+            entityMeshWrapper.getMeshData().setModel(
+                    new Matrix4f()
+                            .identity()
+                            .translate((float) x, (float) (y - 0.75f / 2), (float) z)
+                            .scale(0.5f)
+                            .rotateY((float) -yaw)
+            );
 
             if (!entity.getMesh().getChildren().isEmpty()) {
-                entity.getMesh().getChildren().getFirst().getMeshData().setModel(new Matrix4f().translate(0, 0.75f, 0).rotateX((float) -pitch));
-                entity.getMesh().getChildren().get(1).getMeshData().setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
-                entity.getMesh().getChildren().get(2).getMeshData().setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
-                entity.getMesh().getChildren().get(3).getMeshData().setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
-                entity.getMesh().getChildren().get(4).getMeshData().setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+                entity.getMesh().getChildren().getFirst()
+                        .getMeshData()
+                        .setModel(
+                                new Matrix4f()
+                                        .translate(0, 0.75f, 0)
+                                        .rotateX((float) -pitch)
+                        );
+
+                entity.getMesh().getChildren().get(1)
+                        .getMeshData()
+                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
+
+                entity.getMesh().getChildren().get(2)
+                        .getMeshData()
+                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
+
+                entity.getMesh().getChildren().get(3)
+                        .getMeshData()
+                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
+
+                entity.getMesh().getChildren().get(4)
+                        .getMeshData()
+                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
             }
+        } else if (!world.isEntityMeshDataQueued(EntityType.values()[entityType])) {
+            Logger.warn("No mesh found for entity: " + entityID);
         }
     }
 
@@ -286,41 +318,16 @@ public final class Client implements NetworkUser {
     }
 
     private void newEntity(ByteBuf byteBuf) {
-        int entityIDLength = byteBuf.getInt(8);
+        byteBuf.readerIndex(8);
+        int entityID = byteBuf.readInt();
+        byte[] bytes = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(bytes);
 
-        byte[] entityID = new byte[entityIDLength];
-        byteBuf.getBytes(12, entityID);
+        Entity entity = EntityIO.decode(entityID, bytes);
 
-        int typeStart = 12 + entityIDLength;
-        int typeOrdinal = byteBuf.getInt(typeStart);
-        EntityType.Type type = EntityType.Type.values()[typeOrdinal];
-
-        int doubleStart = typeStart + Integer.BYTES;
-        double x = byteBuf.getDouble(doubleStart);
-        double y = byteBuf.getDouble(doubleStart + Double.BYTES);
-        double z = byteBuf.getDouble(doubleStart + Double.BYTES * 2);
-        double pitch = byteBuf.getDouble(doubleStart + Double.BYTES * 3);
-        double yaw = byteBuf.getDouble(doubleStart + Double.BYTES * 4);
-
-        int nameLength = byteBuf.getInt(doubleStart + Double.BYTES * 5);
-        int nameStart = doubleStart + Double.BYTES * 5 + Integer.BYTES;
-
-        byte[] nameBytes = new byte[nameLength];
-        byteBuf.getBytes(nameStart, nameBytes);
-        String name = new String(nameBytes);
-
-        String id = ByteUtils.bytesToHex(entityID);
-        ClientEntity entity = new ClientEntity(name, id, new EntityType(type, name));
-        entity.set(x, y, z, pitch, yaw);
-        entity.setMeshData(new ModelEntityMeshData(entity)
-                .setModel(new Matrix4f().translate((float) x, (float) y, (float) z)));
-
-        entities.put(id, entity);
-        meshDataGenerators.submit(new EntityMeshDataTask(entity));
-    }
-
-    public Map<String, ClientEntity> getEntities() {
-        return entities;
+        EntityMeshWrapper entityMeshWrapper = new EntityMeshWrapper(entity);
+        world.addEntity(entityMeshWrapper);
+        meshDataGenerators.submit(new EntityMeshDataTask(entityMeshWrapper));
     }
 
     public void tick() {
@@ -377,6 +384,10 @@ public final class Client implements NetworkUser {
                 bytes[Integer.BYTES * 4] = (byte) (blockReplaceRequest.rotation() & 3);
                 System.arraycopy(blockReplaceRequest.newBlock().id().getBytes(), 0, bytes, Integer.BYTES * 4 + 1, blockReplaceRequest.newBlock().id().length());
                 NetworkService.sendBytes(channel, PackageID.REPLACE_BLOCK, clientID, bytes);
+
+                // TODO: Calculate highestY
+                pendingBlocks.put(blockReplaceRequest.position3D(), blockReplaceRequest.oldBlock());
+                replaceBlock(blockReplaceRequest.position3D().x(), blockReplaceRequest.position3D().y(), blockReplaceRequest.position3D().z(), 0, blockReplaceRequest.newBlock().id(), blockReplaceRequest.rotation());
                 break;
             default:
                 Logger.error(Logger.Priority.HIGH, "Unexpected request type: " + request.getType());
@@ -417,7 +428,7 @@ public final class Client implements NetworkUser {
         Logger.info("Client disconnected");
     }
 
-    public void setListeners(IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData, State state) {
+    public void setListeners(IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<EntityType> queuedEntityMeshData, State state) {
         meshDataGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new MeshDataGenerator(

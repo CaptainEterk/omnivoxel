@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.meshData;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
@@ -11,14 +11,14 @@ import java.util.List;
 public final class GeneralEntityMeshData implements EntityMeshData {
     private final ByteBuffer solidVertices;
     private final ByteBuffer solidIndices;
-    private final ClientEntity entity;
+    private final EntityMeshWrapper entity;
     private final List<EntityMeshData> children;
     private Matrix4f model = new Matrix4f();
 
     public GeneralEntityMeshData(
             ByteBuffer solidVertices,
             ByteBuffer solidIndices,
-            ClientEntity entity
+            EntityMeshWrapper entity
     ) {
         this.solidVertices = solidVertices;
         this.solidIndices = solidIndices;
@@ -70,7 +70,7 @@ public final class GeneralEntityMeshData implements EntityMeshData {
     }
 
     @Override
-    public ClientEntity entity() {
+    public EntityMeshWrapper entity() {
         return entity;
     }
 

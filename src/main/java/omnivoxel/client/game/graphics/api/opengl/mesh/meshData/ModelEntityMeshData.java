@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.meshData;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
@@ -8,11 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ModelEntityMeshData implements EntityMeshData {
-    private final ClientEntity entity;
+    private final EntityMeshWrapper entity;
     private final List<EntityMeshData> children;
     private Matrix4f model = new Matrix4f();
 
-    public ModelEntityMeshData(ClientEntity entity) {
+    public ModelEntityMeshData(EntityMeshWrapper entity) {
         this.entity = entity;
         this.children = new ArrayList<>();
     }
@@ -34,7 +34,7 @@ public class ModelEntityMeshData implements EntityMeshData {
     }
 
     @Override
-    public ClientEntity entity() {
+    public EntityMeshWrapper entity() {
         return entity;
     }
 

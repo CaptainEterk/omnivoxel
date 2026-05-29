@@ -1,7 +1,6 @@
 package omnivoxel.server.io.entity;
 
 import omnivoxel.common.settings.ConstantServerSettings;
-import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.entity.Entity;
 import omnivoxel.server.entity.mob.PlayerEntity;
 import omnivoxel.util.bytes.ByteUtils;
@@ -18,6 +17,7 @@ public final class EntityIO {
     private static final Function<byte[], Entity>[] entityDecodeFunctions;
 
     static {
+        // TODO: This depends on EntityType order being the same as entityDecodeFunctions - fix this
         entityDecodeFunctions = new Function[1];
         entityDecodeFunctions[0] = PlayerEntity::decode;
     }
@@ -36,6 +36,16 @@ public final class EntityIO {
         }
     }
 
+    public static Entity decode(byte[] bytes) {
+        int entityID = ByteUtils.getInt(bytes, 0);
+
+        return entityDecodeFunctions[entityID].apply(bytes);
+    }
+
+    public static Entity decode(int entityID, byte[] bytes) {
+        return entityDecodeFunctions[entityID].apply(bytes);
+    }
+
     public static Entity getEntity(long id) {
         try {
             Path path = getPath(id);
@@ -52,9 +62,7 @@ public final class EntityIO {
                 return null;
             }
 
-            int entityID = ByteUtils.getInt(content, 0);
-
-            return entityDecodeFunctions[entityID].apply(content);
+            return decode(content);
         } catch (IOException e) {
             Logger.error(e.getMessage());
             return null;

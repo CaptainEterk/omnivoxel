@@ -1,7 +1,7 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 
 import io.netty.buffer.ByteBuf;
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.ShapeHelper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
@@ -20,6 +20,7 @@ import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
+import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
@@ -43,7 +44,7 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, IDCache<String, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<String> queuedEntityMeshData, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
+    public MeshDataGenerator(ClientWorldDataService worldDataService, IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<EntityType> queuedEntityMeshData, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
         this.state = state;
         chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, blockService, world, settings);
         this.world = world;
@@ -250,7 +251,7 @@ public final class MeshDataGenerator {
                 return null;
 //                return world.get(position3D, false, false) != null ? List.of(new ChunkMeshDataTask(null, position3D)) : null;
             }
-        } else if (meshDataTask instanceof EntityMeshDataTask(ClientEntity entity)) {
+        } else if (meshDataTask instanceof EntityMeshDataTask(EntityMeshWrapper entity)) {
             world.addEntity(entityMeshDataGenerator.generateMeshData(entity));
         } else {
             throw new IllegalArgumentException(meshDataTask + " is an invalid input. Stop playing with things you CLEARLY don't know how to use...");

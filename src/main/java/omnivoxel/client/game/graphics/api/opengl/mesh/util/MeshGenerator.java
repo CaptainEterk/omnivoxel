@@ -41,31 +41,22 @@ public class MeshGenerator {
     }
 
     public EntityMesh bufferizeEntityMesh(EntityMeshData mesh) {
-        if (mesh.entity().getMesh() == null) {
-            int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
-            EntityMesh entityMesh = new EntityMesh(
-                    new GeneralEntityMeshDefinition(
-                            solid[0],
-                            solid[1],
-                            solid[2],
-                            mesh.solidIndices().capacity() / Integer.BYTES,
-                            mesh
-                    ),
-                    mesh
-            );
-            mesh.children().forEach(entityMeshData -> {
-                EntityMesh em = bufferizeEntityMesh(entityMeshData);
-                entityMesh.addChild(em);
-            });
-            mesh.entity().getMeshData().setModel(
-                    new Matrix4f()
-                            .translate((float) mesh.entity().getX(), (float) mesh.entity().getY(), (float) mesh.entity().getZ())
-                            .rotateY((float) mesh.entity().getYaw())
-                            .rotateX((float) mesh.entity().getPitch())
-            );
-            return entityMesh;
-        }
-        return mesh.entity().getMesh();
+        int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
+        EntityMesh entityMesh = new EntityMesh(
+                new GeneralEntityMeshDefinition(
+                        solid[0],
+                        solid[1],
+                        solid[2],
+                        mesh.solidIndices().capacity() / Integer.BYTES,
+                        mesh
+                ),
+                mesh
+        );
+        mesh.children().forEach(entityMeshData -> {
+            EntityMesh em = bufferizeEntityMesh(entityMeshData);
+            entityMesh.addChild(em);
+        });
+        return entityMesh;
     }
 
     private int[] generateFloat(ByteBuffer vertexBuffer, ByteBuffer indexBuffer) {

@@ -26,7 +26,7 @@ public record BoxMeshShape(float x, float y, float z, float width, float height,
                 BlockFace.WEST
         };
 
-        int[] quadIndices = {0, 2, 1, 0, 3, 2}; // counter-clockwise
+        int[] quadIndices = {0, 2, 1, 0, 3, 2};
 
         for (BlockFace face : faces) {
             float[][] corners = switch (face) {
