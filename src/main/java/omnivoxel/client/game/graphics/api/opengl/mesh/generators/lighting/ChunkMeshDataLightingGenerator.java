@@ -22,6 +22,7 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.SingleBlockChunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 
 import java.util.*;
@@ -171,6 +172,12 @@ public class ChunkMeshDataLightingGenerator {
     }
 
     private void loadChunkLights(LightChannels channel, Position3D chunkPos, Chunk<BlockWithMesh> chunk) {
+        if (chunk instanceof SingleBlockChunk<BlockWithMesh> singleBlockChunk) {
+            if (singleBlockChunk.getBlock(0, 0, 0).blockMesh().getLightEmitting(channel) == 0) {
+                return;
+            }
+        }
+
         int chunkYOffset = chunkPos.y() * ConstantCommonSettings.CHUNK_HEIGHT;
 
         Chunk2D<Integer> chunkHeights = channel == LightChannels.SKYLIGHT ? world.getChunkHeights(chunkPos.getPosition2D()) : null;
