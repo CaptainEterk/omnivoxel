@@ -28,13 +28,16 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
         this.rotations = extractRotations(chunk);
     }
 
+    public List<B> getPalette() {
+        return palette;
+    }
+
     private short[] extractBlocks(Chunk<B> chunk) {
         short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
                 for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-
                     B block = chunk.getBlock(x, y, z);
 
                     Short index = paletteIndex.get(block);

@@ -22,6 +22,7 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.ShortPaletteChunk;
 import omnivoxel.world.chunk.SingleBlockChunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 
@@ -44,6 +45,11 @@ public class ChunkMeshDataLightingGenerator {
         this.blockService = blockService;
         this.state = state;
         this.chunkLights = new LightNodeQueue();
+        if (ConstantCommonSettings.CHUNK_WIDTH > 32
+                || ConstantCommonSettings.CHUNK_HEIGHT > 32
+                || ConstantCommonSettings.CHUNK_LENGTH > 32) {
+            throw new IllegalStateException("Border light encoding supports chunk dimensions up to 32.");
+        }
 
         for (Direction dir : Direction.VALUES) {
             borderLightQueues.put(dir, new LightNodeQueue());
@@ -88,9 +94,9 @@ public class ChunkMeshDataLightingGenerator {
             if (!clientWorldChunk.isCleanLighting()) {
                 clientWorldChunk.setChunkLightingData(generateLighting(clientWorldChunk, position3D).chunkLightingData());
             }
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D) {
@@ -107,7 +113,7 @@ public class ChunkMeshDataLightingGenerator {
                 for (int z = -1; z <= 1; z++) {
                     if (!(x == 0 && y == 0 && z == 0)) {
                         Position3D neighborPosition = position3D.add(x, y, z);
-                        failed = failed || calculateNeighborChunkLighting(neighborPosition);
+                        failed |= !calculateNeighborChunkLighting(neighborPosition);
                     }
                 }
             }
@@ -172,9 +178,23 @@ public class ChunkMeshDataLightingGenerator {
     }
 
     private void loadChunkLights(LightChannels channel, Position3D chunkPos, Chunk<BlockWithMesh> chunk) {
-        if (chunk instanceof SingleBlockChunk<BlockWithMesh> singleBlockChunk) {
-            if (singleBlockChunk.getBlock(0, 0, 0).blockMesh().getLightEmitting(channel) == 0) {
-                return;
+        if (channel != LightChannels.SKYLIGHT) {
+            if (chunk instanceof SingleBlockChunk<BlockWithMesh> singleBlockChunk) {
+                if (singleBlockChunk.getBlock(0, 0, 0).blockMesh().getLightEmitting(channel) == 0) {
+                    return;
+                }
+            } else if (chunk instanceof ShortPaletteChunk<BlockWithMesh> shortPaletteChunk) {
+                List<BlockWithMesh> palette = shortPaletteChunk.getPalette();
+                boolean dark = true;
+                for (BlockWithMesh blockWithMesh : palette) {
+                    if (blockWithMesh.blockMesh() == null || blockWithMesh.blockMesh().getLightEmitting(channel) != 0) {
+                        dark = false;
+                        break;
+                    }
+                }
+                if (dark) {
+                    return;
+                }
             }
         }
 
@@ -226,7 +246,9 @@ public class ChunkMeshDataLightingGenerator {
 
             if (light < 1) continue;
 
-            int attenuated = light - chunk.getBlock(x, y, z).blockMesh().getLightDiffuse(channel);
+            BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
+            int diffuse = mesh == null ? 1 : mesh.getLightDiffuse(channel);
+            int attenuated = light - diffuse;
             if (attenuated <= 0) continue;
 
             for (Direction direction : Direction.VALUES) {
@@ -338,7 +360,7 @@ public class ChunkMeshDataLightingGenerator {
                     case UP -> {
                         x = a;
                         z = b;
-                        y = 31;
+                        y = ConstantCommonSettings.CHUNK_HEIGHT - 1;
                     }
 
                     case DOWN -> {
@@ -354,13 +376,13 @@ public class ChunkMeshDataLightingGenerator {
                     case SOUTH -> {
                         x = a;
                         y = b;
-                        z = 31;
+                        z = ConstantCommonSettings.CHUNK_LENGTH - 1;
                     }
 
                     case EAST -> {
                         y = a;
                         z = b;
-                        x = 31;
+                        x = ConstantCommonSettings.CHUNK_WIDTH - 1;
                     }
 
                     case WEST -> {
