@@ -14,6 +14,13 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     private final List<B> palette;
     private final Map<B, Short> paletteIndex;
 
+    public ShortPaletteChunk() {
+        this.blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        this.rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        this.palette = new ArrayList<>();
+        this.paletteIndex = new HashMap<>();
+    }
+
     public ShortPaletteChunk(Chunk<B> chunk) {
         this.palette = new ArrayList<>();
         this.paletteIndex = new HashMap<>();

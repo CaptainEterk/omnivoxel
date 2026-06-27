@@ -6,10 +6,10 @@ public class ModifiedChunk<B> implements Chunk<B> {
     private final int x;
     private final int y;
     private final int z;
-    private final B block;
-    private final byte rotation;
     private final Chunk<B> chunk;
     private final int modificationCount;
+    private B block;
+    private byte rotation;
 
     private ModifiedChunk(int x, int y, int z, B block, byte rotation, Chunk<B> chunk, int modificationCount) {
         this.x = x;
@@ -35,6 +35,9 @@ public class ModifiedChunk<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
+        if (x == this.x && y == this.y && z == this.z) {
+            this.block = block;
+        }
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
             return new ShortPaletteChunk<>(this).setBlock(x, y, z, block);
         }
@@ -51,6 +54,9 @@ public class ModifiedChunk<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlockRotation(int x, int y, int z, byte rotation) {
+        if (x == this.x && y == this.y && z == this.z) {
+            this.rotation = rotation;
+        }
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
             return new ShortPaletteChunk<>(this).setBlockRotation(x, y, z, rotation);
         }

@@ -6,16 +6,15 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
-import omnivoxel.server.io.CacheHandler;
 import omnivoxel.server.io.CacheIO;
-import omnivoxel.server.io.CacheItem;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.util.thread.AsyncWorkerThread;
 import omnivoxel.world.chunk.BiBlockChunk;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.ShortPaletteChunk;
+import omnivoxel.world.chunk.SingleBlockChunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 
 import java.io.IOException;
@@ -73,6 +72,14 @@ public final class ChunkIO {
                 : null;
     }
 
+    private static Chunk<ServerBlock> getEmptyChunk(ServerBlock[] palette) {
+        if (palette.length == 2) {
+            return new BiBlockChunk<>(palette[0]);
+        } else {
+            return new ShortPaletteChunk<>();
+        }
+    }
+
     public static Chunk<ServerBlock> decode(byte[] bytes) {
         if (bytes == null) {
             return null;
@@ -98,38 +105,43 @@ public final class ChunkIO {
                 palette[i] = BLOCK_SERVICE.getBlock(blockID.toString());
             }
 
-            Chunk<ServerBlock> chunk = new BiBlockChunk<>(ServerBlock.AIR);
+            Chunk<ServerBlock> chunk;
+            if (palette.length == 1) {
+                chunk = new SingleBlockChunk<>(palette[0]);
+            } else {
+                chunk = getEmptyChunk(palette);
 
-            int W = ConstantCommonSettings.CHUNK_WIDTH;
-            int H = ConstantCommonSettings.CHUNK_HEIGHT;
-            int L = ConstantCommonSettings.CHUNK_LENGTH;
+                int W = ConstantCommonSettings.CHUNK_WIDTH;
+                int H = ConstantCommonSettings.CHUNK_HEIGHT;
+                int L = ConstantCommonSettings.CHUNK_LENGTH;
 
-            int x = 0, y = 0, z = 0;
+                int x = 0, y = 0, z = 0;
 
-            int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK;
-            for (int i = 0; i < totalBlocks; ) {
-                int blockID = byteBuf.getInt(index);
-                int blockCount = byteBuf.getInt(index + 4);
-                byte rotation = hasRotations ? (byte) (byteBuf.getByte(index + 8) & 3) : 0;
-                index += hasRotations ? 9 : 8;
+                int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK;
+                for (int i = 0; i < totalBlocks; ) {
+                    int blockID = byteBuf.getInt(index);
+                    int blockCount = byteBuf.getInt(index + 4);
+                    byte rotation = hasRotations ? (byte) (byteBuf.getByte(index + 8) & 3) : 0;
+                    index += hasRotations ? 9 : 8;
 
-                ServerBlock block = palette[blockID];
-                for (int j = 0; j < blockCount && i + j < totalBlocks; j++) {
-                    if (x < W) {
-                        chunk = chunk.setBlock(x, y, z, block, rotation);
-                    }
+                    ServerBlock block = palette[blockID];
+                    for (int j = 0; j < blockCount && i + j < totalBlocks; j++) {
+                        if (x < W) {
+                            chunk = chunk.setBlock(x, y, z, block, rotation);
+                        }
 
-                    y++;
-                    if (y >= H) {
-                        y = 0;
-                        z++;
-                        if (z >= L) {
-                            z = 0;
-                            x++;
+                        y++;
+                        if (y >= H) {
+                            y = 0;
+                            z++;
+                            if (z >= L) {
+                                z = 0;
+                                x++;
+                            }
                         }
                     }
+                    i += blockCount;
                 }
-                i += blockCount;
             }
 
             return chunk;

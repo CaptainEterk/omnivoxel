@@ -34,9 +34,12 @@ public final class AsyncWorkerThread<T> {
         }
     }
 
-    public void add(T task, boolean necessary) {
+    public boolean add(T task, boolean necessary) {
         if (necessary || queue.size() < necessaryLimit) {
             queue.add(task);
+            return true;
+        } else {
+            return false;
         }
     }
 

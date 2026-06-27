@@ -31,12 +31,18 @@ public class ChunkMeshDataGenerator {
     private final BlockService<BlockWithMesh> blockService;
     private final ClientWorld world;
     private final Settings settings;
+    private final boolean ambientOcclusion, smoothLighting;
 
     public ChunkMeshDataGenerator(ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world, Settings settings) {
         this.worldDataService = worldDataService;
         this.blockService = blockService;
         this.world = world;
         this.settings = settings;
+        this.ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
+        this.smoothLighting = settings.getBooleanSetting("smooth_lighting", false);
+        settings.addSettingListener("ambient_occlusion", v -> {
+
+        });
     }
 
     private MeshData generateChunkMeshData(MeshDataGenerator.PaddedBlockMeshes paddedBlockMeshes, Position3D position3D) {
@@ -251,8 +257,6 @@ public class ChunkMeshDataGenerator {
 
         // TODO: Remove all hardcoding
         int blockType = Objects.equals(blockMesh.getModID() + "/" + blockMesh.getState(), "core:water_source_block/top") ? 1 : 0;
-        boolean ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
-        boolean smoothLighting = settings.getBooleanSetting("smooth_lighting", false);
 
         for (int idx : faceIndices) {
             Vertex pointPosition = faceVertices[idx];

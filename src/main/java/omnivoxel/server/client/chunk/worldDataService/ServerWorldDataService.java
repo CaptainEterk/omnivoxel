@@ -37,8 +37,8 @@ public final class ServerWorldDataService {
                 (worldX >= worldGenerator.getBlockMinX() && worldX < worldGenerator.getBlockMaxX());
         boolean withinY = (worldGenerator.getBlockMinY() == null || worldGenerator.getBlockMaxY() == null) ||
                 (worldY >= worldGenerator.getBlockMinY() && worldY < worldGenerator.getBlockMaxY());
-        boolean withinZ = (worldGenerator.getBlockMinZ() == null || worldGenerator.getBlockMaxX() == null) ||
-                (worldZ >= worldGenerator.getBlockMinZ() && worldZ < worldGenerator.getBlockMaxX());
+        boolean withinZ = (worldGenerator.getBlockMinZ() == null || worldGenerator.getBlockMaxZ() == null) ||
+                (worldZ >= worldGenerator.getBlockMinZ() && worldZ < worldGenerator.getBlockMaxZ());
 
         return withinX && withinY && withinZ;
     }
@@ -82,19 +82,17 @@ public final class ServerWorldDataService {
 
         double[] sparse = new double[sx * sy * sz];
 
-        for (int x = -1; x <= ConstantCommonSettings.CHUNK_WIDTH; x += STEP) {
+        for (int ix = 0; ix < sx; ix++) {
+            int x = ix * STEP - 1;
             int worldX = position3D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
 
-            for (int z = -1; z <= ConstantCommonSettings.CHUNK_LENGTH; z += STEP) {
+            for (int iz = 0; iz < sz; iz++) {
+                int z = iz * STEP - 1;
                 int worldZ = position3D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
 
-                for (int y = -1; y <= ConstantCommonSettings.CHUNK_HEIGHT; y += STEP) {
+                for (int iy = 0; iy < sy; iy++) {
+                    int y = iy * STEP - 1;
                     int worldY = position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT + y;
-
-                    int ix = (x + 1) / STEP;
-                    int iy = (y + 1) / STEP;
-                    int iz = (z + 1) / STEP;
-
                     int index = ix + sx * (iy + sy * iz);
 
                     sparse[index] = worldGenerator.getDensityFunction().evaluate(worldX, worldY, worldZ);

@@ -5,10 +5,8 @@ import omnivoxel.client.game.graphics.Renderer;
 import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
-import omnivoxel.client.game.graphics.block.BlockMesh;
-import omnivoxel.client.game.graphics.block.BlockWithMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
@@ -16,8 +14,11 @@ import omnivoxel.client.game.graphics.api.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.api.opengl.texture.TextureLoader;
 import omnivoxel.client.game.graphics.api.opengl.window.Window;
 import omnivoxel.client.game.graphics.api.opengl.window.WindowFactory;
+import omnivoxel.client.game.graphics.block.BlockMesh;
+import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.camera.Camera;
 import omnivoxel.client.game.graphics.camera.CameraCullingService;
+import omnivoxel.client.game.graphics.chunk.RenderedChunkProvider;
 import omnivoxel.client.game.graphics.menu.MenuSystem;
 import omnivoxel.client.game.position.DistanceChunk;
 import omnivoxel.client.game.position.PositionedChunk;
@@ -25,8 +26,8 @@ import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
-import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.BlockShape;
+import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -35,9 +36,9 @@ import omnivoxel.common.settings.Settings;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.executor.ExecutorCollection;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.chunk.Chunk;
 import omnivoxel.util.time.PeriodicTimeExecutor;
 import omnivoxel.util.time.Timer;
+import omnivoxel.world.chunk.Chunk;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.*;
@@ -48,9 +49,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class OpenGLRenderer implements Renderer {
-    private record WireframeShapeMesh(int vao, int vbo, int ebo, int indexCount) {
-    }
-
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f().identity();
     private static final int FPS_SAMPLES = 60;
     private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
@@ -69,6 +67,7 @@ public class OpenGLRenderer implements Renderer {
     private final Queue<Consumer<Window>> contextTasks;
     private final MenuSystem menuSystem;
     private final CameraCullingService cameraCullingService;
+    private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
     // TODO: Remove all TEMP
     // Window
     private Window window;
@@ -91,7 +90,7 @@ public class OpenGLRenderer implements Renderer {
     private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
-    private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
+    private final RenderedChunkProvider renderedChunkProvider;
 
     public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
         this.state = state;
@@ -104,6 +103,7 @@ public class OpenGLRenderer implements Renderer {
         this.contextTasks = contextTasks;
         this.menuSystem = menuSystem;
         this.cameraCullingService = cameraCullingService;
+        this.renderedChunkProvider = new RenderedChunkProvider();
     }
 
     @Override
@@ -156,9 +156,10 @@ public class OpenGLRenderer implements Renderer {
         this.shaderProgram = shaderProgramHandler.getShaderProgram(shaderProgramID) == null ? shaderProgramHandler.getShaderProgram("default") : shaderProgramHandler.getShaderProgram(shaderProgramID);
         this.textShaderProgram = shaderProgramHandler.getShaderProgram("text");
         this.shaderProgram.bind();
-        this.shaderProgram.setUniform("fogColor", 0.0f, 0.61568627451f, 1.0f, 1.0f);
+        this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
         this.shaderProgram.setUniform("fogFar", settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE);
         this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
+        this.shaderProgram.setUniform("renderDistance", settings.getFloatSetting("render_distance", 100));
         this.shaderProgram.setUniform("blockTexture", 0);
         this.shaderProgram.setUniform("highlightColor", 0.0f, 0.0f, 0.0f, 0.7f);
         this.shaderProgram.unbind();
@@ -179,6 +180,8 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("shouldAttemptFreeChunks", false);
         state.setItem("shouldToggleWindowFullscreen", false);
         state.setItem("has_observed_block", false);
+        // TODO: Remove in_water hardcoding
+        state.setItem("in_water", false);
 
         state.setItem("shouldRenderWireframe", false);
         state.setItem("seeDebug", true);
@@ -332,6 +335,16 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void update() {
+        if (state.getItem("in_water", Boolean.class)) {
+            this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
+            this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
+            this.shaderProgram.setUniform("fogNear", 0f);
+        } else {
+            this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
+            this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
+            this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
+        }
+
         if (state.getItem("shouldRenderWireframe", Boolean.class)) {
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
         }
@@ -371,7 +384,8 @@ public class OpenGLRenderer implements Renderer {
 
             attemptFreeChunks();
 
-            chunks = calculateRenderedChunks(renderDistance);
+            renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
+            chunks = renderedChunkProvider.getOutput();
 
             for (DistanceChunk chunk : chunks) {
                 ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
@@ -803,6 +817,7 @@ public class OpenGLRenderer implements Renderer {
                             \t- Movement Mode: %s
                             \t- Selected Block: %s
                             \t- Observed Block: %s
+                            \t- In Water: %b
                             Pipelines:
                             \t- Queued Meshes: %d
                             \t- Queued Mesh Data's: %d
@@ -860,6 +875,7 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("movement_mode", String.class),
                     state.getItem("selected_block", String.class),
                     state.getItem("observed_block_id", String.class),
+                    state.getItem("in_water", Boolean.class),
                     0,
                     0,
                     0,
@@ -916,61 +932,6 @@ public class OpenGLRenderer implements Renderer {
         GL30C.glBindVertexArray(vao);
 
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
-    }
-
-    private @NotNull List<DistanceChunk> calculateRenderedChunks(int renderDistance) {
-        int frustumBias = settings.getIntSetting("frustum_bias", 10);
-
-        int chunkX = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_WIDTH) + 1;
-        int chunkY = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_HEIGHT) + 1;
-        int chunkZ = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_LENGTH) + 1;
-
-        int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
-        int squaredRenderDistance = rdChunks * rdChunks;
-        Map<Integer, Set<DistanceChunk>> positionedChunks = new HashMap<>();
-        int highestBucketDistance = 0;
-
-        int ccx = (int) -Math.floor(camera.getX() / ConstantCommonSettings.CHUNK_WIDTH);
-        int ccy = (int) -Math.floor(camera.getY() / ConstantCommonSettings.CHUNK_HEIGHT);
-        int ccz = (int) -Math.floor(camera.getZ() / ConstantCommonSettings.CHUNK_LENGTH);
-        int count = 0;
-
-        for (int x = -chunkX; x <= chunkX; x++) {
-            for (int y = -chunkY; y <= chunkY; y++) {
-                for (int z = -chunkZ; z <= chunkZ; z++) {
-                    int dx = x - ccx;
-                    int dy = y - ccy;
-                    int dz = z - ccz;
-                    int distance = x * x + y * y + z * z;
-
-                    if (distance < squaredRenderDistance) {
-                        Position3D position3D = new Position3D(dx, dy, dz);
-
-                        if (!camera.getFrustum().isChunkInFrustum(position3D)) {
-                            distance *= frustumBias;
-                        }
-
-                        if (distance > highestBucketDistance) {
-                            highestBucketDistance = distance;
-                        }
-
-                        positionedChunks.computeIfAbsent(distance, i -> new HashSet<>()).add(new DistanceChunk(distance, position3D));
-                        count++;
-                    }
-                }
-            }
-        }
-
-        List<DistanceChunk> out = new ArrayList<>(count);
-
-        for (int i = 0; i < highestBucketDistance; i++) {
-            Set<DistanceChunk> posChunks = positionedChunks.get(i);
-            if (posChunks != null) {
-                out.addAll(posChunks);
-            }
-        }
-
-        return out;
     }
 
     private void attemptFreeChunks() {
@@ -1043,5 +1004,8 @@ public class OpenGLRenderer implements Renderer {
     @Override
     public Window getWindow() {
         return window;
+    }
+
+    private record WireframeShapeMesh(int vao, int vbo, int ebo, int indexCount) {
     }
 }

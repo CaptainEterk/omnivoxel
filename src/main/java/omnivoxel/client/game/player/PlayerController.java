@@ -176,6 +176,30 @@ public class PlayerController {
         }
     }
 
+    private Block getBlock(int bx, int by, int bz) {
+        int chunkX = IndexCalculator.chunkX(bx);
+        int chunkY = IndexCalculator.chunkY(by);
+        int chunkZ = IndexCalculator.chunkZ(bz);
+
+        int localX = IndexCalculator.localX(bx);
+        int localY = IndexCalculator.localY(by);
+        int localZ = IndexCalculator.localZ(bz);
+
+        if (cachedChunkPos == null || cachedChunk == null ||
+                cachedChunkPos.x() != chunkX ||
+                cachedChunkPos.y() != chunkY ||
+                cachedChunkPos.z() != chunkZ) {
+            cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
+            ClientWorldChunk clientWorldChunk = world.get(cachedChunkPos, false, false);
+            if (clientWorldChunk == null) return null;
+
+            cachedChunk = clientWorldChunk.getChunkData();
+            if (cachedChunk == null) return null;
+        }
+
+        return cachedChunk.getBlock(localX, localY, localZ);
+    }
+
     private boolean isSolidAt(double wx, double wy, double wz) {
         double minX = wx + hitbox.minX();
         double maxX = wx + hitbox.maxX();
@@ -194,30 +218,15 @@ public class PlayerController {
         for (int bx = blockMinX; bx <= blockMaxX; bx++) {
             for (int by = blockMinY; by <= blockMaxY; by++) {
                 for (int bz = blockMinZ; bz <= blockMaxZ; bz++) {
-                    int chunkX = IndexCalculator.chunkX(bx);
-                    int chunkY = IndexCalculator.chunkY(by);
-                    int chunkZ = IndexCalculator.chunkZ(bz);
-
-                    int localX = IndexCalculator.localX(bx);
-                    int localY = IndexCalculator.localY(by);
-                    int localZ = IndexCalculator.localZ(bz);
-
-                    if (cachedChunkPos == null || cachedChunk == null ||
-                            cachedChunkPos.x() != chunkX ||
-                            cachedChunkPos.y() != chunkY ||
-                            cachedChunkPos.z() != chunkZ) {
-                        cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
-                        ClientWorldChunk clientWorldChunk = world.get(cachedChunkPos, false, false);
-                        if (clientWorldChunk == null) return true;
-
-                        cachedChunk = clientWorldChunk.getChunkData();
-                        if (cachedChunk == null) return true;
-                    }
-
-                    Block block = cachedChunk.getBlock(localX, localY, localZ);
+                    Block block = getBlock(bx, by, bz);
                     if (block != null) {
                         BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
                         BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+
+                        int localX = IndexCalculator.localX(bx);
+                        int localY = IndexCalculator.localY(by);
+                        int localZ = IndexCalculator.localZ(bz);
+
                         byte rotation = blockMesh.isRotatable() ? cachedChunk.getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
                             BlockHitbox rotatedHitbox = bh.rotateY(rotation);
@@ -227,6 +236,8 @@ public class PlayerController {
                                 }
                             }
                         }
+                    } else {
+                        return true;
                     }
                 }
             }
@@ -283,9 +294,6 @@ public class PlayerController {
                     Position3DAndBlockRotation observedPositionAndBlock = findObservedBlock(true);
                     if (observedPositionAndBlock != null) {
                         Position3D observedBlock = observedPositionAndBlock.position;
-                        int chunkX = IndexCalculator.chunkX(observedBlock.x());
-                        int chunkY = IndexCalculator.chunkY(observedBlock.y());
-                        int chunkZ = IndexCalculator.chunkZ(observedBlock.z());
 
                         BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
                         BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
@@ -360,6 +368,13 @@ public class PlayerController {
             client.sendRequest(new PlayerUpdateRequest(x, y, z, pitch, yaw));
 
             camera.setPosition(x, y, z);
+        }
+
+        Block block = getBlock((int) x, (int) y, (int) z);
+        if (block != null && block.id().split("/")[0].equals("core:water_source_block")) {
+            state.setItem("in_water", true);
+        } else {
+            state.setItem("in_water", false);
         }
     }
 
