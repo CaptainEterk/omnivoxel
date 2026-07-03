@@ -87,7 +87,7 @@ public class PlayerController {
     private boolean leftMouseDown;
     private boolean rightMouseDown;
     private Position3D cachedChunkPos = new Position3D(0, 0, 0);
-    private Chunk<BlockWithMesh> cachedChunk;
+    private ClientWorldChunk cachedChunk;
     private boolean onGround = false;
     private int selectedBlock = 0;
     private boolean selectingBlockDown;
@@ -145,18 +145,17 @@ public class PlayerController {
                             cachedChunkPos.y() != chunkY ||
                             cachedChunkPos.z() != chunkZ) {
                         cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
-                        ClientWorldChunk clientWorldChunk = world.get(cachedChunkPos, false, false);
-                        if (clientWorldChunk == null) return;
-
-                        cachedChunk = clientWorldChunk.getChunkData();
+                        cachedChunk = world.get(cachedChunkPos, false, false);
                         if (cachedChunk == null) return;
                     }
 
-                    Block block = cachedChunk.getBlock(localX, localY, localZ);
+                    Chunk<BlockWithMesh> chunk = cachedChunk.getChunkData();
+
+                    Block block = chunk.getBlock(localX, localY, localZ);
                     if (block != null) {
                         BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
                         BlockHitbox[] blockHitbox = blockMesh.getHitbox();
-                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getBlockRotation(localX, localY, localZ) : 0;
+                        byte rotation = blockMesh.isRotatable() ? chunk.getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
                             BlockHitbox rotatedHitbox = bh.rotateY(rotation);
                             if (rotatedHitbox.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
@@ -190,14 +189,11 @@ public class PlayerController {
                 cachedChunkPos.y() != chunkY ||
                 cachedChunkPos.z() != chunkZ) {
             cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
-            ClientWorldChunk clientWorldChunk = world.get(cachedChunkPos, false, false);
-            if (clientWorldChunk == null) return null;
-
-            cachedChunk = clientWorldChunk.getChunkData();
+            cachedChunk = world.get(cachedChunkPos, false, false);
             if (cachedChunk == null) return null;
         }
 
-        return cachedChunk.getBlock(localX, localY, localZ);
+        return cachedChunk.getChunkData() == null ? null : cachedChunk.getChunkData().getBlock(localX, localY, localZ);
     }
 
     private boolean isSolidAt(double wx, double wy, double wz) {
@@ -227,7 +223,7 @@ public class PlayerController {
                         int localY = IndexCalculator.localY(by);
                         int localZ = IndexCalculator.localZ(bz);
 
-                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getBlockRotation(localX, localY, localZ) : 0;
+                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
                             BlockHitbox rotatedHitbox = bh.rotateY(rotation);
                             if (rotatedHitbox.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
@@ -247,7 +243,7 @@ public class PlayerController {
     }
 
     public void tick(double deltaTime) {
-        double tickDelta = deltaTime * ConstantClientSettings.TARGET_TPS;
+        double tickDelta = 1.0;//deltaTime * ConstantClientSettings.TARGET_TPS;
 
         if (movementMode == MovementMode.FALL_COLLIDE) {
             updateBlockMovementModifiers(x, y, z);
@@ -423,25 +419,29 @@ public class PlayerController {
 
             Block block = clientWorldChunk.getChunkData().getBlock(localX, localY, localZ);
 
-            if (block == null || "omnivoxel:air/default".equals(block.id())) {
+            if (block == null) {
                 lastAir = new Position3D(x, y, z);
             } else {
                 BlockMesh blockMesh = blockService.getBlock(block.id()).blockMesh();
-                BlockHitbox[] blockHitbox = blockMesh.getHitbox();
-                byte rotation = blockMesh.isRotatable() ? clientWorldChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
-                boolean intersects = false;
-                for (BlockHitbox bh : blockHitbox) {
-                    if (bh.rotateY(rotation).intersectsRay(originX, originY, originZ, dirX, dirY, dirZ, x, y, z)) {
-                        intersects = true;
-                        break;
+                if (blockMesh == null || !blockMesh.canPlaceOn()) {
+                    lastAir = new Position3D(x, y, z);
+                } else {
+                    BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                    byte rotation = blockMesh.isRotatable() ? clientWorldChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
+                    boolean intersects = false;
+                    for (BlockHitbox bh : blockHitbox) {
+                        if (bh.rotateY(rotation).intersectsRay(originX, originY, originZ, dirX, dirY, dirZ, x, y, z)) {
+                            intersects = true;
+                            break;
+                        }
                     }
-                }
 
-                if (intersects) {
-                    if (getBlockOn) {
-                        return new Position3DAndBlockRotation(lastAir, block, rotation);
+                    if (intersects) {
+                        if (getBlockOn) {
+                            return new Position3DAndBlockRotation(lastAir, block, rotation);
+                        }
+                        return new Position3DAndBlockRotation(new Position3D(x, y, z), block, rotation);
                     }
-                    return new Position3DAndBlockRotation(new Position3D(x, y, z), block, rotation);
                 }
             }
 

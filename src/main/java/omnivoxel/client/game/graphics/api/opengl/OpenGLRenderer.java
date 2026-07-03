@@ -335,108 +335,90 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void update() {
-        Timer.time("water_calc", () -> {
-            boolean inWater = state.getItem("in_water", Boolean.class);
-            if (inWater != state.getItem("prev_in_water", Boolean.class)) {
-                if (inWater) {
-                    this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
-                    this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
-                    this.shaderProgram.setUniform("fogNear", 0f);
-                } else {
-                    this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
-                    this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
-                    this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
-                }
+        boolean inWater = state.getItem("in_water", Boolean.class);
+        if (inWater != state.getItem("prev_in_water", Boolean.class)) {
+            if (inWater) {
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
+                this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
+                this.shaderProgram.setUniform("fogNear", 0f);
+            } else {
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
+                this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
+                this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
             }
-            state.setItem("prev_in_water", inWater);
-        });
+        }
+        state.setItem("prev_in_water", inWater);
+        if (state.getItem("shouldRenderWireframe", Boolean.class)) {
+            GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
+        }
 
-        Timer.time("wireframe", () -> {
-            if (state.getItem("shouldRenderWireframe", Boolean.class)) {
-                GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
-            }
-        });
+        shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
 
-        Timer.time("pos", () -> {
-            shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
-        });
+        if (state.getItem("shouldUpdateView", Boolean.class)) {
+            Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.getAspectRatio(), camera.getNear(), camera.getFar());
+            Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
+            Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
 
-        Timer.time("view", () -> {
-            if (state.getItem("shouldUpdateView", Boolean.class)) {
-                Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.getAspectRatio(), camera.getNear(), camera.getFar());
-                Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
-                Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
+            camera.updateFrustum(projectionMatrix, cameraViewMatrix);
+            shaderProgram.setUniform("projection", projectionMatrix);
+            shaderProgram.setUniform("view", cameraViewMatrix);
+            shaderProgram.setUniform("cameraView", cameraViewMatrix);
 
-                camera.updateFrustum(projectionMatrix, cameraViewMatrix);
-                shaderProgram.setUniform("projection", projectionMatrix);
-                shaderProgram.setUniform("view", cameraViewMatrix);
-                shaderProgram.setUniform("cameraView", cameraViewMatrix);
+            Matrix4f invProjection = new Matrix4f(projectionMatrix).invert();
+            Matrix4f invView = new Matrix4f(viewMatrix).invert();
 
-                Matrix4f invProjection = new Matrix4f(projectionMatrix).invert();
-                Matrix4f invView = new Matrix4f(viewMatrix).invert();
+            shaderProgram.setUniform("invProjection", invProjection);
+            shaderProgram.setUniform("invView", invView);
 
-                shaderProgram.setUniform("invProjection", invProjection);
-                shaderProgram.setUniform("invView", invView);
+            state.setItem("shouldUpdateView", false);
+        }
 
-                state.setItem("shouldUpdateView", false);
-            }
-        });
+        if (world.inflightRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
+            state.setItem("shouldUpdateVisibleMeshes", true);
+        }
 
-        Timer.time("update_meshes", () -> {
-            if (world.inflightRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
-                state.setItem("shouldUpdateVisibleMeshes", true);
-            }
-        });
+        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
+            attemptFreeChunks();
+        }
 
-        Timer.time("visible_meshes", () -> {
-            List<DistanceChunk> chunks;
-            if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-                solidRenderedChunks.clear();
-                decorationRenderedChunks.clear();
-                transparentRenderedChunks.clear();
+        if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
+            solidRenderedChunks.clear();
+            decorationRenderedChunks.clear();
+            transparentRenderedChunks.clear();
 
-                int renderDistance = settings.getIntSetting("render_distance", 100);
+            int renderDistance = settings.getIntSetting("render_distance", 100);
 
-                attemptFreeChunks();
+            attemptFreeChunks();
 
-                renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
-                chunks = renderedChunkProvider.getOutput();
+            renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
+            List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
 
-                for (DistanceChunk chunk : chunks) {
-                    ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
-                    if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
-                        if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
-                            solidRenderedChunks.add(chunk);
-                        }
-                        if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
-                            decorationRenderedChunks.add(chunk);
-                        }
-                        if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
-                            transparentRenderedChunks.add(chunk);
-                        }
+            // TODO: This is an expensive operation, optimize it
+            for (DistanceChunk chunk : chunks) {
+                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
+                if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
+                    if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
+                        solidRenderedChunks.add(chunk);
+                    }
+                    if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
+                        decorationRenderedChunks.add(chunk);
+                    }
+                    if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
+                        transparentRenderedChunks.add(chunk);
                     }
                 }
-
-                transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
-
-                state.setItem("total_rendered_chunks", chunks.size());
-
-                state.setItem("shouldUpdateVisibleMeshes", false);
             }
-        });
 
-        Timer.time("attempt_free", () -> {
-            if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
-                attemptFreeChunks();
-            }
-        });
+            transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
 
-        Timer.time("fullscreen", () -> {
-            if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
-                window.toggleFullscreen();
-            }
-        });
-        System.out.println("------------");
+            state.setItem("total_rendered_chunks", chunks.size());
+
+            state.setItem("shouldUpdateVisibleMeshes", false);
+        }
+
+        if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
+            window.toggleFullscreen();
+        }
     }
 
     private void openGLStateReset() {
@@ -957,7 +939,7 @@ public class OpenGLRenderer implements Renderer {
         int squaredRenderDistance = rdChunks * rdChunks;
 
         cameraCullingService.calculateChunkPosition();
-        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance));
+        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), 10);
         state.setItem("shouldAttemptFreeChunks", false);
     }
 

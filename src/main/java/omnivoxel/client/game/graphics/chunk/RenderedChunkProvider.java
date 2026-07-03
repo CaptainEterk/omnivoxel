@@ -9,8 +9,7 @@ import omnivoxel.util.thread.CoalescingWorkerThread;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RenderedChunkProvider {
-
+public final class RenderedChunkProvider {
     private final CoalescingWorkerThread<RenderingData> coalescingWorkerThread;
     private volatile List<DistanceChunk> output = List.of();
 

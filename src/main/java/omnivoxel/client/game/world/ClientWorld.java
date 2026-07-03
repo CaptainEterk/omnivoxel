@@ -224,11 +224,22 @@ public class ClientWorld {
         tick++;
     }
 
-    public void freeAllChunksNotInAndNotRecentlyAccessed(Predicate<Position3D> predicate) {
+    public void freeAllChunksNotInAndNotRecentlyAccessed(Predicate<Position3D> predicate, int maxChunksProcessed) {
         Position3D[] positions = getKeys();
+
+        if (maxChunksProcessed == 0 || maxChunksProcessed > positions.length) {
+            if (maxChunksProcessed > 0) {
+                freeAllChunksNotInAndNotRecentlyAccessed(predicate, positions.length);
+            }
+            return;
+        }
+
         boolean changed = false;
 
-        for (Position3D pos : positions) {
+        int start = (int) Math.floor(Math.random() * (positions.length - maxChunksProcessed));
+
+        for (int positionsLength = positions.length, i = start; i < positionsLength && i < maxChunksProcessed + start; i++) {
+            Position3D pos = positions[i];
             if (predicate.test(pos)) continue;
 
             if (inPipelineChunks.contains(pos)) continue;

@@ -51,19 +51,19 @@ public class TickLoop implements Runnable {
 
             while (gameRunning.get()) {
                 long now = System.nanoTime();
-                if (now >= nextTickTime) {
+
+                while (now >= nextTickTime) {
                     playerController.tick(deltaTime / 1_000_000_000.0);
                     nextTickTime += deltaTime;
-                } else {
-                    long sleepTime = nextTickTime - now;
-                    if (sleepTime > 1_000_000) {
-                        // Sleep most of the time
-                        LockSupport.parkNanos(sleepTime - 500_000);
-                    }
-                    // Short busy-wait for precision
-                    while (System.nanoTime() < nextTickTime) {
-                        Thread.onSpinWait();
-                    }
+                }
+
+                long sleepTime = nextTickTime - System.nanoTime();
+                if (sleepTime > 1_000_000) {
+                    LockSupport.parkNanos(sleepTime - 500_000);
+                }
+
+                while (System.nanoTime() < nextTickTime) {
+                    Thread.onSpinWait();
                 }
             }
         } catch (Exception e) {

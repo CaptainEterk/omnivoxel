@@ -32,6 +32,8 @@ public abstract class BlockMesh {
 
     public abstract boolean isRotatable();
 
+    public abstract boolean canPlaceOn();
+
     public String getState() {
         return state;
     }
