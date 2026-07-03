@@ -2,11 +2,13 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.tasks;
 
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
+import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.util.math.Position3D;
 
 import java.util.Objects;
 
-public record LightingChunkMeshDataTask(ByteBuf blocks, Position3D position3D) implements MeshDataTask {
+public record LightingChunkMeshDataTask(ByteBuf blocks, Position3D position3D,
+                                        LightChannels channel) implements MeshDataTask {
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -21,8 +23,5 @@ public record LightingChunkMeshDataTask(ByteBuf blocks, Position3D position3D) i
 
     @Override
     public void reject() {
-        if (blocks != null) {
-            blocks.release();
-        }
     }
 }

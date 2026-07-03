@@ -47,6 +47,16 @@ public class Timer {
         return stop();
     }
 
+    public static long time(String name, Runnable runnable) {
+        long startTime = System.nanoTime();
+        runnable.run();
+        long time = System.nanoTime() - startTime;
+        if (name != null) {
+            System.out.println(name + " took " + time + "ns");
+        }
+        return time;
+    }
+
     public long getLastDuration() {
         if (recordedCount == 0) return 0;
         return times[(timeIndex - 1 + times.length) % times.length];

@@ -42,6 +42,7 @@ import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 import org.joml.Matrix4f;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -185,26 +186,27 @@ public final class Client implements NetworkUser {
             Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData();
 
             if (chunkData != null) {
+                // TODO: Only recalculate lighting for neighboring chunks if you need to, still remesh them though
                 clientWorldChunk.setCleanLighting(false);
                 BlockWithMesh block = blockService.getBlock(blockID);
                 if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
                     clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
-                    lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition));
+                    lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition, null), true);
 
                     if (x == 0)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(-1, 0, 0)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(-1, 0, 0), null), true);
                     if (x == ConstantCommonSettings.CHUNK_WIDTH - 1)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(1, 0, 0)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(1, 0, 0), null), true);
 
                     if (y == 0)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, -1, 0)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, -1, 0), null), true);
                     if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 1, 0)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 1, 0), null), true);
 
                     if (z == 0)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, -1)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, -1), null), true);
                     if (z == ConstantCommonSettings.CHUNK_LENGTH - 1)
-                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, 1)));
+                        lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition.add(0, 0, 1), null), true);
                 }
             }
         }
@@ -297,7 +299,7 @@ public final class Client implements NetworkUser {
 
         world.receivedChunk(position3D);
 
-        lightingGenerators.submit(new LightingChunkMeshDataTask(byteBuf, position3D));
+        lightingGenerators.submit(new LightingChunkMeshDataTask(byteBuf, position3D, null));
     }
 
     private void receiveChunkHeights(ByteBuf byteBuf) {
@@ -442,6 +444,7 @@ public final class Client implements NetworkUser {
                 )::generateMeshData,
                 true
         );
+        Set<Position3D> completeDirtyNeighbors = ConcurrentHashMap.newKeySet();
         lightingGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_lighting_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new ChunkMeshDataLightingGenerator(
@@ -449,7 +452,8 @@ public final class Client implements NetworkUser {
                         worldDataService,
                         meshDataGenerators,
                         blockService,
-                        state
+                        state,
+                        completeDirtyNeighbors
                 )::generateLightingMeshData,
                 true
         );

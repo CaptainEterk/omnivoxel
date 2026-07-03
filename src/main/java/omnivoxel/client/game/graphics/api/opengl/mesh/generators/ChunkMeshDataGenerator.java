@@ -392,7 +392,7 @@ public class ChunkMeshDataGenerator {
         int chunkOffsetZ = chunkOffset(sampleZ, ConstantCommonSettings.CHUNK_LENGTH);
         ClientWorldChunk sampleChunk = world.get(currentChunkPosition.add(chunkOffsetX, chunkOffsetY, chunkOffsetZ), false, true);
 
-        if (sampleChunk == null || sampleChunk.getLightingData() == null) {
+        if (sampleChunk == null || sampleChunk.getLightingData() == null || sampleChunk.getLightingData().getChannel(channel) == null) {
             return currentLighting.getChannel(channel).getLighting(IndexCalculator.calculateBlockIndex(fallbackX, fallbackY, fallbackZ));
         }
 
@@ -606,10 +606,7 @@ public class ChunkMeshDataGenerator {
         return new MeshDataGenerator.PaddedBlockMeshes(blockMeshes, rotations);
     }
 
-    public MeshData generateMeshData(ByteBuf blocks, Position3D position3D) {
-        if (blocks == null) {
-            return generateChunkMeshData(unpackChunkPadded(position3D, world.get(position3D, false, false)), position3D);
-        }
-        return generateChunkMeshData(MeshDataGenerator.unpackChunkPadded(blocks, position3D, worldDataService, blockService, world), position3D);
+    public MeshData generateMeshData(Position3D position3D) {
+        return generateChunkMeshData(unpackChunkPadded(position3D, world.get(position3D, false, false)), position3D);
     }
 }

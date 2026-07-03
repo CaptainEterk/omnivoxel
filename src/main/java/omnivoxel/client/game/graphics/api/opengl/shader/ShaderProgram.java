@@ -1,7 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.shader;
 
 import org.joml.Matrix4f;
-import org.joml.Vector3fc;
 import org.lwjgl.opengl.GL30C;
 
 import java.util.HashMap;
@@ -39,10 +38,6 @@ public class ShaderProgram {
         GL30C.glUniform2f(getLocation(name), x, y);
     }
 
-    public void setUniform(String name, Vector3fc vector) {
-        GL30C.glUniform3f(getLocation(name), vector.x(), vector.y(), vector.z());
-    }
-
     public void setUniform(String name, double x, double y, double z) {
         GL30C.glUniform3f(getLocation(name), (float) x, (float) y, (float) z);
     }
@@ -60,10 +55,6 @@ public class ShaderProgram {
         GL30C.glUniform1i(getLocation(name), v);
     }
 
-    public void setUniform(String name, boolean v) {
-        GL30C.glUniform1i(getLocation(name), v ? 1 : 0);
-    }
-
     public void setUniform(String name, Matrix4f v) {
         GL30C.glUniformMatrix4fv(getLocation(name), false, v.get(new float[16]));
     }
@@ -78,9 +69,5 @@ public class ShaderProgram {
 
     public void unbind() {
         glUseProgram(0);
-    }
-
-    public int getProgram() {
-        return program;
     }
 }

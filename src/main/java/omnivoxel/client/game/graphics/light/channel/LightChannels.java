@@ -4,5 +4,7 @@ public enum LightChannels {
     RED,
     GREEN,
     BLUE,
-    SKYLIGHT
+    SKYLIGHT;
+
+    public static final LightChannels[] VALUES = values();
 }

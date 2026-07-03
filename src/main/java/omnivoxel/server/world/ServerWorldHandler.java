@@ -31,6 +31,13 @@ public class ServerWorldHandler {
         this.worldGenerator = worldGenerator;
     }
 
+    public void init() {
+        workerThreadPool.submit(new ChunkTask(null, 0, 0, 0));
+        workerThreadPool.submit(new ChunkTask(null, -1, 0, 0));
+        workerThreadPool.submit(new ChunkTask(null, -1, 0, -1));
+        workerThreadPool.submit(new ChunkTask(null, 0, 0, -1));
+    }
+
     public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, byte rotation, ServerClient client) {
         try {
             if (canModify(worldX, worldY, worldZ, client)) {
@@ -44,17 +51,15 @@ public class ServerWorldHandler {
                 Position3D position3D = new Position3D(chunkX, chunkY, chunkZ);
                 Chunk<ServerBlock> chunk = world.get(position3D);
                 if (chunk == null) {
-                    Logger.debug("Decoding chunk " + chunkX + " " + chunkY +  " " + chunkZ);
                     chunk = ChunkIO.decode(ChunkIO.get(position3D));
                 }
                 if (chunk != null) {
-                    Logger.debug("chunk isn't null " + chunk.getBlock(x, y, z).id() + " " + block.id());
                     if (!Objects.equals(chunk.getBlock(x, y, z).id(), block.id()) || chunk.getBlockRotation(x, y, z) != rotation) {
                         chunk = chunk.setBlock(x, y, z, block, rotation);
                         world.put(position3D, chunk);
                         ChunkIO.writeChunk(position3D, chunk, true);
 
-                        Logger.info("Replacing block in chunk: " + chunkX + " " + chunkY + " " + chunkZ + " at " + x + " " + y + " " + z + " with " + block.id());
+                        Logger.debug("Replacing block in chunk: " + chunkX + " " + chunkY + " " + chunkZ + " at " + x + " " + y + " " + z + " with " + block.id());
 
                         Position2D position2D = position3D.getPosition2D();
                         Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);

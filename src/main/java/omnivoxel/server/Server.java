@@ -84,6 +84,7 @@ public class Server implements NetworkUser {
             );
 
             this.worldHandler = new ServerWorldHandler(world, clients, workerThreadPool, worldGenerator);
+            worldHandler.init();
             this.settings = settings;
         } else {
             throw new IllegalArgumentException("gameNode must be an ObjectGameNode, not " + gameNode.getClass());
@@ -253,6 +254,7 @@ public class Server implements NetworkUser {
                     }
                 }
             }
+
             if (tick % settings.getIntSetting("entity_save_td", 20) == 0) {
                 // TODO: Actually save entities
             }

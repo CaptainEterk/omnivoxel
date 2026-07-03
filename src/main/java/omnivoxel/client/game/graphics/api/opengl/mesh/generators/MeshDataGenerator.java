@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class MeshDataGenerator {
-    private static final BlockMesh[] blockMeshes = new BlockMesh[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
     private static BlockWithMesh AIR = null;
     private final ChunkMeshDataGenerator chunkMeshDataGenerator;
     private final EntityMeshDataGenerator entityMeshDataGenerator;
@@ -98,15 +97,11 @@ public final class MeshDataGenerator {
         }
     }
 
-    public record PaddedBlockMeshes(BlockMesh[] blockMeshes, byte[] rotations) {
-    }
-
-    public static PaddedBlockMeshes unpackChunkPadded(ByteBuf byteBuf, Position3D pos, ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world) {
+    public static void unpackChunkPadded(ByteBuf byteBuf, Position3D pos, ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world) {
         if (AIR == null) {
             AIR = new BlockWithMesh("omnivoxel:air", worldDataService.getBlock("omnivoxel:air"));
         }
 
-        byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
         Block[] palette = new Block[byteBuf.getShort(24)];
 
         int index = 26;
@@ -139,13 +134,7 @@ public final class MeshDataGenerator {
             byte rotation = (byte) (byteBuf.getByte(index + 8) & 3);
             index += 9;
 
-            BlockMesh blockMesh = worldDataService.getBlock(palette[blockID].id());
-
             for (int j = 0; j < blockCount; j++) {
-                int paddedIndex = i + j;
-                blockMeshes[paddedIndex] = blockMesh;
-                rotations[paddedIndex] = rotation;
-
                 if (x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
                         y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
                         z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
@@ -236,14 +225,12 @@ public final class MeshDataGenerator {
         world.addChunkData(pos.add(0, 1, 0), posY, true);
         world.addChunkData(pos.add(0, 0, -1), negZ, true);
         world.addChunkData(pos.add(0, 0, 1), posZ, true);
-
-        return new PaddedBlockMeshes(blockMeshes, rotations);
     }
 
     public List<MeshDataTask> generateMeshData(MeshDataTask meshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_mdg", queueSize);
-        if (meshDataTask instanceof ChunkMeshDataTask(ByteBuf byteBuf, Position3D position3D)) {
-            MeshData meshData = chunkMeshDataGenerator.generateMeshData(byteBuf, position3D);
+        if (meshDataTask instanceof ChunkMeshDataTask(Position3D position3D)) {
+            MeshData meshData = chunkMeshDataGenerator.generateMeshData(position3D);
             if (meshData != null) {
                 world.add(position3D, meshData);
             } else {
@@ -257,5 +244,8 @@ public final class MeshDataGenerator {
             throw new IllegalArgumentException(meshDataTask + " is an invalid input. Stop playing with things you CLEARLY don't know how to use...");
         }
         return null;
+    }
+
+    public record PaddedBlockMeshes(BlockMesh[] blockMeshes, byte[] rotations) {
     }
 }

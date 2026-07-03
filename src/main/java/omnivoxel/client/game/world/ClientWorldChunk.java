@@ -6,6 +6,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.ChunkLightingData;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
+import omnivoxel.util.data.Direction;
 import omnivoxel.world.chunk.Chunk;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,22 +14,31 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ClientWorldChunk {
     // TODO: Move to ChunkLightingData?
     private final short[][] neighborLightOverflow;
+    private final AtomicBoolean[] cleanLighting;
     private MeshData meshData;
     private ChunkMesh mesh;
     private Chunk<BlockWithMesh> chunkData;
     private int lastFetched;
     private ChunkLightingData chunkLightingData;
-    private final AtomicBoolean cleanLighting = new AtomicBoolean(false);
 
     private ClientWorldChunk(MeshData meshData, ChunkMesh mesh, Chunk<BlockWithMesh> chunkData, ChunkLightingData chunkLightingData) {
         this.meshData = meshData;
         this.mesh = mesh;
         this.chunkData = chunkData;
         this.chunkLightingData = chunkLightingData;
-        this.neighborLightOverflow = new short[ChunkMeshDataLightingGenerator.Direction.VALUES.length * LightChannels.values().length][];
+        this.neighborLightOverflow = new short[Direction.VALUES.length * LightChannels.values().length][];
         for (int i = 0; i < neighborLightOverflow.length; i++) {
             this.neighborLightOverflow[i] = new short[0];
         }
+        this.cleanLighting = new AtomicBoolean[LightChannels.values().length];
+        for (int i = 0; i < cleanLighting.length; i++) {
+            cleanLighting[i] = new AtomicBoolean(false);
+        }
+    }
+
+    public ClientWorldChunk(LightChannels channel, Direction direction, short[] overflowLighting) {
+        this(null, null, null, null);
+        setNeighborLightOverflow(channel, direction, overflowLighting);
     }
 
     public ClientWorldChunk(MeshData meshData) {
@@ -43,8 +53,8 @@ public class ClientWorldChunk {
         this(null, null, chunkData, null);
     }
 
-    private static int getOverflowIndex(LightChannels channel, ChunkMeshDataLightingGenerator.Direction direction) {
-        return channel.ordinal() * ChunkMeshDataLightingGenerator.Direction.VALUES.length + direction.ordinal();
+    private static int getOverflowIndex(LightChannels channel, Direction direction) {
+        return channel.ordinal() * Direction.VALUES.length + direction.ordinal();
     }
 
     public MeshData getMeshData() {
@@ -79,11 +89,11 @@ public class ClientWorldChunk {
         return lastFetched;
     }
 
-    public short[] getNeighborLightOverflow(LightChannels channel, ChunkMeshDataLightingGenerator.Direction direction) {
+    public short[] getNeighborLightOverflow(LightChannels channel, Direction direction) {
         return neighborLightOverflow[getOverflowIndex(channel, direction)];
     }
 
-    public void setNeighborLightOverflow(LightChannels channel, ChunkMeshDataLightingGenerator.Direction direction, short[] overflow) {
+    public void setNeighborLightOverflow(LightChannels channel, Direction direction, short[] overflow) {
         neighborLightOverflow[getOverflowIndex(channel, direction)] = overflow;
     }
 
@@ -96,10 +106,29 @@ public class ClientWorldChunk {
     }
 
     public boolean isCleanLighting() {
-        return cleanLighting.get();
+        for (AtomicBoolean atomicBoolean : cleanLighting) {
+            if (!atomicBoolean.get()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isCleanLighting(LightChannels channel) {
+        return cleanLighting[channel.ordinal()].get();
     }
 
     public void setCleanLighting(boolean cleanLighting) {
-        this.cleanLighting.set(cleanLighting);
+        for (AtomicBoolean atomicBoolean : this.cleanLighting) {
+            atomicBoolean.set(cleanLighting);
+        }
+    }
+
+    public void setCleanLighting(LightChannels channel, boolean cleanLighting) {
+        if (channel == null) {
+            setCleanLighting(cleanLighting);
+        } else {
+            this.cleanLighting[channel.ordinal()].set(cleanLighting);
+        }
     }
 }

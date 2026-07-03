@@ -27,7 +27,6 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.common.BlockShape;
-import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -68,6 +67,7 @@ public class OpenGLRenderer implements Renderer {
     private final MenuSystem menuSystem;
     private final CameraCullingService cameraCullingService;
     private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
+    private final RenderedChunkProvider renderedChunkProvider;
     // TODO: Remove all TEMP
     // Window
     private Window window;
@@ -90,7 +90,6 @@ public class OpenGLRenderer implements Renderer {
     private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
-    private final RenderedChunkProvider renderedChunkProvider;
 
     public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
         this.state = state;
@@ -182,6 +181,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("has_observed_block", false);
         // TODO: Remove in_water hardcoding
         state.setItem("in_water", false);
+        state.setItem("prev_in_water", false);
 
         state.setItem("shouldRenderWireframe", false);
         state.setItem("seeDebug", true);
@@ -335,87 +335,108 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void update() {
-        if (state.getItem("in_water", Boolean.class)) {
-            this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
-            this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
-            this.shaderProgram.setUniform("fogNear", 0f);
-        } else {
-            this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
-            this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
-            this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
-        }
-
-        if (state.getItem("shouldRenderWireframe", Boolean.class)) {
-            GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
-        }
-
-        shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
-
-        if (state.getItem("shouldUpdateView", Boolean.class)) {
-            Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.getAspectRatio(), camera.getNear(), camera.getFar());
-            Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
-            Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
-
-            camera.updateFrustum(projectionMatrix, cameraViewMatrix);
-            shaderProgram.setUniform("projection", projectionMatrix);
-            shaderProgram.setUniform("view", cameraViewMatrix);
-            shaderProgram.setUniform("cameraView", cameraViewMatrix);
-
-            Matrix4f invProjection = new Matrix4f(projectionMatrix).invert();
-            Matrix4f invView = new Matrix4f(viewMatrix).invert();
-
-            shaderProgram.setUniform("invProjection", invProjection);
-            shaderProgram.setUniform("invView", invView);
-
-            state.setItem("shouldUpdateView", false);
-        }
-
-        if (world.chunkRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
-            state.setItem("shouldUpdateVisibleMeshes", true);
-        }
-
-        List<DistanceChunk> chunks;
-        if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-            solidRenderedChunks.clear();
-            decorationRenderedChunks.clear();
-            transparentRenderedChunks.clear();
-
-            int renderDistance = settings.getIntSetting("render_distance", 100);
-
-            attemptFreeChunks();
-
-            renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
-            chunks = renderedChunkProvider.getOutput();
-
-            for (DistanceChunk chunk : chunks) {
-                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
-                if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
-                    if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
-                        solidRenderedChunks.add(chunk);
-                    }
-                    if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
-                        decorationRenderedChunks.add(chunk);
-                    }
-                    if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
-                        transparentRenderedChunks.add(chunk);
-                    }
+        Timer.time("water_calc", () -> {
+            boolean inWater = state.getItem("in_water", Boolean.class);
+            if (inWater != state.getItem("prev_in_water", Boolean.class)) {
+                if (inWater) {
+                    this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
+                    this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
+                    this.shaderProgram.setUniform("fogNear", 0f);
+                } else {
+                    this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
+                    this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
+                    this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
                 }
             }
+            state.setItem("prev_in_water", inWater);
+        });
 
-            transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
+        Timer.time("wireframe", () -> {
+            if (state.getItem("shouldRenderWireframe", Boolean.class)) {
+                GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
+            }
+        });
 
-            state.setItem("total_rendered_chunks", chunks.size());
+        Timer.time("pos", () -> {
+            shaderProgram.setUniform("cameraPosition", camera.getX(), camera.getY(), camera.getZ());
+        });
 
-            state.setItem("shouldUpdateVisibleMeshes", false);
-        }
+        Timer.time("view", () -> {
+            if (state.getItem("shouldUpdateView", Boolean.class)) {
+                Matrix4f projectionMatrix = new Matrix4f().setPerspective((float) Math.toRadians(camera.getFOV()), window.getAspectRatio(), camera.getNear(), camera.getFar());
+                Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
+                Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
 
-        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
-            attemptFreeChunks();
-        }
+                camera.updateFrustum(projectionMatrix, cameraViewMatrix);
+                shaderProgram.setUniform("projection", projectionMatrix);
+                shaderProgram.setUniform("view", cameraViewMatrix);
+                shaderProgram.setUniform("cameraView", cameraViewMatrix);
 
-        if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
-            window.toggleFullscreen();
-        }
+                Matrix4f invProjection = new Matrix4f(projectionMatrix).invert();
+                Matrix4f invView = new Matrix4f(viewMatrix).invert();
+
+                shaderProgram.setUniform("invProjection", invProjection);
+                shaderProgram.setUniform("invView", invView);
+
+                state.setItem("shouldUpdateView", false);
+            }
+        });
+
+        Timer.time("update_meshes", () -> {
+            if (world.inflightRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
+                state.setItem("shouldUpdateVisibleMeshes", true);
+            }
+        });
+
+        Timer.time("visible_meshes", () -> {
+            List<DistanceChunk> chunks;
+            if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
+                solidRenderedChunks.clear();
+                decorationRenderedChunks.clear();
+                transparentRenderedChunks.clear();
+
+                int renderDistance = settings.getIntSetting("render_distance", 100);
+
+                attemptFreeChunks();
+
+                renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
+                chunks = renderedChunkProvider.getOutput();
+
+                for (DistanceChunk chunk : chunks) {
+                    ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
+                    if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
+                        if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
+                            solidRenderedChunks.add(chunk);
+                        }
+                        if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
+                            decorationRenderedChunks.add(chunk);
+                        }
+                        if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
+                            transparentRenderedChunks.add(chunk);
+                        }
+                    }
+                }
+
+                transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
+
+                state.setItem("total_rendered_chunks", chunks.size());
+
+                state.setItem("shouldUpdateVisibleMeshes", false);
+            }
+        });
+
+        Timer.time("attempt_free", () -> {
+            if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
+                attemptFreeChunks();
+            }
+        });
+
+        Timer.time("fullscreen", () -> {
+            if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
+                window.toggleFullscreen();
+            }
+        });
+        System.out.println("------------");
     }
 
     private void openGLStateReset() {
@@ -820,8 +841,6 @@ public class OpenGLRenderer implements Renderer {
                             \t- In Water: %b
                             Pipelines:
                             \t- Queued Meshes: %d
-                            \t- Queued Mesh Data's: %d
-                            \t- Bufferizing Chunks: %d
                             Lighting Worker Threads:
                             \t- Thread 1: %d
                             \t- Thread 2: %d
@@ -862,7 +881,7 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("total_rendered_chunks", Integer.class),
                     state.getItem("bufferizing_chunk_count", Integer.class),
                     state.getItem("bufferizing_queue_size", Integer.class),
-                    world.chunkRequestCount(),
+                    world.inflightRequestCount(),
                     state.getItem("chunk_requests_sent", Integer.class),
                     state.getItem("chunk_requests_received", Integer.class),
                     state.getItem("velocity_x", Double.class),
@@ -876,9 +895,7 @@ public class OpenGLRenderer implements Renderer {
                     state.getItem("selected_block", String.class),
                     state.getItem("observed_block_id", String.class),
                     state.getItem("in_water", Boolean.class),
-                    0,
-                    0,
-                    0,
+                    world.inPipelineChunkCount(),
                     state.getItem("Worker-0_queue_size_cmdlg", Integer.class),
                     state.getItem("Worker-1_queue_size_cmdlg", Integer.class),
                     state.getItem("Worker-2_queue_size_cmdlg", Integer.class),
