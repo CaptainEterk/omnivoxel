@@ -31,7 +31,7 @@ layout (location = 5) in vec2 aPos;
 out vec2 TexCoord;
 out float shadow;
 smooth out vec3 position;
-out vec4 lighting;
+out vec4 vLighting;
 out float ao;
 out vec3 vNormal;
 out vec3 faceNormal;
@@ -95,7 +95,7 @@ void main() {
         float gf = float(g) / float(BITMASK_4);
         float bf = float(b) / float(BITMASK_4);
         float sf = float(s) / float(BITMASK_4);
-        lighting = vec4(rf, gf, bf, sf);
+        vLighting = vec4(rf, gf, bf, sf);
 
         vec3 toCameraVector = cameraPosition-xyz;
         vec3 viewVector = normalize(toCameraVector);

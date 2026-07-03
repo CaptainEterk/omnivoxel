@@ -5,7 +5,7 @@
 in vec2 TexCoord;
 in float shadow;
 smooth in vec3 position;
-in vec4 lighting;
+in vec4 vLighting;
 in vec3 vNormal;
 in vec3 faceNormal;
 flat in uint blockType;
@@ -251,6 +251,7 @@ void main() {
             discard;
         }
 
+        vec4 lighting = pow(vLighting, vec4(2.2));
         vec3 blockLight = lighting.rgb;
         float skyLight = lighting.a;
         float ambient = 0.05;
