@@ -153,6 +153,9 @@ public final class Client implements NetworkUser {
                     player.set(x, y, z, pitch, yaw);
                     byteBuf.release();
                     break;
+                case REGISTER_ENTITY:
+                    byteBuf.release();
+                    break;
                 default:
                     Logger.error(Logger.Priority.HIGH, "Unexpected package key: " + packageID);
                     byteBuf.release();
