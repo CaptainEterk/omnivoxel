@@ -436,7 +436,7 @@ public class PlayerController {
                         }
                     }
 
-                    if (intersects) {
+                    if (intersects && blockMesh.canPlaceOn()) {
                         if (getBlockOn) {
                             return new Position3DAndBlockRotation(lastAir, block, rotation);
                         }
