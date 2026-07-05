@@ -2,8 +2,8 @@ package omnivoxel.server;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import omnivoxel.common.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.network.NetworkService;
 import omnivoxel.common.network.NetworkUser;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -17,10 +17,12 @@ import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.entity.Entity;
-import omnivoxel.server.entity.EntityManager;
+import omnivoxel.server.entity.EntityService;
 import omnivoxel.server.entity.EntityStorage;
+import omnivoxel.server.entity.EntityStorageManager;
 import omnivoxel.server.entity.mob.PlayerEntity;
 import omnivoxel.server.games.Game;
+import omnivoxel.server.games.GameResources;
 import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
@@ -54,7 +56,9 @@ public class Server implements NetworkUser {
     private final ServerBlockService blockService;
     private final ServerWorldHandler worldHandler;
     private final Settings settings;
-    private final EntityManager entityManager;
+    private final EntityStorageManager entityStorageManager;
+    private final EntityService entityService;
+    private final GameResources resources;
 
     public Server(Map<String, ServerClient> clients, long seed, ServerWorld world, EntityStorage entityStorage, Map<String, BlockShape> blockShapeCache, Map<String, BlockHitbox[]> blockHitboxCache, ServerBlockService blockService, Settings settings) throws IOException {
         this.clients = clients;
@@ -63,7 +67,7 @@ public class Server implements NetworkUser {
         this.blockShapeCache = blockShapeCache;
         this.blockHitboxCache = blockHitboxCache;
         this.blockService = blockService;
-        this.entityManager = new EntityManager(entityStorage);
+        this.entityStorageManager = new EntityStorageManager(entityStorage);
 
         GameNode gameNode = GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "constants.json")), null), ArrayGameNode.class));
 
@@ -85,6 +89,15 @@ public class Server implements NetworkUser {
 
             this.worldHandler = new ServerWorldHandler(world, clients, workerThreadPool, worldGenerator);
             worldHandler.init();
+
+            ObjectGameNode resourceNode = Game.checkGameNodeType(objectGameNode.object().get("resources"), ObjectGameNode.class);
+            if (resourceNode == null) {
+                throw new IllegalArgumentException("Games must include a \"resources\" attribute");
+            }
+            this.resources = new GameResources(resourceNode);
+
+            this.entityService = new EntityService(objectGameNode.object().get("entities"), resources);
+
             this.settings = settings;
         } else {
             throw new IllegalArgumentException("gameNode must be an ObjectGameNode, not " + gameNode.getClass());
@@ -170,7 +183,7 @@ public class Server implements NetworkUser {
         // TODO: Replace handshake id string with a long and just use the 8 bytes from that maybe?
         if (Arrays.equals(versionID, String.format("%-8s", HANDSHAKE_ID).getBytes())) {
             ServerClient serverClient;
-            Entity entity = entityManager.getEntity(entityManager.translateClientToEntity(clientID));
+            Entity entity = entityStorageManager.getEntity(entityStorageManager.translateClientToEntity(clientID));
             if (entity instanceof PlayerEntity playerEntity) {
                 Logger.debug("Client " + clientID + " is registered");
                 serverClient = new ServerClient(clientID, ctx, playerEntity);
@@ -184,8 +197,8 @@ public class Server implements NetworkUser {
                 int height = chunkHeights.getBlock(IndexCalculator.localX(x), IndexCalculator.localZ(z));
                 playerEntity.set(IndexCalculator.localX(x) + 0.5, height + 3, IndexCalculator.localZ(z) + 0.5);
                 serverClient = new ServerClient(clientID, ctx, playerEntity);
-                long entityID = entityManager.getNewEntityID();
-                entityManager.writeClientToEntityTranslation(clientID, entityID);
+                long entityID = entityStorageManager.getNewEntityID();
+                entityStorageManager.writeClientToEntityTranslation(clientID, entityID);
                 entityStorage.put(new Position3D(0, 5, 0), playerEntity, entityID);
             } else {
                 return;
@@ -201,29 +214,31 @@ public class Server implements NetworkUser {
             blockShapeCache.forEach((id, blockShape) -> NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REGISTER_BLOCK_SHAPE, null, blockShape.getBytes()));
 
             blockHitboxCache.forEach((id, blockHitboxes) -> {
-                        byte[] bytes = new byte[(Float.BYTES * 6 + Integer.BYTES + 2) * blockHitboxes.length + Integer.BYTES * 2 + id.length()];
-                        ByteUtils.addInt(bytes, id.length(), 0);
+                byte[] bytes = new byte[(Float.BYTES * 6 + Integer.BYTES + 2) * blockHitboxes.length + Integer.BYTES * 2 + id.length()];
+                ByteUtils.addInt(bytes, id.length(), 0);
 
-                        System.arraycopy(id.getBytes(), 0, bytes, Integer.BYTES, id.length());
+                System.arraycopy(id.getBytes(), 0, bytes, Integer.BYTES, id.length());
 
-                        ByteUtils.addInt(bytes, blockHitboxes.length, Integer.BYTES + id.length());
+                ByteUtils.addInt(bytes, blockHitboxes.length, Integer.BYTES + id.length());
 
-                        int idx = id.length() + Integer.BYTES * 2;
-                        for (BlockHitbox blockHitbox : blockHitboxes) {
-                            byte[] hitboxBytes = blockHitbox.getBytes();
-                            System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
-                            idx += hitboxBytes.length;
-                        }
+                int idx = id.length() + Integer.BYTES * 2;
+                for (BlockHitbox blockHitbox : blockHitboxes) {
+                    byte[] hitboxBytes = blockHitbox.getBytes();
+                    System.arraycopy(hitboxBytes, 0, bytes, idx, hitboxBytes.length);
+                    idx += hitboxBytes.length;
+                }
 
-                        NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REGISTER_BLOCK_HITBOX, null, bytes);
-                    }
-            );
+                NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_BLOCK_HITBOX, null, bytes);
+            });
 
             blockService.getAllBlocks().forEach((id, serverBlock) -> {
                 if (serverClient.registerBlockID(id)) {
-                    ChannelHandlerContext ctx1 = serverClient.getCTX();
-                    NetworkService.sendBytes(ctx1.channel(), PackageID.REGISTER_BLOCK, null, serverBlock.getBytes());
+                    NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_BLOCK, null, serverBlock.getBytes());
                 }
+            });
+
+            resources.getAllServerEntityMeshes().forEach((id, serverEntityMesh) -> {
+                NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_ENTITY, null, serverEntityMesh.getBytes());
             });
 
             clients.put(clientID, serverClient);

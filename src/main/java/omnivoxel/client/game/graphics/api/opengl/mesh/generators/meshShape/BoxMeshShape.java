@@ -3,7 +3,7 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.generators.meshShape;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.textureShape.BoxTextureShape;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 
 import java.util.List;
@@ -55,7 +55,7 @@ public record BoxMeshShape(float x, float y, float z, float width, float height,
                 float[] pos = corners[i];
                 float[] uvs = textureShape().getCoords(face);
 
-                Vertex vertex = new Vertex(
+                BlockVertex vertex = new BlockVertex(
                         pos[0] + x,
                         pos[1] + y,
                         pos[2] + z

@@ -10,11 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 
-public final class EntityManager {
+public final class EntityStorageManager {
     private final EntityStorage entityStorage;
     private final SecureRandom random = new SecureRandom();
 
-    public EntityManager(EntityStorage entityStorage) {
+    public EntityStorageManager(EntityStorage entityStorage) {
         this.entityStorage = entityStorage;
     }
 

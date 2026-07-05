@@ -1,7 +1,7 @@
 package omnivoxel.client.game.graphics.block;
 
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.face.BlockFace;
 

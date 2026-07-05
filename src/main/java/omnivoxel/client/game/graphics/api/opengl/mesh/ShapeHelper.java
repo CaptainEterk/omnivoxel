@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh;
 
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 
@@ -11,7 +11,7 @@ public class ShapeHelper {
     private static final int BITMASK_6 = 0x3F;
     private static final int BITMASK_13 = 0x1FFF;
 
-    public static int[] packVertexData(Vertex vertex, int r, int g, int b, int s, BlockFace blockFace, int u, int v, int type) {
+    public static int[] packVertexData(BlockVertex vertex, int r, int g, int b, int s, BlockFace blockFace, int u, int v, int type) {
         int ix = (int) (vertex.px() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_WIDTH));
         int iy = (int) (vertex.py() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_HEIGHT));
         int iz = (int) (vertex.pz() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_LENGTH));

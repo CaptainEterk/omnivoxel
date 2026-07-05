@@ -1,10 +1,10 @@
 package omnivoxel.client.network.util;
 
 import io.netty.buffer.ByteBuf;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.util.log.Logger;
@@ -25,7 +25,7 @@ public class ByteBufUtils {
         byteBuf.readBytes(idBytes);
         String id = new String(idBytes, StandardCharsets.UTF_8);
 
-        Vertex[][] vertices = new Vertex[6][];
+        BlockVertex[][] vertices = new BlockVertex[6][];
         int[][] indices = new int[6][];
         boolean[] solid = new boolean[6];
         boolean[] coverable = new boolean[6];
@@ -33,12 +33,12 @@ public class ByteBufUtils {
 
         for (int face = 0; face < 6; face++) {
             int vCount = byteBuf.readUnsignedShort();
-            Vertex[] vertexArray = new Vertex[vCount];
+            BlockVertex[] vertexArray = new BlockVertex[vCount];
             for (int i = 0; i < vCount; i++) {
                 float x = byteBuf.readFloat();
                 float y = byteBuf.readFloat();
                 float z = byteBuf.readFloat();
-                vertexArray[i] = new Vertex(x, y, z);
+                vertexArray[i] = new BlockVertex(x, y, z);
             }
             vertices[face] = vertexArray;
 

@@ -9,7 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.network.NetworkHandler;
 import omnivoxel.common.settings.ConstantCommonSettings;

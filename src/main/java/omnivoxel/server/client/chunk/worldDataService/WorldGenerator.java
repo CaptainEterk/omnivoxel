@@ -1,6 +1,6 @@
 package omnivoxel.server.client.chunk.worldDataService;
 
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;

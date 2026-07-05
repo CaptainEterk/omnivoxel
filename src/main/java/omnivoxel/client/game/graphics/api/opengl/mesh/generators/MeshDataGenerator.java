@@ -11,7 +11,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueLightVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.state.State;
@@ -50,7 +50,7 @@ public final class MeshDataGenerator {
         entityMeshDataGenerator = new EntityMeshDataGenerator(entityMeshDefinitionCache, queuedEntityMeshData);
     }
 
-    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, Vertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {
+    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {
         UniqueVertex vertex = new UniqueLightVertex(position, new TextureVertex(tx, ty), normal, r, g, b, s);
 
         if (!vertexIndexMap.containsKey(vertex)) {

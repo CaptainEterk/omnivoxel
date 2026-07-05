@@ -1,10 +1,9 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 
-import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.ChunkLightingData;
@@ -12,7 +11,7 @@ import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
@@ -252,16 +251,16 @@ public class ChunkMeshDataGenerator {
             Position3D chunkPosition
     ) {
         int[] uvCoordinates = blockMesh.getUVCoordinates(blockFace);
-        Vertex[] faceVertices = shape.vertices()[blockFace.ordinal()];
+        BlockVertex[] faceVertices = shape.vertices()[blockFace.ordinal()];
         int[] faceIndices = shape.indices()[blockFace.ordinal()];
 
         // TODO: Remove all hardcoding
         int blockType = Objects.equals(blockMesh.getModID() + "/" + blockMesh.getState(), "core:water_source_block/top") ? 1 : 0;
 
         for (int idx : faceIndices) {
-            Vertex pointPosition = faceVertices[idx];
-            Vertex rotatedPointPosition = rotateVertex(pointPosition, rotation);
-            Vertex position = rotatedPointPosition.add(x, y, z);
+            BlockVertex pointPosition = faceVertices[idx];
+            BlockVertex rotatedPointPosition = rotateVertex(pointPosition, rotation);
+            BlockVertex position = rotatedPointPosition.add(x, y, z);
             int ambientOcclusionLevel = ambientOcclusion ? sampleAmbientOcclusion(x, y, z, worldFace, rotatedPointPosition, blockMeshes) : 4;
             MeshDataGenerator.addPoint(
                     vertices,
@@ -280,11 +279,11 @@ public class ChunkMeshDataGenerator {
         }
     }
 
-    private Vertex rotateVertex(Vertex vertex, byte rotation) {
+    private BlockVertex rotateVertex(BlockVertex vertex, byte rotation) {
         return switch (rotation & 3) {
-            case 1 -> new Vertex(vertex.pz(), vertex.py(), 1.0f - vertex.px());
-            case 2 -> new Vertex(1.0f - vertex.px(), vertex.py(), 1.0f - vertex.pz());
-            case 3 -> new Vertex(1.0f - vertex.pz(), vertex.py(), vertex.px());
+            case 1 -> new BlockVertex(vertex.pz(), vertex.py(), 1.0f - vertex.px());
+            case 2 -> new BlockVertex(1.0f - vertex.px(), vertex.py(), 1.0f - vertex.pz());
+            case 3 -> new BlockVertex(1.0f - vertex.pz(), vertex.py(), vertex.px());
             default -> vertex;
         };
     }
@@ -306,7 +305,7 @@ public class ChunkMeshDataGenerator {
     private byte sampleVertexLight(
             int bx, int by, int bz,
             BlockFace face,
-            Vertex vertex,
+            BlockVertex vertex,
             ChunkLightingData lighting,
             Position3D chunkPosition,
             LightChannels channel,
@@ -341,7 +340,7 @@ public class ChunkMeshDataGenerator {
             int sampleX, int sampleY, int sampleZ,
             int fallbackX, int fallbackY, int fallbackZ,
             BlockFace face,
-            Vertex vertex,
+            BlockVertex vertex,
             ChunkLightingData lighting,
             Position3D chunkPosition,
             LightChannels channel
@@ -437,7 +436,7 @@ public class ChunkMeshDataGenerator {
     private int sampleAmbientOcclusion(
             int bx, int by, int bz,
             BlockFace face,
-            Vertex vertex,
+            BlockVertex vertex,
             BlockMesh[] blockMeshes
     ) {
         int nx = 0;

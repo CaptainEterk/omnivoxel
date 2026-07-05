@@ -6,7 +6,7 @@ import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
@@ -26,7 +26,7 @@ import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -628,7 +628,7 @@ public class OpenGLRenderer implements Renderer {
     private WireframeShapeMesh createWireframeShapeMesh(BlockShape shape) {
         List<Float> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
-        Map<Vertex, Integer> vertexIndices = new HashMap<>();
+        Map<BlockVertex, Integer> vertexIndices = new HashMap<>();
         Set<Long> edges = new HashSet<>();
 
         for (BlockFace face : BlockFace.values()) {
@@ -636,7 +636,7 @@ public class OpenGLRenderer implements Renderer {
                 continue;
             }
 
-            Vertex[] faceVertices = shape.vertices()[face.ordinal()];
+            BlockVertex[] faceVertices = shape.vertices()[face.ordinal()];
             for (int i = 0; i < faceVertices.length; i++) {
                 int a = getWireframeVertexIndex(faceVertices[i], vertices, vertexIndices);
                 int b = getWireframeVertexIndex(faceVertices[(i + 1) % faceVertices.length], vertices, vertexIndices);
@@ -670,7 +670,7 @@ public class OpenGLRenderer implements Renderer {
         return new WireframeShapeMesh(vao, vbo, ebo, indices.size());
     }
 
-    private int getWireframeVertexIndex(Vertex vertex, List<Float> vertices, Map<Vertex, Integer> vertexIndices) {
+    private int getWireframeVertexIndex(BlockVertex vertex, List<Float> vertices, Map<BlockVertex, Integer> vertexIndices) {
         Integer index = vertexIndices.get(vertex);
         if (index != null) {
             return index;

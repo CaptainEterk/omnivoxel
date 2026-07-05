@@ -1,6 +1,6 @@
 package omnivoxel.server.client.block;
 
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.server.client.ServerItem;
 

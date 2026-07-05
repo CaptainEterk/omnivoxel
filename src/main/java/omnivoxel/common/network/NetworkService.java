@@ -7,11 +7,11 @@ import omnivoxel.server.PackageID;
 import omnivoxel.util.log.Logger;
 
 public class NetworkService {
+    // TODO: If there is an error, you should disconnect the client
     private static void flush(Channel channel, ByteBuf byteBuf) {
         channel.writeAndFlush(byteBuf).addListener(f -> {
             if (!f.isSuccess()) {
                 Logger.error(Logger.Priority.HIGH, "Failed to send packet: " + f.cause());
-                f.cause().printStackTrace();
             }
         });
     }

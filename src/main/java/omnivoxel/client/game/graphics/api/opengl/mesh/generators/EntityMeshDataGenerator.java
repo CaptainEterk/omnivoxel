@@ -10,9 +10,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.generators.textureShape.Bo
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.GeneralEntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ModelEntityMeshData;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.server.entity.EntityType;
 import omnivoxel.util.cache.IDCache;

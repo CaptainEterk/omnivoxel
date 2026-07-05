@@ -1,7 +1,7 @@
 package omnivoxel.server.games;
 
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
@@ -129,12 +129,12 @@ public final class Game {
             ObjectGameNode blockShapeObjectGameNode = Game.checkGameNodeType(node, ObjectGameNode.class);
             String id = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("id"), StringGameNode.class).value();
             ArrayGameNode verticesNode = Game.checkGameNodeType(blockShapeObjectGameNode.object().get("vertices"), ArrayGameNode.class);
-            Vertex[][] vertices = new Vertex[6][];
+            BlockVertex[][] vertices = new BlockVertex[6][];
             for (int i = 0; i < 6; i++) {
-                Vertex[] vs = Arrays.stream(Game.checkGameNodeType(verticesNode.nodes()[i], ArrayGameNode.class).nodes()).map((gn) -> {
+                BlockVertex[] vs = Arrays.stream(Game.checkGameNodeType(verticesNode.nodes()[i], ArrayGameNode.class).nodes()).map((gn) -> {
                     double[] vertexArray = Arrays.stream(Game.checkGameNodeType(gn, ArrayGameNode.class).nodes()).mapToDouble((vgn) -> Game.checkGameNodeType(vgn, DoubleGameNode.class).value()).toArray();
-                    return new Vertex((float) vertexArray[0], (float) vertexArray[1], (float) vertexArray[2]);
-                }).toArray(Vertex[]::new);
+                    return new BlockVertex((float) vertexArray[0], (float) vertexArray[1], (float) vertexArray[2]);
+                }).toArray(BlockVertex[]::new);
                 vertices[i] = vs;
             }
 
