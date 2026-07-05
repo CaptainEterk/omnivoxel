@@ -43,6 +43,7 @@ public class EntityMeshDataGenerator {
         return new GeneralEntityMeshData(vertexBuffer, indexBuffer, entity);
     }
 
+    // TODO: Add EntityShape here
     public EntityMeshWrapper generateMeshData(EntityMeshWrapper entityMeshWrapper) {
         EntityMeshDataDefinition definition = entityMeshDefinitionCache.get(entityMeshWrapper.entity().getEntityType(), null);
 

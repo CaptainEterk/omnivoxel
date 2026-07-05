@@ -6,6 +6,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import java.util.ArrayList;
 import java.util.List;
 
+// TODO: There is a lot of shared data between this class and ServerEntityMesh, maybe combine?
 public final class EntityMesh implements Mesh {
     private final EntityMeshDataDefinition definition;
     private final List<EntityMesh> children;
