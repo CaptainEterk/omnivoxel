@@ -54,6 +54,18 @@ public class IndexCalculator {
         return index & Y_MASK;
     }
 
+    public static int blockX(int chunkX) {
+        return chunkX << X_BITS;
+    }
+
+    public static int blockY(int chunkY) {
+        return chunkY << Y_BITS;
+    }
+
+    public static int blockZ(int chunkZ) {
+        return chunkZ << Z_BITS;
+    }
+
     public static int chunkX(int worldX) {
         return worldX >> X_BITS;
     }

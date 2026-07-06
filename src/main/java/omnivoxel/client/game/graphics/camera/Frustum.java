@@ -1,6 +1,7 @@
 package omnivoxel.client.game.graphics.camera;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
+import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.math.Position3D;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
@@ -14,14 +15,12 @@ public class Frustum {
     }
 
     public boolean isChunkInFrustum(Position3D position3D) {
-        int x = position3D.x() * ConstantCommonSettings.CHUNK_WIDTH;
-        int y = position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT;
-        int z = position3D.z() * ConstantCommonSettings.CHUNK_LENGTH;
+        int x = IndexCalculator.blockX(position3D.x());
+        int y = IndexCalculator.blockY(position3D.y());
+        int z = IndexCalculator.blockZ(position3D.z());
 
         return frustumIntersection.testAab(
-                x,
-                y,
-                z,
+                x, y, z,
                 x + ConstantCommonSettings.CHUNK_WIDTH,
                 y + ConstantCommonSettings.CHUNK_HEIGHT,
                 z + ConstantCommonSettings.CHUNK_LENGTH
