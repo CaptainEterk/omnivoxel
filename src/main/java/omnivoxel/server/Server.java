@@ -6,6 +6,7 @@ import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.network.NetworkService;
 import omnivoxel.common.network.NetworkUser;
+import omnivoxel.common.resource.GameResources;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
 import omnivoxel.common.settings.Settings;
@@ -22,7 +23,7 @@ import omnivoxel.server.entity.EntityStorage;
 import omnivoxel.server.entity.EntityStorageManager;
 import omnivoxel.server.entity.mob.PlayerEntity;
 import omnivoxel.server.games.Game;
-import omnivoxel.server.games.GameResources;
+import omnivoxel.server.games.ServerResourceParser;
 import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
@@ -94,7 +95,7 @@ public class Server implements NetworkUser {
             if (resourceNode == null) {
                 throw new IllegalArgumentException("Games must include a \"resources\" attribute");
             }
-            this.resources = new GameResources(resourceNode);
+            this.resources = ServerResourceParser.parse(resourceNode);
 
             this.entityService = new EntityService(objectGameNode.object().get("entities"), resources);
 
@@ -237,9 +238,7 @@ public class Server implements NetworkUser {
                 }
             });
 
-            resources.getAllServerEntityMeshes().forEach((id, serverEntityMesh) -> {
-                NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_ENTITY, null, serverEntityMesh.getBytes());
-            });
+            NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_GAME_RESOURCES, null, resources.getBytes());
 
             clients.put(clientID, serverClient);
 

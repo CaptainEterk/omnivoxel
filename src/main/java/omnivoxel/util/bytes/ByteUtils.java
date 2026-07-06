@@ -3,6 +3,8 @@ package omnivoxel.util.bytes;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.common.annotations.NotNull;
 
+import java.nio.charset.StandardCharsets;
+
 public class ByteUtils {
     public static String bytesToHex(ByteBuf byteBuf, int start, int length) {
         StringBuilder hex = new StringBuilder();
@@ -83,5 +85,10 @@ public class ByteUtils {
                 ((long) (bytes[index + 5] & 0xFF) << 16) |
                 ((long) (bytes[index + 6] & 0xFF) << 8) |
                 ((long) (bytes[index + 7] & 0xFF));
+    }
+
+    public static void addString(byte[] bytes, String value, int offset) {
+        byte[] stringBytes = value.getBytes(StandardCharsets.UTF_8);
+        System.arraycopy(stringBytes, 0, bytes, offset, stringBytes.length);
     }
 }

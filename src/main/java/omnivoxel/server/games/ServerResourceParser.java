@@ -1,6 +1,7 @@
 package omnivoxel.server.games;
 
 import omnivoxel.common.entity.EntityVertex;
+import omnivoxel.common.resource.GameResources;
 import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.server.entity.ServerEntityShape;
 import omnivoxel.server.entity.ServerEntityTexture;
@@ -9,30 +10,27 @@ import omnivoxel.util.game.nodes.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GameResources {
-    private final Map<String, ServerEntityShape> serverEntityShapes;
-    private final Map<String, ServerEntityTexture> serverEntityTextures;
-    private final Map<String, ServerEntityMesh> serverEntityMeshes;
-
-    public GameResources(ObjectGameNode gameNode) {
+public class ServerResourceParser {
+    public static GameResources parse(ObjectGameNode gameNode) {
         ArrayGameNode entityShapesNode = Game.checkGameNodeType(gameNode.object().get("entity_shapes"), ArrayGameNode.class);
         if (entityShapesNode == null) {
             throw new NullPointerException("Resources must include \"entity_shapes\" attribute");
         }
-        serverEntityShapes = loadServerEntityShapes(entityShapesNode);
+        Map<String, ServerEntityShape> serverEntityShapes = loadServerEntityShapes(entityShapesNode);
         ArrayGameNode entityTexturesNode = Game.checkGameNodeType(gameNode.object().get("entity_textures"), ArrayGameNode.class);
         if (entityTexturesNode == null) {
             throw new NullPointerException("Resources must include \"entity_textures\" attribute");
         }
-        serverEntityTextures = loadServerEntityTextures(entityTexturesNode);
+        Map<String, ServerEntityTexture> serverEntityTextures = loadServerEntityTextures(entityTexturesNode);
         ArrayGameNode entityMeshesNode = Game.checkGameNodeType(gameNode.object().get("entity_meshes"), ArrayGameNode.class);
         if (entityMeshesNode == null) {
             throw new IllegalArgumentException("Resources must include an \"entity_meshes\" attribute");
         }
-        serverEntityMeshes = loadServerEntityMeshes(entityMeshesNode);
+        Map<String, ServerEntityMesh> serverEntityMeshes = loadServerEntityMeshes(entityMeshesNode, serverEntityShapes, serverEntityTextures);
+        return new GameResources(serverEntityShapes, serverEntityTextures, serverEntityMeshes);
     }
 
-    private Map<String, ServerEntityShape> loadServerEntityShapes(ArrayGameNode entityShapesNode) {
+    private static Map<String, ServerEntityShape> loadServerEntityShapes(ArrayGameNode entityShapesNode) {
         Map<String, ServerEntityShape> serverEntityShapes = new HashMap<>();
         for (GameNode node : entityShapesNode.nodes()) {
             ObjectGameNode shapeNode = Game.checkGameNodeType(node, ObjectGameNode.class);
@@ -99,7 +97,7 @@ public class GameResources {
         return serverEntityShapes;
     }
 
-    private Map<String, ServerEntityTexture> loadServerEntityTextures(ArrayGameNode entityTexturesNode) {
+    private static Map<String, ServerEntityTexture> loadServerEntityTextures(ArrayGameNode entityTexturesNode) {
         // TODO: Implement textures
         Map<String, ServerEntityTexture> serverEntityTextures = new HashMap<>();
 
@@ -110,13 +108,13 @@ public class GameResources {
                 throw new IllegalArgumentException("Entity textures must include an \"id\" attribute");
             }
             String id = idNode.value();
-            serverEntityTextures.put(id, new ServerEntityTexture());
+            serverEntityTextures.put(id, new ServerEntityTexture(id));
         }
 
         return serverEntityTextures;
     }
 
-    private Map<String, ServerEntityMesh> loadServerEntityMeshes(ArrayGameNode entityMeshesNode) {
+    private static Map<String, ServerEntityMesh> loadServerEntityMeshes(ArrayGameNode entityMeshesNode, Map<String, ServerEntityShape> serverEntityShapes, Map<String, ServerEntityTexture> serverEntityTextures) {
         Map<String, ServerEntityMesh> serverEntityMeshes = new HashMap<>();
         for (GameNode node : entityMeshesNode.nodes()) {
             ObjectGameNode meshNode = Game.checkGameNodeType(node, ObjectGameNode.class);
@@ -150,16 +148,12 @@ public class GameResources {
             if (childrenNode == null) {
                 throw new IllegalArgumentException("Entity meshes must contain an \"children\" array attribute");
             }
-            serverEntityMeshes.put(meshID, new ServerEntityMesh(serverEntityShape, serverEntityTexture, loadServerEntityMeshes(childrenNode).values().toArray(new ServerEntityMesh[0])));
+            String[] childrenIDs = new String[childrenNode.nodes().length];
+            for (int i = 0, childrenNodesLength = childrenNode.nodes().length; i < childrenNodesLength; i++) {
+                childrenIDs[i] = Game.checkGameNodeType(childrenNode.nodes()[i], StringGameNode.class).value();
+            }
+            serverEntityMeshes.put(meshID, new ServerEntityMesh(meshID, shapeID, textureID, childrenIDs));
         }
-        return serverEntityMeshes;
-    }
-
-    public ServerEntityMesh getEntityMesh(String meshID) {
-        return serverEntityMeshes.get(meshID);
-    }
-
-    public Map<String, ServerEntityMesh> getAllServerEntityMeshes() {
         return serverEntityMeshes;
     }
 }

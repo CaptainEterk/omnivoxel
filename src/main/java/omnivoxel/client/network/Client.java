@@ -19,14 +19,15 @@ import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.client.network.request.*;
 import omnivoxel.client.network.util.ByteBufUtils;
+import omnivoxel.common.entity.EntityVertex;
 import omnivoxel.common.network.NetworkService;
 import omnivoxel.common.network.NetworkUser;
+import omnivoxel.common.resource.GameResources;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.entity.Entity;
-import omnivoxel.server.entity.EntityType;
+import omnivoxel.server.entity.*;
 import omnivoxel.server.io.entity.EntityIO;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.cache.IDCache;
@@ -41,6 +42,7 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 import org.joml.Matrix4f;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -70,6 +72,73 @@ public final class Client implements NetworkUser {
         this.blockService = blockService;
         this.settings = settings;
         pendingBlocks = new HashMap<>();
+    }
+
+    // TODO: Move these to the respective records
+    private static ServerEntityMesh readMesh(ByteBuf buf) {
+        String id = readString(buf);
+        String shapeID = readString(buf);
+        String textureID = readString(buf);
+
+        int childCount = buf.readInt();
+        String[] childrenIDs = new String[childCount];
+
+        for (int i = 0; i < childCount; i++) {
+            childrenIDs[i] = readString(buf);
+        }
+
+        return new ServerEntityMesh(id, shapeID, textureID, childrenIDs);
+    }
+
+    private static ServerEntityTexture readTexture(ByteBuf buf) {
+        int idLength = buf.readUnsignedShort();
+        byte[] idBytes = new byte[idLength];
+        buf.readBytes(idBytes);
+
+        return new ServerEntityTexture(
+                new String(idBytes, StandardCharsets.UTF_8)
+        );
+    }
+
+    private static ServerEntityShape readShape(ByteBuf buf) {
+        int idLength = buf.readUnsignedShort();
+        byte[] idBytes = new byte[idLength];
+        buf.readBytes(idBytes);
+        String id = new String(idBytes, StandardCharsets.UTF_8);
+
+        EntityVertex[][] vertices = new EntityVertex[6][];
+        int[][] indices = new int[6][];
+
+        for (int polygon = 0; polygon < 6; polygon++) {
+            int vertexCount = buf.readUnsignedShort();
+            vertices[polygon] = new EntityVertex[vertexCount];
+
+            for (int i = 0; i < vertexCount; i++) {
+                vertices[polygon][i] = new EntityVertex(
+                        buf.readFloat(),
+                        buf.readFloat(),
+                        buf.readFloat(),
+                        buf.readFloat(),
+                        buf.readFloat()
+                );
+            }
+
+            int indexCount = buf.readUnsignedShort();
+            indices[polygon] = new int[indexCount];
+
+            for (int i = 0; i < indexCount; i++) {
+                indices[polygon][i] = buf.readInt();
+            }
+        }
+
+        return new ServerEntityShape(id, vertices, indices);
+    }
+
+    private static String readString(ByteBuf buf) {
+        int length = buf.readInt();
+        byte[] bytes = new byte[length];
+        buf.readBytes(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public boolean isClientRunning() {
@@ -153,7 +222,33 @@ public final class Client implements NetworkUser {
                     player.set(x, y, z, pitch, yaw);
                     byteBuf.release();
                     break;
-                case REGISTER_ENTITY:
+                case REGISTER_GAME_RESOURCES:
+                    byteBuf.readerIndex(8);
+                    int shapeCount = byteBuf.readInt();
+                    Map<String, ServerEntityShape> shapes = new HashMap<>(shapeCount);
+                    for (int i = 0; i < shapeCount; i++) {
+                        ServerEntityShape shape = readShape(byteBuf);
+                        shapes.put(shape.id(), shape);
+                    }
+
+                    int textureCount = byteBuf.readInt();
+                    Map<String, ServerEntityTexture> textures = new HashMap<>(textureCount);
+                    for (int i = 0; i < textureCount; i++) {
+                        ServerEntityTexture texture = readTexture(byteBuf);
+                        textures.put(texture.id(), texture);
+                    }
+
+                    int meshCount = byteBuf.readInt();
+                    Map<String, ServerEntityMesh> meshes = new HashMap<>(meshCount);
+                    for (int i = 0; i < meshCount; i++) {
+                        ServerEntityMesh mesh = readMesh(byteBuf);
+                        meshes.put(mesh.id(), mesh);
+                    }
+
+                    GameResources resources = new GameResources(shapes, textures, meshes);
+
+                    System.out.println(resources);
+
                     byteBuf.release();
                     break;
                 default:

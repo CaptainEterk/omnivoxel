@@ -1,18 +1,19 @@
 package omnivoxel.server.entity;
 
+import omnivoxel.common.resource.GameResources;
 import omnivoxel.server.games.Game;
-import omnivoxel.server.games.GameResources;
+import omnivoxel.server.games.ServerResourceParser;
 import omnivoxel.util.game.nodes.ArrayGameNode;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
 import omnivoxel.util.game.nodes.StringGameNode;
 
 public class EntityService {
-    private final GameResources gameResources;
+    private final GameResources resources;
     private final EntityDefinition[] entityDefinitions;
 
-    public EntityService(GameNode entitiesGameNode, GameResources gameResources) {
-        this.gameResources = gameResources;
+    public EntityService(GameNode entitiesGameNode, GameResources resources) {
+        this.resources = resources;
         this.entityDefinitions = parseEntities(entitiesGameNode);
     }
 
@@ -42,7 +43,7 @@ public class EntityService {
                 throw new IllegalArgumentException("Entities must have an \"mesh\" attribute");
             }
             String meshID = meshIDNode.value();
-            ServerEntityMesh serverEntityMesh = gameResources.getEntityMesh(meshID);
+            ServerEntityMesh serverEntityMesh = resources.getEntityMesh(meshID);
             if (serverEntityMesh == null) {
                 throw new IllegalArgumentException("Unknown entity mesh \"" + meshID + "\"");
             }
