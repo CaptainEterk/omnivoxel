@@ -4,9 +4,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting.ChunkMeshDataLightingGenerator;
+import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.LightingChunkMeshDataTask;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
@@ -40,6 +42,7 @@ import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
+import org.joml.Matrix4f;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -313,81 +316,78 @@ public final class Client implements NetworkUser {
     }
 
     private void updateEntity(ByteBuf byteBuf) {
-//        int offset = 8;
-//
-//        int entityType = byteBuf.getInt(offset);
-//        offset += Integer.BYTES;
-//
-//        int idLength = byteBuf.getInt(offset);
-//        offset += Integer.BYTES;
-//
-//        byte[] entityIDBytes = new byte[idLength];
-//        byteBuf.getBytes(offset, entityIDBytes);
-//        offset += idLength;
-//
-//        String entityID = new String(entityIDBytes);
-//
-//        EntityMeshData entityMeshData = world.getEntityMesh(entityID);
-//        if (entityMeshData == null) {
-//            Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
-//            return;
-//        }
-//
-//        double x = byteBuf.getDouble(offset);
-//        offset += Double.BYTES;
-//
-//        double y = byteBuf.getDouble(offset);
-//        offset += Double.BYTES;
-//
-//        double z = byteBuf.getDouble(offset);
-//        offset += Double.BYTES;
-//
-//        double pitch = byteBuf.getDouble(offset);
-//        offset += Double.BYTES;
-//
-//        double yaw = byteBuf.getDouble(offset);
-//
-//        Entity entity = entityMeshData.entity();
-//
-//        entity.set(x, y, z, pitch, yaw);
-//
-//        if (entity.getMesh() != null) {
-//            entityMeshData.getMeshData().setModel(
-//                    new Matrix4f()
-//                            .identity()
-//                            .translate((float) x, (float) (y - 0.75f / 2), (float) z)
-//                            .scale(0.5f)
-//                            .rotateY((float) -yaw)
-//            );
-//
-//            if (!entity.getMesh().getChildren().isEmpty()) {
-//                entity.getMesh().getChildren().getFirst()
-//                        .getMeshData()
-//                        .setModel(
-//                                new Matrix4f()
-//                                        .translate(0, 0.75f, 0)
-//                                        .rotateX((float) -pitch)
-//                        );
-//
-//                entity.getMesh().getChildren().get(1)
-//                        .getMeshData()
-//                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
-//
-//                entity.getMesh().getChildren().get(2)
-//                        .getMeshData()
-//                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
-//
-//                entity.getMesh().getChildren().get(3)
-//                        .getMeshData()
-//                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
-//
-//                entity.getMesh().getChildren().get(4)
-//                        .getMeshData()
-//                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
-//            }
-//        } else if (!world.isEntityMeshDataQueued(EntityType.values()[entityType])) {
-//            Logger.warn("No mesh found for entity: " + entityID);
-//        }
+        int offset = 8;
+
+        int entityType = byteBuf.getInt(offset);
+        offset += Integer.BYTES;
+
+        int idLength = byteBuf.getInt(offset);
+        offset += Integer.BYTES;
+
+        byte[] entityIDBytes = new byte[idLength];
+        byteBuf.getBytes(offset, entityIDBytes);
+        offset += idLength;
+
+        String entityID = new String(entityIDBytes);
+
+        EntityMeshWrapper entityMesh = world.getEntity(entityID);
+        if (entityMesh == null) {
+            Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
+            return;
+        }
+
+        double x = byteBuf.getDouble(offset);
+        offset += Double.BYTES;
+
+        double y = byteBuf.getDouble(offset);
+        offset += Double.BYTES;
+
+        double z = byteBuf.getDouble(offset);
+        offset += Double.BYTES;
+
+        double pitch = byteBuf.getDouble(offset);
+        offset += Double.BYTES;
+
+        double yaw = byteBuf.getDouble(offset);
+
+        Entity entity = entityMesh.entity();
+
+        entity.set(x, y, z, pitch, yaw);
+
+        EntityMeshData entityMeshData = entityMesh.entityMeshReference().getEntityMesh() == null ? null : entityMesh.entityMeshReference().getEntityMesh().getMeshData();
+
+        if (entityMeshData != null) {
+            entityMeshData.setModel(
+                    new Matrix4f()
+                            .identity()
+                            .translate((float) x, (float) (y - 0.75f / 2), (float) z)
+                            .scale(0.5f)
+                            .rotateY((float) -yaw)
+            );
+
+            if (!entityMeshData.children().isEmpty()) {
+                entityMeshData.children().getFirst()
+                        .setModel(
+                                new Matrix4f()
+                                        .translate(0, 0.75f, 0)
+                                        .rotateX((float) -pitch)
+                        );
+
+                entityMeshData.children().get(1)
+                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
+
+                entityMeshData.children().get(2)
+                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
+
+                entityMeshData.children().get(3)
+                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
+
+                entityMeshData.children().get(4)
+                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+            }
+        } else {
+            Logger.warn("No mesh found for entity: " + entityID);
+        }
     }
 
     private void receiveChunk(ByteBuf byteBuf) {

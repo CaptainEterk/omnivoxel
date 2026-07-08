@@ -324,4 +324,8 @@ public class ClientWorld {
     public int inPipelineChunkCount() {
         return inPipelineChunks.size();
     }
+
+    public EntityMeshWrapper getEntity(String entityID) {
+        return entities.get(entityID);
+    }
 }
