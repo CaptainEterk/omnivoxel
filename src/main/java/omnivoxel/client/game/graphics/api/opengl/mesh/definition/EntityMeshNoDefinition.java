@@ -2,7 +2,7 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.definition;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 
-public record EntityMeshDataNoDefinition(EntityMeshData meshData) implements EntityMeshDataDefinition {
+public record EntityMeshNoDefinition(EntityMeshData meshData) implements EntityMeshDefinition {
     @Override
     public int solidVAO() {
         return 0;

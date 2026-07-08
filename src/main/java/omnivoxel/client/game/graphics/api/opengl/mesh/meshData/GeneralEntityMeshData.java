@@ -1,6 +1,5 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.meshData;
 
-import omnivoxel.client.game.entity.EntityMeshWrapper;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
@@ -11,18 +10,18 @@ import java.util.List;
 public final class GeneralEntityMeshData implements EntityMeshData {
     private final ByteBuffer solidVertices;
     private final ByteBuffer solidIndices;
-    private final EntityMeshWrapper entity;
     private final List<EntityMeshData> children;
+    private final String id;
     private Matrix4f model = new Matrix4f();
 
     public GeneralEntityMeshData(
             ByteBuffer solidVertices,
             ByteBuffer solidIndices,
-            EntityMeshWrapper entity
+            String id
     ) {
         this.solidVertices = solidVertices;
         this.solidIndices = solidIndices;
-        this.entity = entity;
+        this.id = id;
         this.children = new ArrayList<>();
     }
 
@@ -32,9 +31,8 @@ public final class GeneralEntityMeshData implements EntityMeshData {
     }
 
     @Override
-    public EntityMeshData setModel(Matrix4f model) {
+    public void setModel(Matrix4f model) {
         this.model = model;
-        return this;
     }
 
     @Override
@@ -49,14 +47,8 @@ public final class GeneralEntityMeshData implements EntityMeshData {
 
     @Override
     public void cleanup() {
-        // Free buffer data
         MemoryUtil.memFree(solidVertices);
         MemoryUtil.memFree(solidIndices);
-    }
-
-    @Override
-    public void addChild(EntityMeshData entityMeshData) {
-        children.add(entityMeshData);
     }
 
     @Override
@@ -70,12 +62,12 @@ public final class GeneralEntityMeshData implements EntityMeshData {
     }
 
     @Override
-    public EntityMeshWrapper entity() {
-        return entity;
+    public List<EntityMeshData> children() {
+        return children;
     }
 
     @Override
-    public List<EntityMeshData> children() {
-        return children;
+    public String id() {
+        return id;
     }
 }

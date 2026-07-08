@@ -252,6 +252,7 @@ void main() {
         }
 
         vec4 lighting = pow(vLighting, vec4(2.2));
+        lighting = 1-pow(vec4(0.5), lighting);
         vec3 blockLight = lighting.rgb;
         float skyLight = lighting.a;
         float ambient = 0.05;

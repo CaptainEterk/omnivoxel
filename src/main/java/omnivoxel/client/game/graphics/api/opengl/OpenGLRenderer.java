@@ -6,7 +6,6 @@ import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
-import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
@@ -27,6 +26,7 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -433,11 +433,11 @@ public class OpenGLRenderer implements Renderer {
     private void renderEntities() {
         GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
         shaderProgram.setUniformUnsigned("meshType", 1);
-        Map<String, EntityMeshWrapper> entityMeshes = world.getEntities();
+        Map<String, EntityMeshWrapper> entityMeshes = world.getEntityMeshes();
 
-        entityMeshes.forEach((id, clientEntity) -> {
+        entityMeshes.forEach((id, entityMeshWrapper) -> {
 //            if (camera.getFrustum().isEntityInFrustum(clientEntity, camera)) {
-            renderEntityMesh(clientEntity.entity().getMesh(), IDENTITY_MATRIX);
+            renderEntityMesh(entityMeshWrapper.entityMeshReference().getEntityMesh(), IDENTITY_MATRIX);
 //            }
         });
     }

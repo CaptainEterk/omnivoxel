@@ -7,8 +7,8 @@ public abstract class MobEntity extends GravityEntity {
     protected double yaw;
     protected double pitch;
 
-    protected MobEntity(String entityID, String name, Hitbox hitbox) {
-        super(entityID, hitbox);
+    protected MobEntity(String entityID, String name, String meshID, Hitbox hitbox) {
+        super(entityID, meshID, hitbox);
         this.name = name;
     }
 

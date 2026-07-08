@@ -190,7 +190,8 @@ public class Server implements NetworkUser {
                 serverClient = new ServerClient(clientID, ctx, playerEntity);
             } else if (entity == null) {
                 Logger.debug("New player " + clientID + " creating state");
-                PlayerEntity playerEntity = new PlayerEntity(clientID);
+                // TODO: This is dependent on something in the game, it should have a hardcoded omnivoxel:player mesh
+                PlayerEntity playerEntity = new PlayerEntity(clientID, "core:chunk_test_entity_mesh/main");
                 Random random = new Random();
                 int x = random.nextInt(-ConstantCommonSettings.CHUNK_SIZE, ConstantCommonSettings.CHUNK_SIZE - 1);
                 int z = random.nextInt(-ConstantCommonSettings.CHUNK_SIZE, ConstantCommonSettings.CHUNK_SIZE - 1);
@@ -204,6 +205,8 @@ public class Server implements NetworkUser {
             } else {
                 return;
             }
+
+            NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_GAME_RESOURCES, null, resources.getBytes());
 
             byte[] encodedServerPlayer = serverClient.getPlayerEntity().getBytes();
 
@@ -237,8 +240,6 @@ public class Server implements NetworkUser {
                     NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_BLOCK, null, serverBlock.getBytes());
                 }
             });
-
-            NetworkService.sendBytes(ctx.channel(), PackageID.REGISTER_GAME_RESOURCES, null, resources.getBytes());
 
             clients.put(clientID, serverClient);
 

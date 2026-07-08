@@ -1,9 +1,9 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.tasks;
 
-import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
+import omnivoxel.server.entity.ServerEntityShape;
 
-public record EntityMeshDataTask(EntityMeshWrapper entity) implements MeshDataTask {
+public record EntityMeshDataTask(ServerEntityShape serverEntityShape) implements MeshDataTask {
     @Override
     public void reject() {
 

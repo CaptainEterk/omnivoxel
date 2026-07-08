@@ -1,19 +1,20 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh;
 
-import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
+import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 
 import java.util.ArrayList;
 import java.util.List;
 
 // TODO: There is a lot of shared data between this class and ServerEntityMesh, maybe combine?
+// TODO: No transforms?
 public final class EntityMesh implements Mesh {
-    private final EntityMeshDataDefinition definition;
+    private final EntityMeshDefinition definition;
     private final List<EntityMesh> children;
     private final EntityMeshData entityMeshData;
 
     public EntityMesh(
-            EntityMeshDataDefinition definition, EntityMeshData entityMeshData
+            EntityMeshDefinition definition, EntityMeshData entityMeshData
     ) {
         this.definition = definition;
         this.entityMeshData = entityMeshData;
@@ -28,7 +29,7 @@ public final class EntityMesh implements Mesh {
         return children;
     }
 
-    public EntityMeshDataDefinition getDefinition() {
+    public EntityMeshDefinition getDefinition() {
         return definition;
     }
 

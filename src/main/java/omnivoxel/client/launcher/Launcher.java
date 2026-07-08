@@ -69,7 +69,7 @@ public class Launcher {
         client.setPlayer(playerController);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            client.setListeners(world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData(), state);
+            client.setListeners(state);
             AtomicBoolean gameRunning = new AtomicBoolean(true);
 
             GameLoop gameLoop = new GameLoop(camera, world, gameRunning, contextTasks, client, state, settings);

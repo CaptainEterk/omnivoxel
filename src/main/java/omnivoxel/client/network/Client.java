@@ -4,9 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
-import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
-import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting.ChunkMeshDataLightingGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
@@ -27,10 +25,12 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.entity.*;
+import omnivoxel.server.entity.Entity;
+import omnivoxel.server.entity.ServerEntityMesh;
+import omnivoxel.server.entity.ServerEntityShape;
+import omnivoxel.server.entity.ServerEntityTexture;
 import omnivoxel.server.io.entity.EntityIO;
 import omnivoxel.util.bytes.ByteUtils;
-import omnivoxel.util.cache.IDCache;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
@@ -40,7 +40,6 @@ import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
-import org.joml.Matrix4f;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -64,6 +63,7 @@ public final class Client implements NetworkUser {
     private Channel channel;
     private long lastFlushedTime = System.currentTimeMillis();
     private PlayerController player = null;
+    private GameResources resources;
 
     public Client(byte[] clientID, ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, Settings settings) {
         this.clientID = clientID;
@@ -245,9 +245,11 @@ public final class Client implements NetworkUser {
                         meshes.put(mesh.id(), mesh);
                     }
 
-                    GameResources resources = new GameResources(shapes, textures, meshes);
+                    this.resources = new GameResources(shapes, textures, meshes);
 
-                    System.out.println(resources);
+                    resources.serverEntityShapes().forEach((id, serverEntityShape) -> {
+                        meshDataGenerators.submit(new EntityMeshDataTask(serverEntityShape));
+                    });
 
                     byteBuf.release();
                     break;
@@ -311,82 +313,81 @@ public final class Client implements NetworkUser {
     }
 
     private void updateEntity(ByteBuf byteBuf) {
-        int offset = 8;
-
-        // entity type
-        int entityType = byteBuf.getInt(offset);
-        offset += Integer.BYTES;
-
-        int idLength = byteBuf.getInt(offset);
-        offset += Integer.BYTES;
-
-        byte[] entityIDBytes = new byte[idLength];
-        byteBuf.getBytes(offset, entityIDBytes);
-        offset += idLength;
-
-        String entityID = new String(entityIDBytes);
-
-        EntityMeshWrapper entityMeshWrapper = world.getEntity(entityID);
-        if (entityMeshWrapper == null) {
-            Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
-            return;
-        }
-
-        double x = byteBuf.getDouble(offset);
-        offset += Double.BYTES;
-
-        double y = byteBuf.getDouble(offset);
-        offset += Double.BYTES;
-
-        double z = byteBuf.getDouble(offset);
-        offset += Double.BYTES;
-
-        double pitch = byteBuf.getDouble(offset);
-        offset += Double.BYTES;
-
-        double yaw = byteBuf.getDouble(offset);
-
-        Entity entity = entityMeshWrapper.entity();
-
-        entity.set(x, y, z, pitch, yaw);
-
-        if (entity.getMesh() != null) {
-            entityMeshWrapper.getMeshData().setModel(
-                    new Matrix4f()
-                            .identity()
-                            .translate((float) x, (float) (y - 0.75f / 2), (float) z)
-                            .scale(0.5f)
-                            .rotateY((float) -yaw)
-            );
-
-            if (!entity.getMesh().getChildren().isEmpty()) {
-                entity.getMesh().getChildren().getFirst()
-                        .getMeshData()
-                        .setModel(
-                                new Matrix4f()
-                                        .translate(0, 0.75f, 0)
-                                        .rotateX((float) -pitch)
-                        );
-
-                entity.getMesh().getChildren().get(1)
-                        .getMeshData()
-                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
-
-                entity.getMesh().getChildren().get(2)
-                        .getMeshData()
-                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
-
-                entity.getMesh().getChildren().get(3)
-                        .getMeshData()
-                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
-
-                entity.getMesh().getChildren().get(4)
-                        .getMeshData()
-                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
-            }
-        } else if (!world.isEntityMeshDataQueued(EntityType.values()[entityType])) {
-            Logger.warn("No mesh found for entity: " + entityID);
-        }
+//        int offset = 8;
+//
+//        int entityType = byteBuf.getInt(offset);
+//        offset += Integer.BYTES;
+//
+//        int idLength = byteBuf.getInt(offset);
+//        offset += Integer.BYTES;
+//
+//        byte[] entityIDBytes = new byte[idLength];
+//        byteBuf.getBytes(offset, entityIDBytes);
+//        offset += idLength;
+//
+//        String entityID = new String(entityIDBytes);
+//
+//        EntityMeshData entityMeshData = world.getEntityMesh(entityID);
+//        if (entityMeshData == null) {
+//            Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
+//            return;
+//        }
+//
+//        double x = byteBuf.getDouble(offset);
+//        offset += Double.BYTES;
+//
+//        double y = byteBuf.getDouble(offset);
+//        offset += Double.BYTES;
+//
+//        double z = byteBuf.getDouble(offset);
+//        offset += Double.BYTES;
+//
+//        double pitch = byteBuf.getDouble(offset);
+//        offset += Double.BYTES;
+//
+//        double yaw = byteBuf.getDouble(offset);
+//
+//        Entity entity = entityMeshData.entity();
+//
+//        entity.set(x, y, z, pitch, yaw);
+//
+//        if (entity.getMesh() != null) {
+//            entityMeshData.getMeshData().setModel(
+//                    new Matrix4f()
+//                            .identity()
+//                            .translate((float) x, (float) (y - 0.75f / 2), (float) z)
+//                            .scale(0.5f)
+//                            .rotateY((float) -yaw)
+//            );
+//
+//            if (!entity.getMesh().getChildren().isEmpty()) {
+//                entity.getMesh().getChildren().getFirst()
+//                        .getMeshData()
+//                        .setModel(
+//                                new Matrix4f()
+//                                        .translate(0, 0.75f, 0)
+//                                        .rotateX((float) -pitch)
+//                        );
+//
+//                entity.getMesh().getChildren().get(1)
+//                        .getMeshData()
+//                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
+//
+//                entity.getMesh().getChildren().get(2)
+//                        .getMeshData()
+//                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
+//
+//                entity.getMesh().getChildren().get(3)
+//                        .getMeshData()
+//                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
+//
+//                entity.getMesh().getChildren().get(4)
+//                        .getMeshData()
+//                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+//            }
+//        } else if (!world.isEntityMeshDataQueued(EntityType.values()[entityType])) {
+//            Logger.warn("No mesh found for entity: " + entityID);
+//        }
     }
 
     private void receiveChunk(ByteBuf byteBuf) {
@@ -419,15 +420,13 @@ public final class Client implements NetworkUser {
 
     private void newEntity(ByteBuf byteBuf) {
         byteBuf.readerIndex(8);
-        int entityID = byteBuf.readInt();
+        int entityType = byteBuf.readInt();
         byte[] bytes = new byte[byteBuf.readableBytes()];
         byteBuf.readBytes(bytes);
 
-        Entity entity = EntityIO.decode(entityID, bytes);
+        Entity entity = EntityIO.decode(entityType, bytes);
 
-        EntityMeshWrapper entityMeshWrapper = new EntityMeshWrapper(entity);
-        world.addEntity(entityMeshWrapper);
-        meshDataGenerators.submit(new EntityMeshDataTask(entityMeshWrapper));
+        world.addEntity(entity, resources.serverEntityMeshes().get(entity.getMeshID()).shapeID());
     }
 
     public void tick() {
@@ -528,13 +527,11 @@ public final class Client implements NetworkUser {
         Logger.info("Client disconnected");
     }
 
-    public void setListeners(IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<EntityType> queuedEntityMeshData, State state) {
+    public void setListeners(State state) {
         meshDataGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new MeshDataGenerator(
                         worldDataService,
-                        entityMeshDefinitionCache,
-                        queuedEntityMeshData,
                         world,
                         blockService,
                         state,

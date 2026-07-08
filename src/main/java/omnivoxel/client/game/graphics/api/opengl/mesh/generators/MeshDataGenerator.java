@@ -1,27 +1,24 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 
 import io.netty.buffer.ByteBuf;
-import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.ShapeHelper;
-import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDataDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueLightVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
-import omnivoxel.server.entity.EntityType;
-import omnivoxel.util.cache.IDCache;
+import omnivoxel.server.entity.ServerEntityShape;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.block.Block;
@@ -34,7 +31,6 @@ import org.lwjgl.system.MemoryUtil;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public final class MeshDataGenerator {
     private static BlockWithMesh AIR = null;
@@ -43,11 +39,11 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, IDCache<EntityType, EntityMeshDataDefinition> entityMeshDefinitionCache, Set<EntityType> queuedEntityMeshData, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
+    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
         this.state = state;
         chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, blockService, world, settings);
         this.world = world;
-        entityMeshDataGenerator = new EntityMeshDataGenerator(entityMeshDefinitionCache, queuedEntityMeshData);
+        entityMeshDataGenerator = new EntityMeshDataGenerator();
     }
 
     public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {
@@ -235,13 +231,11 @@ public final class MeshDataGenerator {
                 world.add(position3D, meshData);
             } else {
                 Logger.warn("Mesh data generation failed..." + position3D);
-                return null;
-//                return world.get(position3D, false, false) != null ? List.of(new ChunkMeshDataTask(null, position3D)) : null;
             }
-        } else if (meshDataTask instanceof EntityMeshDataTask(EntityMeshWrapper entity)) {
-            world.addEntity(entityMeshDataGenerator.generateMeshData(entity));
+        } else if (meshDataTask instanceof EntityMeshDataTask(ServerEntityShape serverEntityShape)) {
+            world.addEntity(entityMeshDataGenerator.generateMeshData(serverEntityShape));
         } else {
-            throw new IllegalArgumentException(meshDataTask + " is an invalid input. Stop playing with things you CLEARLY don't know how to use...");
+            throw new IllegalArgumentException(meshDataTask + " is an invalid input.");
         }
         return null;
     }

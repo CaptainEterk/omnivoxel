@@ -1,7 +1,5 @@
 package omnivoxel.server.entity;
 
-import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.hitbox.Hitbox;
 import omnivoxel.server.client.ServerItem;
 import omnivoxel.util.math.DoublePosition3D;
@@ -9,6 +7,7 @@ import omnivoxel.util.math.DoublePosition3D;
 public abstract class Entity implements ServerItem {
     protected final float friction = getFriction();
     protected final String entityID;
+    protected final String meshID;
     private final Hitbox hitbox;
     protected double x;
     protected double y;
@@ -18,11 +17,15 @@ public abstract class Entity implements ServerItem {
     protected double velocityZ;
     protected double pitch;
     protected double yaw;
-    protected EntityMesh mesh;
 
-    protected Entity(String entityID, Hitbox hitbox) {
+    protected Entity(String entityID, String meshID, Hitbox hitbox) {
         this.entityID = entityID;
+        this.meshID = meshID;
         this.hitbox = hitbox;
+    }
+
+    public String getMeshID() {
+        return meshID;
     }
 
     protected float getFriction() {
@@ -126,17 +129,7 @@ public abstract class Entity implements ServerItem {
         return hitbox;
     }
 
-    public EntityMesh getMesh() {
-        return mesh;
-    }
-
-    public void setMesh(EntityMesh mesh) {
-        this.mesh = mesh;
-    }
-
     public DoublePosition3D getPosition() {
         return new DoublePosition3D(x, y, z);
     }
-
-    public abstract EntityType getEntityType();
 }
