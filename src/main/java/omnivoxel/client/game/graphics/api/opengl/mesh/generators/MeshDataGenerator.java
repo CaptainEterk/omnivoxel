@@ -41,11 +41,11 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings, Map<String, EntityMeshData> entityMeshDataCache) {
+    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
         this.state = state;
         chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, blockService, world, settings);
         this.world = world;
-        entityMeshDataGenerator = new EntityMeshDataGenerator(entityMeshDataCache);
+        entityMeshDataGenerator = new EntityMeshDataGenerator();
     }
 
     public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {

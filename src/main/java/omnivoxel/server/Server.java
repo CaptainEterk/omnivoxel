@@ -144,10 +144,10 @@ public class Server implements NetworkUser {
                     double yaw = data[4];
                     ServerClient serverClient = clients.get(clientID);
                     serverClient.getPlayerEntity().set(x, y, z, pitch, yaw);
-
+                    byte[] serverClientBytes = serverClient.getPlayerEntity().getBytes();
                     clients.values().forEach(player -> {
                         if (!Arrays.equals(player.getPlayerID(), serverClient.getPlayerID())) {
-                            NetworkService.sendBytes(player.getCTX().channel(), PackageID.ENTITY_UPDATE, null, serverClient.getPlayerEntity().getBytes());
+                            NetworkService.sendBytes(player.getCTX().channel(), PackageID.ENTITY_UPDATE, null, serverClientBytes);
                         }
                     });
                     byteBuf.release();
