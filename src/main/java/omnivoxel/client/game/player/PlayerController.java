@@ -242,14 +242,12 @@ public class PlayerController {
         return false;
     }
 
-    public void tick(double deltaTime) {
+    public void tick(int tick, double deltaTime) {
         double tickDelta = 1.0;//deltaTime * ConstantClientSettings.TARGET_TPS;
 
         if (movementMode == MovementMode.FALL_COLLIDE) {
             updateBlockMovementModifiers(x, y, z);
         }
-
-        state.setItem("deltaTime", deltaTime);
 
         BooleanRef changeRot = new BooleanRef(false);
         if (mouseButtonInput.isMouseLocked()) {
@@ -361,11 +359,14 @@ public class PlayerController {
             state.setItem("shouldUpdateView", true);
             state.setItem("shouldUpdateVisibleMeshes", true);
 
-            client.sendRequest(new PlayerUpdateRequest(x, y, z, pitch, yaw));
-
             camera.setPosition(x, y, z);
         }
 
+        if ((tick & 3) == 1) {
+            client.sendRequest(new PlayerUpdateRequest(x, y, z, pitch, yaw));
+        }
+
+        // TODO: Don't hardcode blocks
         Block block = getBlock((int) x, (int) y, (int) z);
         if (block != null && block.id().split("/")[0].equals("core:water_source_block")) {
             state.setItem("in_water", true);

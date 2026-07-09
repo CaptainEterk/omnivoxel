@@ -49,11 +49,13 @@ public class TickLoop implements Runnable {
             long deltaTime = ConstantClientSettings.TICK_LENGTH_NS;
             long nextTickTime = System.nanoTime();
 
+            int tick = 0;
+
             while (gameRunning.get()) {
                 long now = System.nanoTime();
 
                 while (now >= nextTickTime) {
-                    playerController.tick(deltaTime / 1_000_000_000.0);
+                    playerController.tick(tick++, deltaTime/1_000_000_000.0);
                     nextTickTime += deltaTime;
                 }
 
