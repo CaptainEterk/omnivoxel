@@ -62,19 +62,24 @@ public final class Game {
                 BooleanGameNode rotatableNode = Game.checkGameNodeType(objectStateNode.object().get("rotatable"), BooleanGameNode.class);
                 boolean rotatable = rotatableNode != null && rotatableNode.value();
                 if (rotatableNode == null) {
-                    Logger.warn("Block \"" + id + "\" should have a \"rotatable\" property (default = false)");
+                    Logger.warn("Block \"" + id + "\" should have a \"rotatable\" attribute (default = false)");
                 }
                 BooleanGameNode canPlaceOnNode = Game.checkGameNodeType(objectStateNode.object().get("can_place_on"), BooleanGameNode.class);
                 boolean canPlaceOn = canPlaceOnNode == null || canPlaceOnNode.value();
                 if (canPlaceOnNode == null) {
-                    Logger.warn("Block \"" + id + "\" should have a \"can_place_on\" property (default = true)");
+                    Logger.warn("Block \"" + id + "\" should have a \"can_place_on\" attribute (default = true)");
+                }
+                BooleanGameNode partOfGroundNode = Game.checkGameNodeType(objectStateNode.object().get("part_of_ground"), BooleanGameNode.class);
+                boolean partOfGround = partOfGroundNode == null || partOfGroundNode.value();
+                if (partOfGroundNode == null) {
+                    Logger.warn("Block \"" + id + "\" should have a \"part_of_ground\" attribute (default = true)");
                 }
                 ObjectGameNode texture = Game.checkGameNodeType(objectStateNode.object().get("texture"), ObjectGameNode.class);
                 ArrayGameNode lightEmittingNode = Game.checkGameNodeType(objectStateNode.object().get("light_emitting"), ArrayGameNode.class);
                 byte[] lightEmitting = new byte[3];
                 if (lightEmittingNode != null) {
                     if (lightEmittingNode.nodes().length != lightEmitting.length) {
-                        throw new IllegalArgumentException("Light emitting property must have a length of EXACTLY " + lightEmitting.length);
+                        throw new IllegalArgumentException("Light emitting attribute must have a length of EXACTLY " + lightEmitting.length);
                     }
                     for (int i = 0; i < lightEmitting.length; i++) {
                         lightEmitting[i] = (byte) Game.checkGameNodeType(lightEmittingNode.nodes()[i], DoubleGameNode.class).value();
@@ -84,7 +89,7 @@ public final class Game {
                 byte[] lightDefusing = new byte[4];
                 if (lightDiffusingNode != null) {
                     if (lightDiffusingNode.nodes().length != lightDefusing.length) {
-                        throw new IllegalArgumentException("Light diffusing property must have a length of EXACTLY " + lightDefusing.length);
+                        throw new IllegalArgumentException("Light diffusing attribute must have a length of EXACTLY " + lightDefusing.length);
                     }
                     for (int i = 0; i < lightDefusing.length; i++) {
                         lightDefusing[i] = (byte) Game.checkGameNodeType(lightDiffusingNode.nodes()[i], DoubleGameNode.class).value();
@@ -116,7 +121,7 @@ public final class Game {
                     throw new IllegalArgumentException("\"" + uvMapping + "\" is not a valid uv_mapping");
                 }
 
-                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparentMesh, decorationMesh, isSelfOccluded, rotatable, canPlaceOn, lightEmitting, lightDefusing, blockHitbox));
+                blockService.registerServerBlock(new ServerBlock(ServerBlock.createID(id, blockState), blockShape, uvCoords, transparentMesh, decorationMesh, isSelfOccluded, rotatable, canPlaceOn, partOfGround, lightEmitting, lightDefusing, blockHitbox));
             }
         }
 
@@ -154,7 +159,7 @@ public final class Game {
                     solid[i] = Game.checkGameNodeType(solidNodes[i], BooleanGameNode.class).value();
                 }
             } else {
-                Logger.warn("Property \"solid\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
+                Logger.warn("attribute \"solid\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
                 solid = new boolean[6];
             }
 
@@ -167,7 +172,7 @@ public final class Game {
                     coverable[i] = Game.checkGameNodeType(coverableNodes[i], BooleanGameNode.class).value();
                 }
             } else {
-                Logger.warn("Property \"coverable\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
+                Logger.warn("attribute \"coverable\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
                 coverable = new boolean[6];
             }
 
@@ -180,7 +185,7 @@ public final class Game {
                     coversOppositeSelfFace[i] = Game.checkGameNodeType(coversOppositeSelfFaceNodes[i], BooleanGameNode.class).value();
                 }
             } else {
-                Logger.warn("Property \"covers_opposite_self_face\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
+                Logger.warn("attribute \"covers_opposite_self_face\" for block shape \"" + id + "\" must have a length of 6 (one for each face)");
                 coversOppositeSelfFace = new boolean[6];
             }
 

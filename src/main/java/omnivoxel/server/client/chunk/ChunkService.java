@@ -10,8 +10,8 @@ import omnivoxel.server.client.chunk.result.ChunkResult;
 import omnivoxel.server.client.chunk.result.generated.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.result.generated.GeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
-import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.io.chunk.ChunkIO;
+import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.boundingBox.WorldBoundingBox;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
@@ -49,9 +49,9 @@ public class ChunkService {
                     Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
                     chunk2D = chunkGenerator.getWorldDataService().getWorldGenerator().rebuildChunkHeights(world, position2D);
                 }
-                NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), ChunkIO.encodeIntegerChunk2D(chunk2D));
+                NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), chunkTask.serverClient()::disconnect, ChunkIO.encodeIntegerChunk2D(chunk2D));
 
-                NetworkService.sendBytes3D(chunkTask.serverClient().getCTX().channel(), PackageID.CHUNK, chunkPosition.x(), chunkPosition.y(), chunkPosition.z(), chunk);
+                NetworkService.sendBytes3D(chunkTask.serverClient().getCTX().channel(), PackageID.CHUNK, chunkPosition.x(), chunkPosition.y(), chunkPosition.z(), chunkTask.serverClient()::disconnect, chunk);
             }
             return null;
         } catch (IOException e) {

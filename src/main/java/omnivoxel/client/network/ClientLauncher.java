@@ -68,7 +68,7 @@ public class ClientLauncher implements Runnable {
 
             Logger.info("Connected to server at " + HOST + ":" + PORT + " with clientID " + ByteUtils.bytesToHex(clientID));
 
-            NetworkService.sendBytes(future.channel(), PackageID.VERSION_HANDSHAKE, clientID, String.format("%-8s", VERSION_ID).getBytes());
+            NetworkService.sendBytes(future.channel(), PackageID.VERSION_HANDSHAKE, clientID, () -> Logger.error("Handshake failed"), String.format("%-8s", VERSION_ID).getBytes());
 
             future.channel().closeFuture().sync();
         } catch (Exception e) {

@@ -54,7 +54,7 @@ public abstract class GeneratedChunk {
             // TODO: This shouldn't handle anything server/client related
             palette.forEach(serverBlock -> {
                 if (client.registerBlockID(serverBlock.id())) {
-                    NetworkService.sendBytes(client.getCTX().channel(), PackageID.REGISTER_BLOCK, null, serverBlock.getBytes());
+                    NetworkService.sendBytes(client.getCTX().channel(), PackageID.REGISTER_BLOCK, null, client::disconnect, serverBlock.getBytes());
                 }
             });
         }

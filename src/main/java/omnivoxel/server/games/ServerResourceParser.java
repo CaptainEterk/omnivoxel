@@ -2,6 +2,7 @@ package omnivoxel.server.games;
 
 import omnivoxel.common.entity.EntityVertex;
 import omnivoxel.common.resource.GameResources;
+import omnivoxel.server.entity.EntityDefinition;
 import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.server.entity.ServerEntityShape;
 import omnivoxel.server.entity.ServerEntityTexture;
@@ -27,7 +28,7 @@ public class ServerResourceParser {
             throw new IllegalArgumentException("Resources must include an \"entity_meshes\" attribute");
         }
         Map<String, ServerEntityMesh> serverEntityMeshes = loadServerEntityMeshes(entityMeshesNode, serverEntityShapes, serverEntityTextures);
-        return new GameResources(serverEntityShapes, serverEntityTextures, serverEntityMeshes);
+        return new GameResources(serverEntityShapes, serverEntityTextures, serverEntityMeshes, loadEntities(gameNode.object().get("entities"), serverEntityMeshes));
     }
 
     private static Map<String, ServerEntityShape> loadServerEntityShapes(ArrayGameNode entityShapesNode) {
@@ -155,5 +156,42 @@ public class ServerResourceParser {
             serverEntityMeshes.put(meshID, new ServerEntityMesh(meshID, shapeID, textureID, childrenIDs));
         }
         return serverEntityMeshes;
+    }
+
+    private static EntityDefinition[] loadEntities(GameNode entitiesGameNode, Map<String, ServerEntityMesh> serverEntityMeshes) {
+        if (entitiesGameNode instanceof ArrayGameNode arrayGameNode) {
+            EntityDefinition[] entityDefinitions = new EntityDefinition[arrayGameNode.nodes().length];
+
+            GameNode[] nodes = arrayGameNode.nodes();
+            for (int i = 0; i < nodes.length; i++) {
+                entityDefinitions[i] = parseEntity(nodes[i], serverEntityMeshes);
+            }
+
+            return entityDefinitions;
+        } else {
+            throw new IllegalStateException("\"entities\" must be an array");
+        }
+    }
+
+    private static EntityDefinition parseEntity(GameNode entityNode, Map<String, ServerEntityMesh> serverEntityMeshes) {
+        if (entityNode instanceof ObjectGameNode objectGameNode) {
+            StringGameNode idNode = Game.checkGameNodeType(objectGameNode.object().get("id"), StringGameNode.class);
+            if (idNode == null) {
+                throw new IllegalArgumentException("Entities must have an \"id\" attribute");
+            }
+            String id = idNode.value();
+            StringGameNode meshIDNode = Game.checkGameNodeType(objectGameNode.object().get("mesh"), StringGameNode.class);
+            if (meshIDNode == null) {
+                throw new IllegalArgumentException("Entities must have an \"mesh\" attribute");
+            }
+            String meshID = meshIDNode.value();
+            ServerEntityMesh serverEntityMesh = serverEntityMeshes.get(meshID);
+            if (serverEntityMesh == null) {
+                throw new IllegalArgumentException("Unknown entity mesh \"" + meshID + "\"");
+            }
+            return new EntityDefinition(id, serverEntityMesh);
+        } else {
+            throw new IllegalArgumentException("Entities must be an object");
+        }
     }
 }

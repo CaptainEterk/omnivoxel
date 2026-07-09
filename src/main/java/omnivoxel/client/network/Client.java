@@ -27,10 +27,7 @@ import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.PackageID;
-import omnivoxel.server.entity.Entity;
-import omnivoxel.server.entity.ServerEntityMesh;
-import omnivoxel.server.entity.ServerEntityShape;
-import omnivoxel.server.entity.ServerEntityTexture;
+import omnivoxel.server.entity.*;
 import omnivoxel.server.io.entity.EntityIO;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.log.Logger;
@@ -144,6 +141,18 @@ public final class Client implements NetworkUser {
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
+    private static EntityDefinition readDefinition(ByteBuf buf, Map<String, ServerEntityMesh> serverEntityMeshes) {
+        String id = readString(buf);
+        String meshId = readString(buf);
+
+        ServerEntityMesh mesh = serverEntityMeshes.get(meshId);
+        if (mesh == null) {
+            throw new IllegalStateException("Unknown entity mesh: " + meshId);
+        }
+
+        return new EntityDefinition(id, mesh);
+    }
+
     public boolean isClientRunning() {
         return clientRunning.get();
     }
@@ -248,11 +257,18 @@ public final class Client implements NetworkUser {
                         meshes.put(mesh.id(), mesh);
                     }
 
-                    this.resources = new GameResources(shapes, textures, meshes);
+                    int entityCount = byteBuf.readInt();
+                    EntityDefinition[] entityDefinitions = new EntityDefinition[entityCount];
+                    for (int i = 0; i < entityCount; i++) {
+                        EntityDefinition definition = readDefinition(byteBuf, meshes);
+                        entityDefinitions[i] = definition;
+                    }
 
-                    resources.serverEntityMeshes().forEach((id, serverEntityMesh) -> {
-                        meshDataGenerators.submit(new EntityMeshDataTask(serverEntityMesh, resources));
-                    });
+                    this.resources = new GameResources(shapes, textures, meshes, entityDefinitions);
+
+                    for (EntityDefinition entityDefinition : entityDefinitions) {
+                        meshDataGenerators.submit(new EntityMeshDataTask(entityDefinition.entityMesh(), resources));
+                    }
 
                     byteBuf.release();
                     break;
@@ -393,6 +409,8 @@ public final class Client implements NetworkUser {
 //
 //                entityMeshData.children()[4]
 //                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+            } else {
+                Logger.warn("No children?");
             }
         } else {
             Logger.warn("No mesh found for entity: " + entityID);
@@ -463,7 +481,7 @@ public final class Client implements NetworkUser {
                     data[i * 3 + 2] = req.y();
                     data[i * 3 + 3] = req.z();
                 }
-                NetworkService.sendInts(channel, PackageID.CHUNK_REQUEST, clientID, data);
+                NetworkService.sendInts(channel, PackageID.CHUNK_REQUEST, clientID, channel::close, data);
             }
             lastFlushedTime += ConstantNetworkSettings.CHUNK_REQUEST_BATCHING_TIME;
         }
@@ -476,11 +494,11 @@ public final class Client implements NetworkUser {
                 queuedChunkTasks.add(position3D);
                 break;
             case CLOSE:
-                NetworkService.sendBytes(channel, PackageID.CLOSE, clientID);
+                NetworkService.sendBytes(channel, PackageID.CLOSE, clientID, channel::close);
                 break;
             case PLAYER_UPDATE:
                 PlayerUpdateRequest playerUpdateRequest = (PlayerUpdateRequest) request;
-                NetworkService.sendDoubles(channel, PackageID.PLAYER_UPDATE, clientID, playerUpdateRequest.x(), playerUpdateRequest.y(), playerUpdateRequest.z(), playerUpdateRequest.pitch(), playerUpdateRequest.yaw());
+                NetworkService.sendDoubles(channel, PackageID.PLAYER_UPDATE, clientID, channel::close, playerUpdateRequest.x(), playerUpdateRequest.y(), playerUpdateRequest.z(), playerUpdateRequest.pitch(), playerUpdateRequest.yaw());
                 break;
             case BLOCK_REPLACE:
                 BlockReplaceRequest blockReplaceRequest = (BlockReplaceRequest) request;
@@ -491,7 +509,7 @@ public final class Client implements NetworkUser {
                 ByteUtils.addInt(bytes, blockReplaceRequest.newBlock().id().length(), Integer.BYTES * 3);
                 bytes[Integer.BYTES * 4] = (byte) (blockReplaceRequest.rotation() & 3);
                 System.arraycopy(blockReplaceRequest.newBlock().id().getBytes(), 0, bytes, Integer.BYTES * 4 + 1, blockReplaceRequest.newBlock().id().length());
-                NetworkService.sendBytes(channel, PackageID.REPLACE_BLOCK, clientID, bytes);
+                NetworkService.sendBytes(channel, PackageID.REPLACE_BLOCK, clientID, channel::close, bytes);
 
                 // TODO: Calculate highestY
                 pendingBlocks.put(blockReplaceRequest.position3D(), blockReplaceRequest.oldBlock());
@@ -537,7 +555,6 @@ public final class Client implements NetworkUser {
     }
 
     public void setListeners(State state) {
-        Map<String, EntityMeshData> entityMeshDataCache = new ConcurrentHashMap<>();
         meshDataGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new MeshDataGenerator(
@@ -545,8 +562,7 @@ public final class Client implements NetworkUser {
                         world,
                         blockService,
                         state,
-                        settings,
-                        entityMeshDataCache
+                        settings
                 )::generateMeshData,
                 true
         );

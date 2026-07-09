@@ -1,6 +1,7 @@
 package omnivoxel.common.resource;
 
 import omnivoxel.server.client.ServerItem;
+import omnivoxel.server.entity.EntityDefinition;
 import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.server.entity.ServerEntityShape;
 import omnivoxel.server.entity.ServerEntityTexture;
@@ -10,7 +11,8 @@ import java.util.Map;
 
 public record GameResources(Map<String, ServerEntityShape> serverEntityShapes,
                             Map<String, ServerEntityTexture> serverEntityTextures,
-                            Map<String, ServerEntityMesh> serverEntityMeshes) implements ServerItem {
+                            Map<String, ServerEntityMesh> serverEntityMeshes,
+                            EntityDefinition[] entityDefinitions) implements ServerItem {
     public ServerEntityMesh getEntityMesh(String meshID) {
         return serverEntityMeshes.get(meshID);
     }
@@ -21,7 +23,7 @@ public record GameResources(Map<String, ServerEntityShape> serverEntityShapes,
         byte[][] textureBytes = new byte[serverEntityTextures.size()][];
         byte[][] meshBytes = new byte[serverEntityMeshes.size()][];
 
-        int size = Integer.BYTES * 3;
+        int size = Integer.BYTES * 4;
 
         int i = 0;
         for (ServerEntityShape shape : serverEntityShapes.values()) {
@@ -42,6 +44,11 @@ public record GameResources(Map<String, ServerEntityShape> serverEntityShapes,
             meshBytes[i] = mesh.getBytes();
             size += meshBytes[i].length;
             i++;
+        }
+
+        for (EntityDefinition definition : entityDefinitions) {
+            byte[] bytes = definition.getBytes();
+            size += bytes.length;
         }
 
         byte[] out = new byte[size];
@@ -67,6 +74,15 @@ public record GameResources(Map<String, ServerEntityShape> serverEntityShapes,
         offset += Integer.BYTES;
 
         for (byte[] bytes : meshBytes) {
+            System.arraycopy(bytes, 0, out, offset, bytes.length);
+            offset += bytes.length;
+        }
+
+        ByteUtils.addInt(out, entityDefinitions.length, offset);
+        offset += Integer.BYTES;
+
+        for (EntityDefinition definition : entityDefinitions) {
+            byte[] bytes = definition.getBytes();
             System.arraycopy(bytes, 0, out, offset, bytes.length);
             offset += bytes.length;
         }

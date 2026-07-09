@@ -16,12 +16,13 @@ public record ServerBlock(
         boolean isSelfOccluded,
         boolean rotatable,
         boolean canPlaceOn,
+        boolean partOfGround,
         byte[] lightEmitting,
         byte[] lightDiffusing,
         String blockHitbox
 ) implements ServerItem {
     // TODO: Don't hardcode omnivoxel:air/default
-    public static final ServerBlock AIR = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, new double[6][0], false, false, true, false, false, new byte[3], new byte[]{1, 1, 1, 1}, "omnivoxel:empty");
+    public static final ServerBlock AIR = new ServerBlock("omnivoxel:air/default", BlockShape.EMPTY_BLOCK_SHAPE_STRING, new double[6][0], false, false, true, false, false, false, new byte[3], new byte[]{1, 1, 1, 1}, "omnivoxel:empty");
 
     public ServerBlock {
         if (uvCoords.length != 6) {

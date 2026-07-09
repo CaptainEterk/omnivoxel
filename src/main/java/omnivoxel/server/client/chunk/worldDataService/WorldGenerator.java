@@ -1,9 +1,10 @@
 package omnivoxel.server.client.chunk.worldDataService;
 
-import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
+import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.block.BlockFunction;
 import omnivoxel.server.client.chunk.worldDataService.block.functions.ConditionBlockFunction;
@@ -16,6 +17,8 @@ import omnivoxel.server.world.ServerWorld;
 import omnivoxel.util.config.Config;
 import omnivoxel.util.game.nodes.*;
 import omnivoxel.util.math.Position2D;
+import omnivoxel.util.math.Position3D;
+import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 
@@ -193,33 +196,31 @@ public class WorldGenerator {
         }
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            int worldX = position2D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
-
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                int worldZ = position2D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
-
-                int highestY = blockMinY == null ? 0 : blockMinY;
+                int highestY = blockMinY;
 
                 boolean found = false;
 
-                for (int worldY = blockMaxY - 1; worldY >= blockMinY; worldY--) {
-                    double density;
+                for (int chunkY = chunkMaxY - 1; chunkY >= chunkMinY; chunkY--) {
+                    Chunk<ServerBlock> chunk = world.get(new Position3D(position2D.x(), chunkY, position2D.z()));
 
-                    if (heightIsDensityFunction) {
-                        density = densityFunction.evaluate(worldX, worldY, worldZ);
-                    } else {
-                        density = heightFunction.evaluate(worldX, worldY, worldZ);
+                    if (chunk == null) {
+                        continue;
                     }
 
-                    if (density > 0) {
-                        highestY = worldY;
-                        found = true;
+                    for (int localY = ConstantCommonSettings.CHUNK_HEIGHT - 1; localY >= 0; localY--) {
+                        ServerBlock block = chunk.getBlock(x, localY, z);
+
+                        if (block != null) {
+                            highestY = chunkY * ConstantCommonSettings.CHUNK_HEIGHT + localY;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found) {
                         break;
                     }
-                }
-
-                if (!found) {
-                    highestY = blockMinY;
                 }
 
                 chunkHeights = chunkHeights.setBlock(x, z, highestY);

@@ -4,7 +4,6 @@ import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public final class GeneralEntityMeshData implements EntityMeshData {
     private final ByteBuffer solidVertices;
