@@ -3,6 +3,7 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.ShapeHelper;
+import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
@@ -16,9 +17,10 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
+import omnivoxel.common.resource.GameResources;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
-import omnivoxel.server.entity.ServerEntityShape;
+import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.block.Block;
@@ -39,11 +41,11 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
+    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings, Map<String, EntityMeshData> entityMeshDataCache) {
         this.state = state;
         chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, blockService, world, settings);
         this.world = world;
-        entityMeshDataGenerator = new EntityMeshDataGenerator();
+        entityMeshDataGenerator = new EntityMeshDataGenerator(entityMeshDataCache);
     }
 
     public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {
@@ -232,8 +234,10 @@ public final class MeshDataGenerator {
             } else {
                 Logger.warn("Mesh data generation failed..." + position3D);
             }
-        } else if (meshDataTask instanceof EntityMeshDataTask(ServerEntityShape serverEntityShape)) {
-            world.addEntity(entityMeshDataGenerator.generateMeshData(serverEntityShape));
+        } else if (meshDataTask instanceof EntityMeshDataTask(
+                ServerEntityMesh serverEntityMesh, GameResources gameResources
+        )) {
+            world.addEntity(entityMeshDataGenerator.generateMeshData(serverEntityMesh, gameResources));
         } else {
             throw new IllegalArgumentException(meshDataTask + " is an invalid input.");
         }

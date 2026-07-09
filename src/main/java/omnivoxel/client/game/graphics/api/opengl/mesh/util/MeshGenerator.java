@@ -8,7 +8,6 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.GeneralChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.GeneralEntityMeshDefinition;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
-import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 
@@ -52,10 +51,9 @@ public class MeshGenerator {
                 ),
                 mesh
         );
-        mesh.children().forEach(entityMeshData -> {
-            EntityMesh em = bufferizeEntityMesh(entityMeshData);
-            entityMesh.addChild(em);
-        });
+        for (EntityMeshData child : mesh.children()) {
+            entityMesh.addChild(bufferizeEntityMesh(child));
+        }
         return entityMesh;
     }
 

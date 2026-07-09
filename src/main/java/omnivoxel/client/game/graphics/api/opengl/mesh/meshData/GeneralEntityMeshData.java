@@ -4,25 +4,24 @@ import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class GeneralEntityMeshData implements EntityMeshData {
     private final ByteBuffer solidVertices;
     private final ByteBuffer solidIndices;
-    private final List<EntityMeshData> children;
+    private final EntityMeshData[] children;
     private final String id;
     private Matrix4f model = new Matrix4f();
 
     public GeneralEntityMeshData(
             ByteBuffer solidVertices,
-            ByteBuffer solidIndices,
+            ByteBuffer solidIndices, EntityMeshData[] children,
             String id
     ) {
         this.solidVertices = solidVertices;
         this.solidIndices = solidIndices;
+        this.children = children;
         this.id = id;
-        this.children = new ArrayList<>();
     }
 
     @Override
@@ -62,7 +61,7 @@ public final class GeneralEntityMeshData implements EntityMeshData {
     }
 
     @Override
-    public List<EntityMeshData> children() {
+    public EntityMeshData[] children() {
         return children;
     }
 

@@ -9,7 +9,7 @@ public interface EntityMeshData extends MeshData {
 
     void setModel(Matrix4f model);
 
-    List<EntityMeshData> children();
+    EntityMeshData[] children();
 
     String id();
 }

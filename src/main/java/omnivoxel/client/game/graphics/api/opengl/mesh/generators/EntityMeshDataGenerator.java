@@ -3,6 +3,8 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.GeneralEntityMeshData;
 import omnivoxel.common.entity.EntityVertex;
+import omnivoxel.common.resource.GameResources;
+import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.server.entity.ServerEntityShape;
 
 import java.nio.ByteBuffer;
@@ -12,11 +14,22 @@ import java.util.List;
 import java.util.Map;
 
 public class EntityMeshDataGenerator {
-    // TODO: Add EntityShape here
-    public EntityMeshData generateMeshData(ServerEntityShape serverEntityShape) {
+    private final Map<String, EntityMeshData> entityMeshDataCache;
+
+    public EntityMeshDataGenerator(Map<String, EntityMeshData> entityMeshDataCache) {
+        this.entityMeshDataCache = entityMeshDataCache;
+    }
+
+    public EntityMeshData generateMeshData(ServerEntityMesh serverEntityMesh, GameResources gameResources) {
+        if (entityMeshDataCache.containsKey(serverEntityMesh.shapeID())) {
+            return entityMeshDataCache.get(serverEntityMesh.shapeID());
+        }
+
         List<Float> vertices = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
         Map<EntityVertex, Integer> vertexIndexMap = new HashMap<>();
+
+        ServerEntityShape serverEntityShape = gameResources.serverEntityShapes().get(serverEntityMesh.shapeID());
 
         for (EntityVertex[] entityVertices : serverEntityShape.entityVertices()) {
             for (EntityVertex entityVertex : entityVertices) {
@@ -40,6 +53,15 @@ public class EntityMeshDataGenerator {
         ByteBuffer vertexBuffer = MeshDataGenerator.createFloatBuffer(vertices);
         ByteBuffer indexBuffer = MeshDataGenerator.createIntBuffer(indices);
 
-        return new GeneralEntityMeshData(vertexBuffer, indexBuffer, serverEntityShape.id());
+        EntityMeshData[] children = new EntityMeshData[serverEntityMesh.childrenIDs().length];
+        for (int i = 0; i < children.length; i++) {
+            children[i] = generateMeshData(gameResources.serverEntityMeshes().get(serverEntityMesh.childrenIDs()[i]), gameResources);
+        }
+
+        EntityMeshData meshData = new GeneralEntityMeshData(vertexBuffer, indexBuffer, children, serverEntityShape.id());
+
+        entityMeshDataCache.put(serverEntityMesh.id(), meshData);
+
+        return meshData;
     }
 }

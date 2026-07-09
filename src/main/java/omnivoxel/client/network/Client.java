@@ -250,8 +250,8 @@ public final class Client implements NetworkUser {
 
                     this.resources = new GameResources(shapes, textures, meshes);
 
-                    resources.serverEntityShapes().forEach((id, serverEntityShape) -> {
-                        meshDataGenerators.submit(new EntityMeshDataTask(serverEntityShape));
+                    resources.serverEntityMeshes().forEach((id, serverEntityMesh) -> {
+                        meshDataGenerators.submit(new EntityMeshDataTask(serverEntityMesh, resources));
                     });
 
                     byteBuf.release();
@@ -328,7 +328,16 @@ public final class Client implements NetworkUser {
         byteBuf.getBytes(offset, entityIDBytes);
         offset += idLength;
 
-        String entityID = new String(entityIDBytes);
+        String entityID = new String(entityIDBytes, StandardCharsets.UTF_8);
+
+        int meshIDLength = byteBuf.getInt(offset);
+        offset += Integer.BYTES;
+
+        byte[] meshIDBytes = new byte[meshIDLength];
+        byteBuf.getBytes(offset, entityIDBytes);
+        offset += meshIDLength;
+
+        String meshID = new String(meshIDBytes, StandardCharsets.UTF_8);
 
         EntityMeshWrapper entityMesh = world.getEntity(entityID);
         if (entityMesh == null) {
@@ -365,25 +374,25 @@ public final class Client implements NetworkUser {
                             .rotateY((float) -yaw)
             );
 
-            if (!entityMeshData.children().isEmpty()) {
-                entityMeshData.children().getFirst()
+            if (entityMeshData.children().length > 0) {
+                entityMeshData.children()[0]
                         .setModel(
                                 new Matrix4f()
                                         .translate(0, 0.75f, 0)
                                         .rotateX((float) -pitch)
                         );
 
-                entityMeshData.children().get(1)
-                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
-
-                entityMeshData.children().get(2)
-                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
-
-                entityMeshData.children().get(3)
-                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
-
-                entityMeshData.children().get(4)
-                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
+//                entityMeshData.children()[1]
+//                        .setModel(new Matrix4f().translate(-0.5f, 0.75f, 0));
+//
+//                entityMeshData.children()[2]
+//                        .setModel(new Matrix4f().translate(0.5f, 0.75f, 0));
+//
+//                entityMeshData.children()[3]
+//                        .setModel(new Matrix4f().translate(-0.25f, -0.75f, 0));
+//
+//                entityMeshData.children()[4]
+//                        .setModel(new Matrix4f().translate(0.25f, -0.75f, 0));
             }
         } else {
             Logger.warn("No mesh found for entity: " + entityID);
@@ -528,6 +537,7 @@ public final class Client implements NetworkUser {
     }
 
     public void setListeners(State state) {
+        Map<String, EntityMeshData> entityMeshDataCache = new ConcurrentHashMap<>();
         meshDataGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new MeshDataGenerator(
@@ -535,7 +545,8 @@ public final class Client implements NetworkUser {
                         world,
                         blockService,
                         state,
-                        settings
+                        settings,
+                        entityMeshDataCache
                 )::generateMeshData,
                 true
         );
