@@ -1,5 +1,6 @@
 package omnivoxel.server.world;
 
+import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.block.ServerBlockAndPosition;
@@ -71,13 +72,42 @@ public class ServerWorldHandler {
                             chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);
                         }
                         int currentHighestY = chunkHeights.getBlock(x, z);
+                        boolean updateChunkHeights = false;
                         if (currentHighestY == worldY) {
+                            int cachedChunkY = chunkY;
+                            Chunk<ServerBlock> cachedChunk = chunk;
                             for (int hy = worldY - 1; hy > worldGenerator.getBlockMinY(); hy--) {
-                                if (block.partOfGround()) {
-                                    currentHighestY = hy;
+                                int highestChunkY = IndexCalculator.chunkY(hy);
+                                if (cachedChunkY != highestChunkY) {
+                                    cachedChunkY = highestChunkY;
+                                    Position3D chunkPosition = new Position3D(chunkX, highestChunkY, chunkZ);
+                                    cachedChunk = world.get(chunkPosition);
+                                    if (cachedChunk == null) {
+                                        cachedChunk = ChunkIO.decode(ChunkIO.get(chunkPosition));
+                                    }
+                                    if (cachedChunk == null) {
+                                        hy -= ConstantCommonSettings.CHUNK_HEIGHT - 1;
+                                        continue;
+                                    }
+                                }
+                                if (cachedChunk.getBlock(x, IndexCalculator.localY(hy), z).partOfGround()) {
+                                    chunkHeights = chunkHeights.setBlock(x, z, hy);
+                                    updateChunkHeights = true;
+                                    break;
                                 }
                             }
-                            world.putChunkHeights(position2D, chunkHeights.setBlock(x, z, currentHighestY));
+                            if (!updateChunkHeights) {
+                                chunkHeights = chunkHeights.setBlock(x, z, worldGenerator.getBlockMinY());
+                                updateChunkHeights = true;
+                            }
+                        } else if (block.partOfGround() && worldY > currentHighestY) {
+                            chunkHeights = chunkHeights.setBlock(x, z, worldY);
+                            updateChunkHeights = true;
+                        }
+
+                        if (updateChunkHeights) {
+                            world.putChunkHeights(position2D, chunkHeights);
+                            ChunkIO.writeChunk2D(position2D, chunkHeights, true);
                         }
                         byte finalRotation = rotation;
                         clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block, finalRotation)));

@@ -8,7 +8,10 @@ import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.server.entity.ServerEntityShape;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class EntityMeshDataGenerator {
     public EntityMeshData generateMeshData(ServerEntityMesh serverEntityMesh, GameResources gameResources) {
@@ -51,11 +54,8 @@ public class EntityMeshDataGenerator {
 
         EntityMeshData[] children = new EntityMeshData[serverEntityMesh.childrenIDs().length];
         for (int i = 0; i < children.length; i++) {
-            System.out.println(serverEntityMesh.childrenIDs()[i]);
             children[i] = generateMeshData(gameResources.serverEntityMeshes().get(serverEntityMesh.childrenIDs()[i]), gameResources);
         }
-
-        System.out.println(serverEntityMesh.id() + " " + Arrays.toString(serverEntityMesh.childrenIDs()));
 
         return new GeneralEntityMeshData(vertexBuffer, indexBuffer, children, serverEntityShape.id());
     }
