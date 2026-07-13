@@ -3,6 +3,8 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
 
+import java.util.Arrays;
+
 public final class LightNodeQueue {
     private static final int DEFAULT_CAPACITY = ConstantCommonSettings.BLOCKS_IN_CHUNK;
 
@@ -22,6 +24,7 @@ public final class LightNodeQueue {
         if (allSameLightCount > 0) {
             throw new IllegalStateException("Cannot add to queue when all the light levels are the same");
         }
+        ensureCapacity();
         xs[tail] = x;
         ys[tail] = y;
         zs[tail] = z;
@@ -68,6 +71,29 @@ public final class LightNodeQueue {
 
     public byte lightLevel() {
         return lightLevel;
+    }
+
+    private void ensureCapacity() {
+        if (tail < xs.length) {
+            return;
+        }
+
+        if (head > 0) {
+            int size = tail - head;
+            System.arraycopy(xs, head, xs, 0, size);
+            System.arraycopy(ys, head, ys, 0, size);
+            System.arraycopy(zs, head, zs, 0, size);
+            System.arraycopy(lightLevels, head, lightLevels, 0, size);
+            head = 0;
+            tail = size;
+            return;
+        }
+
+        int newCapacity = xs.length << 1;
+        xs = Arrays.copyOf(xs, newCapacity);
+        ys = Arrays.copyOf(ys, newCapacity);
+        zs = Arrays.copyOf(zs, newCapacity);
+        lightLevels = Arrays.copyOf(lightLevels, newCapacity);
     }
 
     public void fill(byte lightEmitting) {

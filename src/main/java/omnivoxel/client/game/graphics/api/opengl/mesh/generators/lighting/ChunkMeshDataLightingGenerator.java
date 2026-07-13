@@ -42,7 +42,6 @@ public class ChunkMeshDataLightingGenerator {
     private final Set<Position3D> completeDirtyChunks;
     private final Position3D[] foundCompleteDirtyNeighborPositions = new Position3D[26];
     private final ClientWorldChunk[] foundCompleteDirtyNeighborChunks = new ClientWorldChunk[26];
-    private int foundCompleteDirtyChunkCount;
 
     public ChunkMeshDataLightingGenerator(ClientWorld world, ClientWorldDataService worldDataService, WorkerThreadPool<MeshDataTask> meshDataGenerators, BlockService<BlockWithMesh> blockService, State state, Set<Position3D> completeDirtyChunks) {
         this.world = world;
@@ -188,7 +187,7 @@ public class ChunkMeshDataLightingGenerator {
 
         createLightingDataIfEmpty(clientWorldChunk);
 
-        foundCompleteDirtyChunkCount = 0;
+        int foundCompleteDirtyChunkCount = 0;
 
         boolean failed = false;
         for (int x = -1; x <= 1; x++) {

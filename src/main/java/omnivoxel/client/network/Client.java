@@ -355,8 +355,8 @@ public final class Client implements NetworkUser {
 
         String meshID = new String(meshIDBytes, StandardCharsets.UTF_8);
 
-        EntityMeshWrapper entityMesh = world.getEntity(entityID);
-        if (entityMesh == null) {
+        EntityMeshWrapper entityMeshWrapper = world.getEntity(entityID);
+        if (entityMeshWrapper == null) {
             Logger.warn(Logger.Priority.NORMAL, "Received update for unknown entity: " + entityID);
             return;
         }
@@ -375,11 +375,11 @@ public final class Client implements NetworkUser {
 
         double yaw = byteBuf.getDouble(offset);
 
-        Entity entity = entityMesh.entity();
+        Entity entity = entityMeshWrapper.entity();
 
         entity.set(x, y, z, pitch, yaw);
 
-        EntityMeshData entityMeshData = entityMesh.entityMeshReference().getEntityMesh() == null ? null : entityMesh.entityMeshReference().getEntityMesh().getMeshData();
+        EntityMeshData entityMeshData = entityMeshWrapper.entityMeshReference().getEntityMesh() == null ? null : entityMeshWrapper.entityMeshReference().getEntityMesh().getMeshData();
 
         if (entityMeshData != null) {
             entityMeshData.setModel(
