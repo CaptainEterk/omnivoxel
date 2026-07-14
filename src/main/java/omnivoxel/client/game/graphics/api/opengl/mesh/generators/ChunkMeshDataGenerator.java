@@ -221,17 +221,7 @@ public class ChunkMeshDataGenerator {
             return false;
         }
 
-        if (originalShape.id().equals(adjacentBlockMesh.getShape().id()) && originalShape.coversOppositeSelfFace()[sourceFace.opposite().ordinal()]) {
-            return false;
-        }
-
-//        if (adjacentBlockMesh.isTransparent() && originalBlockMesh.isTransparent() && !Objects.equals(adjacentBlockMesh.getModID(), originalBlockMesh.getModID())) {
-//            return true;
-//        }
-//
-//        return !((originalShape.solid()[face.ordinal()] || originalBlockMesh.isTransparent()) && adjacentBlockMesh.getShape().solid()[face.ordinal()]);
-////                && originalBlockMesh.shouldRenderFace(face, adjacentBlockMesh);
-        return true;
+        return !originalShape.coversOppositeSelfFace()[sourceFace.opposite().ordinal()] || !originalShape.id().equals(adjacentBlockMesh.getShape().id());
     }
 
     private void addFacePrecomputedShape(
