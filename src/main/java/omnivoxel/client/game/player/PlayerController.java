@@ -84,6 +84,7 @@ public class PlayerController {
     private boolean togglingFullscreen;
     private boolean togglingDebug;
     private boolean togglingMovementMode;
+    private boolean togglingFreeAll;
     private boolean leftMouseDown;
     private boolean rightMouseDown;
     private Position3D cachedChunkPos = new Position3D(0, 0, 0);
@@ -669,6 +670,14 @@ public class PlayerController {
             togglingFullscreen = true;
         } else {
             togglingFullscreen = false;
+        }
+        if (keyInput.isKeyPressed(GLFW.GLFW_KEY_F2)) {
+            if (!togglingFreeAll) {
+                state.setItem("shouldFreeAll", true);
+            }
+            togglingFreeAll = true;
+        } else {
+            togglingFreeAll = false;
         }
     }
 

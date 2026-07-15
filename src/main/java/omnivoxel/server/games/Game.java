@@ -1,8 +1,8 @@
 package omnivoxel.server.games;
 
-import omnivoxel.common.block.shape.BlockVertex;
-import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
@@ -76,26 +76,52 @@ public final class Game {
                 }
                 ObjectGameNode texture = Game.checkGameNodeType(objectStateNode.object().get("texture"), ObjectGameNode.class);
                 ArrayGameNode lightEmittingNode = Game.checkGameNodeType(objectStateNode.object().get("light_emitting"), ArrayGameNode.class);
-                byte[] lightEmitting = new byte[3];
+                byte[][] lightEmitting = new byte[6][3];
                 if (lightEmittingNode != null) {
-                    if (lightEmittingNode.nodes().length != lightEmitting.length) {
-                        throw new IllegalArgumentException("Light emitting attribute must have a length of EXACTLY " + lightEmitting.length);
-                    }
-                    for (int i = 0; i < lightEmitting.length; i++) {
-                        lightEmitting[i] = (byte) Game.checkGameNodeType(lightEmittingNode.nodes()[i], DoubleGameNode.class).value();
+                    if (lightEmittingNode.nodes().length == 6) {
+                        for (int i = 0; i < 6; i++) {
+                            ArrayGameNode faceLightEmittingNode = Game.checkGameNodeType(lightEmittingNode.nodes()[i], ArrayGameNode.class);
+                            if (faceLightEmittingNode.nodes().length != 3) {
+                                throw new IllegalArgumentException("light_emitting attribute must have four values for rgb and skylight");
+                            }
+                            for (int j = 0; j < 3; j++) {
+                                lightEmitting[i][j] = (byte) Math.clamp(Game.checkGameNodeType(faceLightEmittingNode.nodes()[j], DoubleGameNode.class).value(), 0, 15);
+                            }
+                        }
+                    } else if (lightEmittingNode.nodes().length == 3) {
+                        for (int i = 0; i < 6; i++) {
+                            for (int j = 0; j < 3; j++) {
+                                lightEmitting[i][j] = (byte) Math.clamp(Game.checkGameNodeType(lightEmittingNode.nodes()[j], DoubleGameNode.class).value(), 0, 15);
+                            }
+                        }
+                    } else {
+                        throw new IllegalArgumentException("\"light_diffusing\" attribute must be either an array of 6 arrays (for RGB and skylight diffusing per face), or an array of 4 values (for RGB and skylight diffusing for every face)");
                     }
                 }
                 ArrayGameNode lightDiffusingNode = Game.checkGameNodeType(objectStateNode.object().get("light_diffusing"), ArrayGameNode.class);
-                byte[] lightDefusing = new byte[4];
+                byte[][] lightDefusing = new byte[6][4];
                 if (lightDiffusingNode != null) {
-                    if (lightDiffusingNode.nodes().length != lightDefusing.length) {
-                        throw new IllegalArgumentException("Light diffusing attribute must have a length of EXACTLY " + lightDefusing.length);
-                    }
-                    for (int i = 0; i < lightDefusing.length; i++) {
-                        lightDefusing[i] = (byte) Game.checkGameNodeType(lightDiffusingNode.nodes()[i], DoubleGameNode.class).value();
+                    if (lightDiffusingNode.nodes().length == 6) {
+                        for (int i = 0; i < 6; i++) {
+                            ArrayGameNode faceLightDefusingNode = Game.checkGameNodeType(lightDiffusingNode.nodes()[i], ArrayGameNode.class);
+                            if (faceLightDefusingNode.nodes().length != 4) {
+                                throw new IllegalArgumentException("\"light_diffusing\" attribute must have four values for rgb and skylight");
+                            }
+                            for (int j = 0; j < 4; j++) {
+                                lightDefusing[i][j] = (byte) Math.clamp(Game.checkGameNodeType(faceLightDefusingNode.nodes()[j], DoubleGameNode.class).value(), 1, 15);
+                            }
+                        }
+                    } else if (lightDiffusingNode.nodes().length == 4) {
+                        for (int i = 0; i < 6; i++) {
+                            for (int j = 0; j < 4; j++) {
+                                lightDefusing[i][j] = (byte) Math.clamp(Game.checkGameNodeType(lightDiffusingNode.nodes()[j], DoubleGameNode.class).value(), 1, 15);
+                            }
+                        }
+                    } else {
+                        throw new IllegalArgumentException("\"light_diffusing\" attribute must be either an array of 6 arrays (for RGB and skylight diffusing per face), or an array of 4 values (for RGB and skylight diffusing for every face)");
                     }
                 } else {
-                    Arrays.fill(lightDefusing, (byte) 15);
+                    throw new IllegalArgumentException("Blocks must have a \"light_diffusing\" attribute");
                 }
                 String uvMapping = Game.checkGameNodeType(texture.object().get("uv_mapping"), StringGameNode.class).value();
                 double[][] uvCoords = new double[6][];

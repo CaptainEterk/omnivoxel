@@ -1,11 +1,11 @@
 package omnivoxel.client.network.util;
 
 import io.netty.buffer.ByteBuf;
-import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.util.log.Logger;
 
@@ -146,19 +146,23 @@ public class ByteBufUtils {
             allUVCoords[f] = uvCoords;
         }
 
-        byte[] lightEmitting = new byte[3];
+        byte[][] lightEmitting = new byte[6][3];
 
-        for (int i = 0; i < lightEmitting.length; i++) {
-            lightEmitting[i] = byteBuf.getByte(readerIndex++);
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                lightEmitting[i][j] = byteBuf.getByte(readerIndex++);
+            }
         }
 
-        byte[] lightDiffusing = new byte[4];
+        byte[][] lightDiffusing = new byte[6][4];
 
         for (int i = 0; i < lightDiffusing.length; i++) {
-            lightDiffusing[i] = byteBuf.getByte(readerIndex++);
+            for (int j = 0; j < 4; j++) {
+                lightDiffusing[i][j] = byteBuf.getByte(readerIndex++);
+            }
         }
 
-        Logger.info("Registering block: " + blockIDState + " " + Arrays.toString(lightEmitting) + " " + Arrays.toString(lightDiffusing));
+        Logger.info("Registering block: " + blockIDState + " " + Arrays.deepToString(lightEmitting) + " " + Arrays.deepToString(lightDiffusing));
 
         shapeCache.put(blockShape.id(), blockShape);
 
@@ -185,13 +189,13 @@ public class ByteBufUtils {
             }
 
             @Override
-            public byte getLightDiffuse(LightChannels channel) {
-                return lightDiffusing[channel.ordinal()];
+            public byte getLightDiffuse(BlockFace blockFace, LightChannels channel) {
+                return lightDiffusing[blockFace.ordinal()][channel.ordinal()];
             }
 
             @Override
-            public byte getLightEmitting(LightChannels channel) {
-                return lightEmitting[channel.ordinal()];
+            public byte getLightEmitting(BlockFace blockFace, LightChannels channel) {
+                return lightEmitting[blockFace.ordinal()][channel.ordinal()];
             }
 
             @Override

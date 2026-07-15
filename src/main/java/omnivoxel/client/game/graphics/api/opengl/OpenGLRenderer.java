@@ -177,6 +177,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("shouldUpdateVisibleMeshes", true);
         state.setItem("shouldCheckNewChunks", false);
         state.setItem("shouldAttemptFreeChunks", false);
+        state.setItem("shouldFreeAll", false);
         state.setItem("shouldToggleWindowFullscreen", false);
         state.setItem("has_observed_block", false);
         // TODO: Remove in_water hardcoding
@@ -338,13 +339,11 @@ public class OpenGLRenderer implements Renderer {
         boolean inWater = state.getItem("in_water", Boolean.class);
         if (inWater != state.getItem("prev_in_water", Boolean.class)) {
             if (inWater) {
-                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 1.0f, 0.0f);
-                this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE);
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.21f, 0.21f, 0.0f);
+                this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE / 2f);
                 this.shaderProgram.setUniform("fogNear", 0f);
             } else {
-                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
-                this.shaderProgram.setUniform("fogFar", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE));
-                this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 1.0f);
             }
         }
         state.setItem("prev_in_water", inWater);
@@ -377,6 +376,10 @@ public class OpenGLRenderer implements Renderer {
             state.setItem("shouldUpdateVisibleMeshes", true);
         }
 
+        if (state.getItem("shouldFreeAll", Boolean.class)) {
+            world.freeAllChunksNotInAndNotRecentlyAccessed((position3D) -> false, Integer.MAX_VALUE);
+        }
+
         if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
             attemptFreeChunks();
         }
@@ -387,8 +390,6 @@ public class OpenGLRenderer implements Renderer {
             transparentRenderedChunks.clear();
 
             int renderDistance = settings.getIntSetting("render_distance", 100);
-
-            attemptFreeChunks();
 
             renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
             List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
@@ -939,7 +940,7 @@ public class OpenGLRenderer implements Renderer {
         int squaredRenderDistance = rdChunks * rdChunks;
 
         cameraCullingService.calculateChunkPosition();
-        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), 10);
+        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), settings.getIntSetting("free_chunk_max", 100));
         state.setItem("shouldAttemptFreeChunks", false);
     }
 

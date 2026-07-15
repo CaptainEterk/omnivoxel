@@ -20,9 +20,9 @@ public abstract class BlockMesh {
 
     public abstract int[] getUVCoordinates(BlockFace blockFace);
 
-    public abstract byte getLightDiffuse(LightChannels channel);
+    public abstract byte getLightDiffuse(BlockFace blockFace, LightChannels channel);
 
-    public abstract byte getLightEmitting(LightChannels channel);
+    public abstract byte getLightEmitting(BlockFace blockFace, LightChannels channel);
 
     public abstract boolean shouldRenderTransparentMesh();
 

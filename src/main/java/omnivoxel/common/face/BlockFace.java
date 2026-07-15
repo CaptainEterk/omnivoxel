@@ -11,6 +11,7 @@ public enum BlockFace {
     WEST(-ConstantCommonSettings.PADDED_LENGTH * ConstantCommonSettings.PADDED_HEIGHT),
     NONE(0);
 
+    public static final BlockFace[] NORMAL_VALUES = new BlockFace[]{TOP, BOTTOM, NORTH, SOUTH, EAST, WEST};
     private final int paddedNeighborOffset;
 
     BlockFace(int paddedNeighborOffset) {

@@ -1,5 +1,7 @@
 package omnivoxel.util.data;
 
+import omnivoxel.common.face.BlockFace;
+
 public enum Direction {
     UP(0, 1, 0),
     DOWN(0, -1, 0),
@@ -25,6 +27,17 @@ public enum Direction {
             case SOUTH -> NORTH;
             case EAST -> WEST;
             case WEST -> EAST;
+        };
+    }
+
+    public BlockFace getBlockFace() {
+        return switch (this) {
+            case UP -> BlockFace.TOP;
+            case DOWN -> BlockFace.BOTTOM;
+            case NORTH -> BlockFace.NORTH;
+            case SOUTH -> BlockFace.SOUTH;
+            case EAST -> BlockFace.EAST;
+            case WEST -> BlockFace.WEST;
         };
     }
 }

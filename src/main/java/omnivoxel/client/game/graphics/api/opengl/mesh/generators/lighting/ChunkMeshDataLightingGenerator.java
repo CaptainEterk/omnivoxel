@@ -15,6 +15,7 @@ import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.data.Direction;
@@ -24,8 +25,6 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
-import omnivoxel.world.chunk.ShortPaletteChunk;
-import omnivoxel.world.chunk.SingleBlockChunk;
 import omnivoxel.world.chunk2d.Chunk2D;
 
 import java.util.*;
@@ -321,27 +320,6 @@ public class ChunkMeshDataLightingGenerator {
     }
 
     private void loadChunkLights(LightChannels channel, Position3D chunkPos, Chunk<BlockWithMesh> chunk) {
-        if (channel != LightChannels.SKYLIGHT) {
-            if (chunk instanceof SingleBlockChunk<BlockWithMesh> singleBlockChunk) {
-                if (singleBlockChunk.getBlock(0, 0, 0).blockMesh().getLightEmitting(channel) != 0) {
-                    chunkLights.fill(singleBlockChunk.getBlock(0, 0, 0).blockMesh().getLightEmitting(channel));
-                }
-                return;
-            } else if (chunk instanceof ShortPaletteChunk<BlockWithMesh> shortPaletteChunk) {
-                List<BlockWithMesh> palette = shortPaletteChunk.getPalette();
-                boolean dark = true;
-                for (BlockWithMesh blockWithMesh : palette) {
-                    if (blockWithMesh.blockMesh() == null || blockWithMesh.blockMesh().getLightEmitting(channel) != 0) {
-                        dark = false;
-                        break;
-                    }
-                }
-                if (dark) {
-                    return;
-                }
-            }
-        }
-
         int chunkYOffset = chunkPos.y() * ConstantCommonSettings.CHUNK_HEIGHT;
 
         Chunk2D<Integer> chunkHeights = channel == LightChannels.SKYLIGHT ? world.getChunkHeights(chunkPos.getPosition2D()) : null;
@@ -371,8 +349,25 @@ public class ChunkMeshDataLightingGenerator {
                         BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
 
                         if (mesh != null) {
-                            if (mesh.getLightEmitting(channel) > 0) {
-                                chunkLights.add(x, y, z, mesh.getLightEmitting(channel));
+                            if (mesh.getLightEmitting(BlockFace.TOP, channel) > 0) {
+                                if (x < ConstantCommonSettings.CHUNK_WIDTH - 1) {
+                                    chunkLights.add(x + 1, y, z, mesh.getLightEmitting(BlockFace.EAST, channel));
+                                }
+                                if (x > 0) {
+                                    chunkLights.add(x - 1, y, z, mesh.getLightEmitting(BlockFace.WEST, channel));
+                                }
+                                if (y < ConstantCommonSettings.CHUNK_HEIGHT - 1) {
+                                    chunkLights.add(x, y + 1, z, mesh.getLightEmitting(BlockFace.TOP, channel));
+                                }
+                                if (y > 0) {
+                                    chunkLights.add(x, y - 1, z, mesh.getLightEmitting(BlockFace.BOTTOM, channel));
+                                }
+                                if (z < ConstantCommonSettings.CHUNK_LENGTH - 1) {
+                                    chunkLights.add(x, y, z + 1, mesh.getLightEmitting(BlockFace.NORTH, channel));
+                                }
+                                if (z > 0) {
+                                    chunkLights.add(x, y, z - 1, mesh.getLightEmitting(BlockFace.SOUTH, channel));
+                                }
                             }
                         }
                     }
@@ -400,14 +395,16 @@ public class ChunkMeshDataLightingGenerator {
             if (light < 1) continue;
 
             BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
-            int diffuse = mesh == null ? 1 : mesh.getLightDiffuse(channel);
-            int attenuated = light - diffuse;
-            if (attenuated <= 0) continue;
 
             for (Direction direction : Direction.VALUES) {
                 int nx = x + direction.dx;
                 int ny = y + direction.dy;
                 int nz = z + direction.dz;
+
+                int diffuse = mesh == null ? 1 : mesh.getLightDiffuse(direction.opposite().getBlockFace(), channel);
+
+                int attenuated = light - diffuse;
+                if (attenuated <= 0) continue;
 
                 if (IndexCalculator.checkBounds(nx, ny, nz)) {
                     int nIdx = IndexCalculator.calculateBlockIndex(nx, ny, nz);

@@ -26,6 +26,8 @@ uniform sampler2D skyTexture;
 uniform vec4 fogColor;
 uniform float fogFar;
 uniform float fogNear;
+uniform float renderDistance;
+
 uniform float time;
 
 uniform sampler2D blockTexture;
@@ -66,9 +68,9 @@ vec3 getSunDir(float time) {
     float angle = time * 0.05;
 
     return normalize(vec3(
-    cos(angle),
-    sin(angle),
-    0.0
+            cos(angle),
+            sin(angle),
+            0.0
     ));
 }
 
@@ -244,15 +246,15 @@ void main() {
         FragColor = texColor;
         if (FragColor.a == 0) discard;
 
-        float distance = length(position - cameraPosition);\
-        float fogFactor = (fogFar - distance) / (fogFar - fogNear);
+        float distance = length(position - cameraPosition);
+        float fogFactor = fogColor.a == 1 ? 1 : (fogFar - distance) / (fogFar - fogNear);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
-        if (fogFactor == 0) {
+        if (distance > renderDistance) {
             discard;
         }
 
         vec4 lighting = pow(vLighting, vec4(2.2));
-        lighting = 1-pow(vec4(0.5), lighting);
+        lighting = 1 - pow(vec4(0.5), lighting);
         vec3 blockLight = lighting.rgb;
         float skyLight = lighting.a;
         float ambient = 0.05;
@@ -276,10 +278,10 @@ void main() {
 
         if (blockType == 1u) {
             float fresnel = 1 - abs(dot(vNormal, normalize(faceNormal)));
-            FragColor.a = fresnel/1.5+1-0.66666;
+            FragColor.a = fresnel / 1.5 + 1 - 0.66666;
         }
         if (fogFactor < 1.0) {
-            FragColor = mix(skyColor, FragColor, fogFactor);
+            FragColor = mix(fogColor, FragColor, fogFactor);
         }
         FragColor.rgb = pow(FragColor.rgb, vec3(1.0 / 2.2));
         // TODO: Mix with filter color too for water and things.
