@@ -29,7 +29,7 @@ public class IndexCalculator {
     }
 
     public static int calculateBlockIndex2D(int a, int b) {
-        return (a << X_SHIFT) | b;
+        return (a << Z_SHIFT) | b;
     }
 
     public static int calculateBlockIndexPadded2D(int x, int z) {
