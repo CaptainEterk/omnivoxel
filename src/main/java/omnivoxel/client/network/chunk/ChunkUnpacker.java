@@ -3,26 +3,18 @@ package omnivoxel.client.network.chunk;
 import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.world.ClientWorld;
-import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.block.Block;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk.ChunkShell;
 import omnivoxel.world.chunk.SingleBlockChunk;
 
 public class ChunkUnpacker {
-    private static BlockWithMesh AIR = null;
-
-    public static void unpackChunkPadded(ByteBuf byteBuf, Position3D pos, ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world) {
-        if (AIR == null) {
-            AIR = new BlockWithMesh("omnivoxel:air", worldDataService.getBlock("omnivoxel:air"));
-        }
-
+    public static void unpackChunkPadded(ByteBuf byteBuf, Position3D pos, BlockService<BlockWithMesh> blockService, ClientWorld world) {
         byteBuf.readerIndex(24);
 
-        Block[] palette = new Block[byteBuf.readShort()];
+        BlockWithMesh[] palette = new BlockWithMesh[byteBuf.readShort()];
 
         for (int i = 0; i < palette.length; i++) {
             short len = byteBuf.readShort();
@@ -32,10 +24,10 @@ public class ChunkUnpacker {
                 id.append((char) byteBuf.readByte());
             }
 
-            palette[i] = new Block(id.toString());
+            palette[i] = blockService.getBlock(id.toString());
         }
 
-        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(AIR);
+        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(palette[0]);
         Chunk<BlockWithMesh> negX = new ChunkShell<>();
         Chunk<BlockWithMesh> posX = new ChunkShell<>();
         Chunk<BlockWithMesh> negY = new ChunkShell<>();
@@ -49,7 +41,7 @@ public class ChunkUnpacker {
             int blockID = byteBuf.readInt();
             int blockCount = byteBuf.readInt();
             byte rotation = (byte) (byteBuf.readByte() & 3);
-            BlockWithMesh block = blockService.getBlock(palette[blockID].id());
+            BlockWithMesh block = palette[blockID];
 
             for (int j = 0; j < blockCount; j++) {
                 if (x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&

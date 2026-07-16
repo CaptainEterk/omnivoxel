@@ -14,7 +14,6 @@ import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.chunk.ChunkUnpacker;
-import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
@@ -33,7 +32,6 @@ public class ChunkMeshDataLightingGenerator {
     private final Map<Direction, LightNodeQueue> borderLightQueues = new EnumMap<>(Direction.class);
     private final LightNodeQueue chunkLights;
     private final ClientWorld world;
-    private final ClientWorldDataService worldDataService;
     private final WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private final BlockService<BlockWithMesh> blockService;
     private final State state;
@@ -42,9 +40,8 @@ public class ChunkMeshDataLightingGenerator {
     private final Position3D[] foundCompleteDirtyNeighborPositions = new Position3D[26];
     private final ClientWorldChunk[] foundCompleteDirtyNeighborChunks = new ClientWorldChunk[26];
 
-    public ChunkMeshDataLightingGenerator(ClientWorld world, ClientWorldDataService worldDataService, WorkerThreadPool<MeshDataTask> meshDataGenerators, BlockService<BlockWithMesh> blockService, State state, Set<Position3D> completeDirtyChunks) {
+    public ChunkMeshDataLightingGenerator(ClientWorld world, WorkerThreadPool<MeshDataTask> meshDataGenerators, BlockService<BlockWithMesh> blockService, State state, Set<Position3D> completeDirtyChunks) {
         this.world = world;
-        this.worldDataService = worldDataService;
         this.meshDataGenerators = meshDataGenerators;
         this.blockService = blockService;
         this.state = state;
@@ -132,7 +129,7 @@ public class ChunkMeshDataLightingGenerator {
     public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
-            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), worldDataService, blockService, world);
+            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), blockService, world);
         }
         return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D(), lightingChunkMeshDataTask.channel());
     }

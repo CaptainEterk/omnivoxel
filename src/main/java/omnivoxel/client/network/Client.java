@@ -571,7 +571,6 @@ public final class Client implements NetworkUser {
                 settings.getIntSetting("max_lighting_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new ChunkMeshDataLightingGenerator(
                         world,
-                        worldDataService,
                         meshDataGenerators,
                         blockService,
                         state,

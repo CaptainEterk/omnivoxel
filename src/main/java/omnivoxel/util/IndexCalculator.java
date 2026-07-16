@@ -28,8 +28,8 @@ public class IndexCalculator {
                 + (y + 1);
     }
 
-    public static int calculateBlockIndex2D(int x, int z) {
-        return x * ConstantCommonSettings.CHUNK_WIDTH + z;
+    public static int calculateBlockIndex2D(int a, int b) {
+        return (a << X_SHIFT) | b;
     }
 
     public static int calculateBlockIndexPadded2D(int x, int z) {
