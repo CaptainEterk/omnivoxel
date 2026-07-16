@@ -1,6 +1,7 @@
 package omnivoxel.client.network;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -57,7 +58,8 @@ public class ClientLauncher implements Runnable {
                                     new NetworkHandler(client)
                             );
                         }
-                    }).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+                    }).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                    .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
             Logger.info("Connecting to " + HOST + ":" + PORT);
 

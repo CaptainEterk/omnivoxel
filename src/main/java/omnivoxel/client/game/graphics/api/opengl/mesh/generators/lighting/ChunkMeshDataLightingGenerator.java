@@ -1,7 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
-import omnivoxel.client.game.graphics.api.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.LightingChunkMeshDataTask;
 import omnivoxel.client.game.graphics.block.BlockMesh;
@@ -14,6 +13,7 @@ import omnivoxel.client.game.graphics.light.channel.SingleLightChannel;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
+import omnivoxel.client.network.chunk.ChunkUnpacker;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -132,8 +132,7 @@ public class ChunkMeshDataLightingGenerator {
     public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
-            // TODO: Move here
-            MeshDataGenerator.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), worldDataService, blockService, world);
+            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), worldDataService, blockService, world);
         }
         return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D(), lightingChunkMeshDataTask.channel());
     }
@@ -319,6 +318,7 @@ public class ChunkMeshDataLightingGenerator {
         return new GeneralLightChannel(lightChannel);
     }
 
+    // TODO: Make this also load all channels and only do a complete search once
     private void loadChunkLights(LightChannels channel, Position3D chunkPos, Chunk<BlockWithMesh> chunk) {
         int chunkYOffset = chunkPos.y() * ConstantCommonSettings.CHUNK_HEIGHT;
 
