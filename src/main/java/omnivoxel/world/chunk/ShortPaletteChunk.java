@@ -2,6 +2,8 @@ package omnivoxel.world.chunk;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
+import omnivoxel.world.chunk.rotation.RotationChunk;
+import omnivoxel.world.chunk.rotation.SingleRotationChunk;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,13 +12,13 @@ import java.util.Map;
 
 public class ShortPaletteChunk<B> implements Chunk<B> {
     private final short[] blocks;
-    private final byte[] rotations;
+    private final RotationChunk rotations;
     private final List<B> palette;
     private final Map<B, Short> paletteIndex;
 
     public ShortPaletteChunk() {
         this.blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
-        this.rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        this.rotations = new SingleRotationChunk((byte) 0);
         this.palette = new ArrayList<>();
         this.paletteIndex = new HashMap<>();
     }
@@ -55,13 +57,17 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
         return blocks;
     }
 
-    private byte[] extractRotations(Chunk<B> chunk) {
-        byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+    private RotationChunk extractRotations(Chunk<B> chunk) {
+        if (chunk.getRotationChunk() != null) {
+            return chunk.getRotationChunk();
+        }
+
+        RotationChunk rotations = new SingleRotationChunk((byte) 0);
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
                 for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-                    rotations[IndexCalculator.calculateBlockIndex(x, y, z)] = chunk.getBlockRotation(x, y, z);
+                    rotations.setRotation(IndexCalculator.calculateBlockIndex(x, y, z), chunk.getBlockRotation(x, y, z));
                 }
             }
         }
@@ -86,7 +92,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
         }
 
         blocks[blockIndex] = index;
-        rotations[blockIndex] = 0;
+        rotations.setRotation(blockIndex, (byte) 0);
 
         if (palette.size() > Short.MAX_VALUE - 2) {
             return new IntPaletteChunk<>(this);
@@ -97,12 +103,17 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
 
     @Override
     public byte getBlockRotation(int x, int y, int z) {
-        return rotations[IndexCalculator.calculateBlockIndex(x, y, z)];
+        return rotations.getRotation(IndexCalculator.calculateBlockIndex(x, y, z));
     }
 
     @Override
     public Chunk<B> setBlockRotation(int x, int y, int z, byte rotation) {
-        rotations[IndexCalculator.calculateBlockIndex(x, y, z)] = (byte) (rotation & 3);
+        rotations.setRotation(IndexCalculator.calculateBlockIndex(x, y, z), (byte) (rotation & 3));
         return this;
+    }
+
+    @Override
+    public RotationChunk getRotationChunk() {
+        return rotations;
     }
 }

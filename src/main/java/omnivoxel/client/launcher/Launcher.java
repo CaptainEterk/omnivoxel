@@ -60,7 +60,7 @@ public class Launcher {
         clientThread.start();
 
         world.setClient(client);
-        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
 
         BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
         Camera camera = new Camera(new Frustum(), state);

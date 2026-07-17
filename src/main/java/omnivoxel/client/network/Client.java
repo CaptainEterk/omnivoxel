@@ -560,7 +560,6 @@ public final class Client implements NetworkUser {
                 () -> new MeshDataGenerator(
                         worldDataService,
                         world,
-                        blockService,
                         state,
                         settings
                 )::generateMeshData,

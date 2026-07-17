@@ -1,8 +1,8 @@
 package omnivoxel.client.game.graphics.block;
 
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.face.BlockFace;
 
 public abstract class BlockMesh {
@@ -37,4 +37,6 @@ public abstract class BlockMesh {
     public String getState() {
         return state;
     }
+
+    public abstract int getShaderType();
 }

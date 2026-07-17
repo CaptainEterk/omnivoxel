@@ -1,6 +1,7 @@
 package omnivoxel.world.chunk;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
+import omnivoxel.world.chunk.rotation.RotationChunk;
 
 public class ModifiedChunk<B> implements Chunk<B> {
     private final int x;
@@ -61,5 +62,10 @@ public class ModifiedChunk<B> implements Chunk<B> {
             return new ShortPaletteChunk<>(this).setBlockRotation(x, y, z, rotation);
         }
         return new ModifiedChunk<>(x, y, z, getBlock(x, y, z), rotation, this, modificationCount + 1);
+    }
+
+    @Override
+    public RotationChunk getRotationChunk() {
+        return null;
     }
 }

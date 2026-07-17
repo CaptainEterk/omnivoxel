@@ -40,18 +40,18 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, BlockService<BlockWithMesh> blockService, State state, Settings settings) {
+    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, State state, Settings settings) {
         this.state = state;
-        chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, blockService, world, settings);
+        chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, world, settings);
         this.world = world;
         entityMeshDataGenerator = new EntityMeshDataGenerator();
     }
 
-    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, int type) {
+    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, boolean loose, int type) {
         UniqueVertex vertex = new UniqueLightVertex(position, new TextureVertex(tx, ty), normal, r, g, b, s);
 
         if (!vertexIndexMap.containsKey(vertex)) {
-            int[] vertexData = ShapeHelper.packVertexData(position, r, g, b, s, normal, tx, ty, type);
+            int[] vertexData = ShapeHelper.packVertexData(position, r, g, b, s, normal, tx, ty, loose, type);
             vertexIndexMap.put(vertex, vertices.size());
             for (int data : vertexData) {
                 vertices.add(data);
@@ -111,8 +111,5 @@ public final class MeshDataGenerator {
             throw new IllegalArgumentException(meshDataTask + " is an invalid input.");
         }
         return null;
-    }
-
-    public record PaddedBlockMeshes(BlockMesh[] blockMeshes, byte[] rotations) {
     }
 }

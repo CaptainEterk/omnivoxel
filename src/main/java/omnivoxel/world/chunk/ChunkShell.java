@@ -2,6 +2,7 @@ package omnivoxel.world.chunk;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
+import omnivoxel.world.chunk.rotation.RotationChunk;
 
 // TODO: Memory optimizations
 public class ChunkShell<B> implements Chunk<B> {
@@ -149,6 +150,11 @@ public class ChunkShell<B> implements Chunk<B> {
         }
 
         throw new UnsupportedOperationException("Cannot set interior block rotation in ChunkShell");
+    }
+
+    @Override
+    public RotationChunk getRotationChunk() {
+        return null;
     }
 
     public void merge(ChunkShell<B> newShell) {

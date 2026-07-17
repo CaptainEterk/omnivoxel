@@ -3,7 +3,6 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.ChunkLightingData;
@@ -12,29 +11,57 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.block.Block;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ChunkMeshDataGenerator {
-    private final ClientWorldDataService worldDataService;
-    private final BlockService<BlockWithMesh> blockService;
+    private static final BlockFace[] UNROTATE = {
+            BlockFace.TOP,
+            BlockFace.BOTTOM,
+            BlockFace.NORTH,
+            BlockFace.SOUTH,
+            BlockFace.EAST,
+            BlockFace.WEST,
+            BlockFace.TOP,
+            BlockFace.BOTTOM,
+            BlockFace.WEST,
+            BlockFace.EAST,
+            BlockFace.NORTH,
+            BlockFace.SOUTH,
+            BlockFace.TOP,
+            BlockFace.BOTTOM,
+            BlockFace.SOUTH,
+            BlockFace.NORTH,
+            BlockFace.WEST,
+            BlockFace.EAST,
+            BlockFace.TOP,
+            BlockFace.BOTTOM,
+            BlockFace.EAST,
+            BlockFace.WEST,
+            BlockFace.SOUTH,
+            BlockFace.NORTH
+    };
+
+    private final BlockMesh AIR;
     private final ClientWorld world;
     private final Settings settings;
     private final boolean ambientOcclusion, smoothLighting;
 
-    public ChunkMeshDataGenerator(ClientWorldDataService worldDataService, BlockService<BlockWithMesh> blockService, ClientWorld world, Settings settings) {
-        this.worldDataService = worldDataService;
-        this.blockService = blockService;
+    public ChunkMeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, Settings settings) {
+        this.AIR = worldDataService.getBlock("omnivoxel:air");
         this.world = world;
         this.settings = settings;
         this.ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
@@ -44,7 +71,7 @@ public class ChunkMeshDataGenerator {
         });
     }
 
-    private MeshData generateChunkMeshData(MeshDataGenerator.PaddedBlockMeshes paddedBlockMeshes, Position3D position3D) {
+    private MeshData generateChunkMeshData(PaddedBlockMeshes paddedBlockMeshes, Position3D position3D) {
         if (paddedBlockMeshes == null || paddedBlockMeshes.blockMeshes() == null) {
             Logger.warn("blockMeshes is null");
             return null;
@@ -169,13 +196,14 @@ public class ChunkMeshDataGenerator {
         BlockShape shape = blockMesh.getShape();
         int index = IndexCalculator.calculateBlockIndexPadded(x, y, z);
         byte rotation = blockMesh.isRotatable() ? rotations[index] : 0;
+        byte rotationOffset = (byte) ((rotation & 3) * 6);
 
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.TOP, rotation, top, getRotation(top, rotations, index + BlockFace.TOP.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.BOTTOM, rotation, bottom, getRotation(bottom, rotations, index + BlockFace.BOTTOM.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.NORTH, rotation, north, getRotation(north, rotations, index + BlockFace.NORTH.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.SOUTH, rotation, south, getRotation(south, rotations, index + BlockFace.SOUTH.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.EAST, rotation, east, getRotation(east, rotations, index + BlockFace.EAST.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, BlockFace.WEST, rotation, west, getRotation(west, rotations, index + BlockFace.WEST.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 0, rotationOffset, top, getRotation(top, rotations, index + BlockFace.TOP.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 1, rotationOffset, bottom, getRotation(bottom, rotations, index + BlockFace.BOTTOM.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 2, rotationOffset, north, getRotation(north, rotations, index + BlockFace.NORTH.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 3, rotationOffset, south, getRotation(south, rotations, index + BlockFace.SOUTH.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 4, rotationOffset, east, getRotation(east, rotations, index + BlockFace.EAST.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 5, rotationOffset, west, getRotation(west, rotations, index + BlockFace.WEST.getPaddedNeighborOffset()), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
     }
 
     private byte getRotation(BlockMesh blockMesh, byte[] rotations, int index) {
@@ -186,8 +214,8 @@ public class ChunkMeshDataGenerator {
             int x, int y, int z,
             BlockMesh blockMesh,
             BlockShape shape,
-            BlockFace worldFace,
-            byte rotation,
+            int worldFace,
+            byte rotationOffset,
             BlockMesh adjacent,
             byte adjacentRotation,
             List<Integer> vertices,
@@ -196,32 +224,33 @@ public class ChunkMeshDataGenerator {
             ChunkLightingData chunkLightingData,
             BlockMesh[] blockMeshes,
             Position3D chunkPosition) {
-        BlockFace sourceFace = unrotateFace(worldFace, rotation);
-        if (shouldRenderFaceCached(blockMesh, shape, adjacent, sourceFace, worldFace, adjacentRotation)) {
-            addFacePrecomputedShape(x, y, z, blockMesh, shape, sourceFace, worldFace, rotation, vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        BlockFace sourceFace = UNROTATE[rotationOffset + worldFace];
+        BlockFace face = BlockFace.NORMAL_VALUES[worldFace];
+        if (shouldRenderFaceCached(blockMesh, shape, adjacent, sourceFace.ordinal(), worldFace, adjacentRotation)) {
+            addFacePrecomputedShape(x, y, z, blockMesh, shape, sourceFace, face, (byte) (rotationOffset / 6), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
         }
     }
 
-    private boolean shouldRenderFaceCached(BlockMesh originalBlockMesh, BlockShape originalShape, BlockMesh adjacentBlockMesh, BlockFace sourceFace, BlockFace worldFace, byte adjacentRotation) {
+    private boolean shouldRenderFaceCached(BlockMesh originalBlockMesh, BlockShape originalShape, BlockMesh adjacentBlockMesh, int sourceFaceOrdinal, int worldFaceOrdinal, byte adjacentRotation) {
         if (adjacentBlockMesh == null) {
             Logger.warn("Adjacent block mesh is null");
             return true;
         }
 
-        if (!originalShape.coverable()[sourceFace.ordinal()]) {
+        if (!originalShape.coverable()[sourceFaceOrdinal]) {
             return true;
         }
 
-        BlockFace adjacentSourceFace = unrotateFace(worldFace.opposite(), adjacentRotation);
+        BlockFace adjacentSourceFace = UNROTATE[((adjacentRotation & 3) * 6) + worldFaceOrdinal ^ 1];
         if (adjacentBlockMesh.getShape().solid()[adjacentSourceFace.ordinal()]) {
             return false;
         }
 
-        if (originalBlockMesh.isSelfOccluded() && originalBlockMesh.getModID().equals(adjacentBlockMesh.getModID())) {
+        if (originalShape.coversOppositeSelfFace()[sourceFaceOrdinal ^ 1]) {
             return false;
         }
 
-        return !originalShape.coversOppositeSelfFace()[sourceFace.opposite().ordinal()] || !originalShape.id().equals(adjacentBlockMesh.getShape().id());
+        return !originalBlockMesh.isSelfOccluded() || !originalBlockMesh.getModID().equals(adjacentBlockMesh.getModID());
     }
 
     private void addFacePrecomputedShape(
@@ -244,9 +273,6 @@ public class ChunkMeshDataGenerator {
         BlockVertex[] faceVertices = shape.vertices()[blockFace.ordinal()];
         int[] faceIndices = shape.indices()[blockFace.ordinal()];
 
-        // TODO: Remove all hardcoding
-        int blockType = Objects.equals(blockMesh.getModID() + "/" + blockMesh.getState(), "core:water_source_block/top") ? 1 : 0;
-
         for (int idx : faceIndices) {
             BlockVertex pointPosition = faceVertices[idx];
             BlockVertex rotatedPointPosition = rotateVertex(pointPosition, rotation);
@@ -264,7 +290,8 @@ public class ChunkMeshDataGenerator {
                     applyAmbientOcclusion(sampleVertexLight(x, y, z, worldFace, rotatedPointPosition, chunkLightingData, chunkPosition, LightChannels.GREEN, smoothLighting), ambientOcclusionLevel),
                     applyAmbientOcclusion(sampleVertexLight(x, y, z, worldFace, rotatedPointPosition, chunkLightingData, chunkPosition, LightChannels.BLUE, smoothLighting), ambientOcclusionLevel),
                     applyAmbientOcclusion(sampleVertexLight(x, y, z, worldFace, rotatedPointPosition, chunkLightingData, chunkPosition, LightChannels.SKYLIGHT, smoothLighting), ambientOcclusionLevel),
-                    blockType
+                    ambientOcclusionLevel == 4,
+                    blockMesh.getShaderType()
             );
         }
     }
@@ -276,20 +303,6 @@ public class ChunkMeshDataGenerator {
             case 3 -> new BlockVertex(1.0f - vertex.pz(), vertex.py(), vertex.px());
             default -> vertex;
         };
-    }
-
-    private BlockFace unrotateFace(BlockFace face, byte rotation) {
-        BlockFace source = face;
-        for (int i = 0; i < (rotation & 3); i++) {
-            source = switch (source) {
-                case NORTH -> BlockFace.WEST;
-                case WEST -> BlockFace.SOUTH;
-                case SOUTH -> BlockFace.EAST;
-                case EAST -> BlockFace.NORTH;
-                default -> source;
-            };
-        }
-        return source;
     }
 
     private byte sampleVertexLight(
@@ -494,7 +507,7 @@ public class ChunkMeshDataGenerator {
         return (byte) Math.round((light & 0xFF) * (ambientOcclusion / 4.0f));
     }
 
-    private MeshDataGenerator.PaddedBlockMeshes unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
+    private PaddedBlockMeshes unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
         Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData();
         if (center == null) {
             Logger.warn(Logger.Priority.LOW, "The center chunk is null");
@@ -579,10 +592,8 @@ public class ChunkMeshDataGenerator {
                         chunk = center;
                     }
 
-                    Block block = chunk.getBlock(lx, ly, lz);
-                    BlockMesh blockMesh = worldDataService.getBlock(
-                            block == null ? "omnivoxel:air" : block.id()
-                    );
+                    BlockWithMesh block = chunk.getBlock(lx, ly, lz);
+                    BlockMesh blockMesh = block == null ? AIR : block.blockMesh();
 
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z);
 
@@ -592,10 +603,13 @@ public class ChunkMeshDataGenerator {
             }
         }
 
-        return new MeshDataGenerator.PaddedBlockMeshes(blockMeshes, rotations);
+        return new PaddedBlockMeshes(blockMeshes, rotations);
     }
 
     public MeshData generateMeshData(Position3D position3D) {
         return generateChunkMeshData(unpackChunkPadded(position3D, world.get(position3D, false, false)), position3D);
+    }
+
+    public record PaddedBlockMeshes(BlockMesh[] blockMeshes, byte[] rotations) {
     }
 }

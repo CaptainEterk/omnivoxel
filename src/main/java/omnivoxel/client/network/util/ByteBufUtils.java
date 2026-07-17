@@ -222,6 +222,12 @@ public class ByteBufUtils {
             public boolean canPlaceOn() {
                 return canPlaceOn;
             }
+
+            @Override
+            public int getShaderType() {
+                // TODO: Add this, but it also needs to run with dynamic shaders, so it needs to be generated at runtime, maybe with a boolean flag in-game called "enable_shaders" or something
+                return 0;
+            }
         };
     }
 }

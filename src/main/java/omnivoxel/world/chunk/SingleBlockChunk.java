@@ -1,5 +1,8 @@
 package omnivoxel.world.chunk;
 
+import omnivoxel.world.chunk.rotation.RotationChunk;
+import omnivoxel.world.chunk.rotation.SingleRotationChunk;
+
 public class SingleBlockChunk<B> implements Chunk<B> {
     private final B block;
     private final byte rotation;
@@ -38,5 +41,10 @@ public class SingleBlockChunk<B> implements Chunk<B> {
             return this;
         }
         return new BiBlockChunk<>(block, this.rotation).setBlockRotation(x, y, z, rotation);
+    }
+
+    @Override
+    public RotationChunk getRotationChunk() {
+        return new SingleRotationChunk(rotation);
     }
 }

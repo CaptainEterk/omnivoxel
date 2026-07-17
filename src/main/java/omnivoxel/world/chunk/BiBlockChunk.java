@@ -61,4 +61,9 @@ public class BiBlockChunk<B> implements Chunk<B> {
         rotationChunk = rotationChunk.setRotation(IndexCalculator.calculateBlockIndex(x, y, z), (byte) (rotation & 3));
         return this;
     }
+
+    @Override
+    public RotationChunk getRotationChunk() {
+        return rotationChunk;
+    }
 }

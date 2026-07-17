@@ -9,9 +9,9 @@ public class ShapeHelper {
     private static final int BITMASK_3 = 0x7;
     private static final int BITMASK_8 = 0xFF;
     private static final int BITMASK_6 = 0x3F;
-    private static final int BITMASK_13 = 0x1FFF;
+    private static final int BITMASK_12= 0xFFF;
 
-    public static int[] packVertexData(BlockVertex vertex, int r, int g, int b, int s, BlockFace blockFace, int u, int v, int type) {
+    public static int[] packVertexData(BlockVertex vertex, int r, int g, int b, int s, BlockFace blockFace, int u, int v, boolean loose, int type) {
         int ix = (int) (vertex.px() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_WIDTH));
         int iy = (int) (vertex.py() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_HEIGHT));
         int iz = (int) (vertex.pz() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_LENGTH));
@@ -23,11 +23,12 @@ public class ShapeHelper {
         int uPacked = u & BITMASK_8;
         int vPacked = v & BITMASK_8;
 
-        int packedType = type & BITMASK_13;
+        int packedType = type & BITMASK_12;
 
         int packedNormalTextureType = (normalPacked << 29)
                 | (uPacked << 21)
                 | (vPacked << 13)
+                | ((loose ? 1 : 0) << 12)
                 | (packedType);
 
         int rPacked = r & BITMASK_6;
