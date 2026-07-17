@@ -1,51 +1,106 @@
 package omnivoxel.world.chunk;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
-import omnivoxel.util.IndexCalculator;
 import omnivoxel.world.chunk.rotation.RotationChunk;
 
-// TODO: Memory optimizations
 public class ChunkShell<B> implements Chunk<B> {
-    private final Object[] minX = new Object[ConstantCommonSettings.CHUNK_HEIGHT * ConstantCommonSettings.CHUNK_LENGTH];
-    private final Object[] maxX = new Object[ConstantCommonSettings.CHUNK_HEIGHT * ConstantCommonSettings.CHUNK_LENGTH];
-    private final byte[] minXRotations = new byte[ConstantCommonSettings.CHUNK_HEIGHT * ConstantCommonSettings.CHUNK_LENGTH];
-    private final byte[] maxXRotations = new byte[ConstantCommonSettings.CHUNK_HEIGHT * ConstantCommonSettings.CHUNK_LENGTH];
+    private final Object[] minX;
+    private final Object[] maxX;
+    private final byte[] minXRotations;
+    private final byte[] maxXRotations;
 
-    private final Object[] minY = new Object[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_LENGTH];
-    private final Object[] maxY = new Object[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_LENGTH];
-    private final byte[] minYRotations = new byte[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_LENGTH];
-    private final byte[] maxYRotations = new byte[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_LENGTH];
+    private final Object[] minY;
+    private final Object[] maxY;
+    private final byte[] minYRotations;
+    private final byte[] maxYRotations;
 
-    private final Object[] minZ = new Object[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_HEIGHT];
-    private final Object[] maxZ = new Object[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_HEIGHT];
-    private final byte[] minZRotations = new byte[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_HEIGHT];
-    private final byte[] maxZRotations = new byte[ConstantCommonSettings.CHUNK_WIDTH * ConstantCommonSettings.CHUNK_HEIGHT];
+    private final Object[] minZ;
+    private final Object[] maxZ;
+    private final byte[] minZRotations;
+    private final byte[] maxZRotations;
+
+    private final int width;
+    private final int height;
+    private final int length;
+
+    private final int lod;
+
+    public ChunkShell(int lod) {
+        this.lod = lod;
+
+        width = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+        height = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
+        length = ConstantCommonSettings.CHUNK_LENGTH >> lod;
+
+        minX = new Object[height * length];
+        maxX = new Object[height * length];
+        minXRotations = new byte[height * length];
+        maxXRotations = new byte[height * length];
+
+        minY = new Object[width * length];
+        maxY = new Object[width * length];
+        minYRotations = new byte[width * length];
+        maxYRotations = new byte[width * length];
+
+        minZ = new Object[width * height];
+        maxZ = new Object[width * height];
+        minZRotations = new byte[width * height];
+        maxZRotations = new byte[width * height];
+    }
+
+    private int lx(int x) {
+        return x >> lod;
+    }
+
+    private int ly(int y) {
+        return y >> lod;
+    }
+
+    private int lz(int z) {
+        return z >> lod;
+    }
+
+    private int indexXZ(int x, int z) {
+        return x + z * width;
+    }
+
+    private int indexYZ(int y, int z) {
+        return y + z * height;
+    }
+
+    private int indexXY(int x, int y) {
+        return x + y * width;
+    }
 
     @SuppressWarnings("unchecked")
     @Override
     public B getBlock(int x, int y, int z) {
+        x = lx(x);
+        y = ly(y);
+        z = lz(z);
+
         if (x == 0) {
-            return (B) minX[IndexCalculator.calculateBlockIndex2D(y, z)];
+            return (B) minX[indexYZ(y, z)];
         }
 
-        if (x == ConstantCommonSettings.CHUNK_WIDTH - 1) {
-            return (B) maxX[IndexCalculator.calculateBlockIndex2D(y, z)];
+        if (x == width - 1) {
+            return (B) maxX[indexYZ(y, z)];
         }
 
         if (y == 0) {
-            return (B) minY[IndexCalculator.calculateBlockIndex2D(x, z)];
+            return (B) minY[indexXZ(x, z)];
         }
 
-        if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1) {
-            return (B) maxY[IndexCalculator.calculateBlockIndex2D(x, z)];
+        if (y == height - 1) {
+            return (B) maxY[indexXZ(x, z)];
         }
 
         if (z == 0) {
-            return (B) minZ[IndexCalculator.calculateBlockIndex2D(x, y)];
+            return (B) minZ[indexXY(x, y)];
         }
 
-        if (z == ConstantCommonSettings.CHUNK_LENGTH - 1) {
-            return (B) maxZ[IndexCalculator.calculateBlockIndex2D(x, y)];
+        if (z == length - 1) {
+            return (B) maxZ[indexXY(x, y)];
         }
 
         throw new IllegalArgumentException("Attempted to access interior block of ChunkShell");
@@ -53,33 +108,37 @@ public class ChunkShell<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
+        x = lx(x);
+        y = ly(y);
+        z = lz(z);
+
         if (x == 0) {
-            minX[IndexCalculator.calculateBlockIndex2D(y, z)] = block;
+            minX[indexYZ(y, z)] = block;
             return this;
         }
 
-        if (x == ConstantCommonSettings.CHUNK_WIDTH - 1) {
-            maxX[IndexCalculator.calculateBlockIndex2D(y, z)] = block;
+        if (x == width - 1) {
+            maxX[indexYZ(y, z)] = block;
             return this;
         }
 
         if (y == 0) {
-            minY[IndexCalculator.calculateBlockIndex2D(x, z)] = block;
+            minY[indexXZ(x, z)] = block;
             return this;
         }
 
-        if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1) {
-            maxY[IndexCalculator.calculateBlockIndex2D(x, z)] = block;
+        if (y == height - 1) {
+            maxY[indexXZ(x, z)] = block;
             return this;
         }
 
         if (z == 0) {
-            minZ[IndexCalculator.calculateBlockIndex2D(x, y)] = block;
+            minZ[indexXY(x, y)] = block;
             return this;
         }
 
-        if (z == ConstantCommonSettings.CHUNK_LENGTH - 1) {
-            maxZ[IndexCalculator.calculateBlockIndex2D(x, y)] = block;
+        if (z == length - 1) {
+            maxZ[indexXY(x, y)] = block;
             return this;
         }
 
@@ -88,28 +147,32 @@ public class ChunkShell<B> implements Chunk<B> {
 
     @Override
     public byte getBlockRotation(int x, int y, int z) {
+        x = lx(x);
+        y = ly(y);
+        z = lz(z);
+
         if (x == 0) {
-            return minXRotations[IndexCalculator.calculateBlockIndex2D(y, z)];
+            return minXRotations[indexYZ(y, z)];
         }
 
-        if (x == ConstantCommonSettings.CHUNK_WIDTH - 1) {
-            return maxXRotations[IndexCalculator.calculateBlockIndex2D(y, z)];
+        if (x == width - 1) {
+            return maxXRotations[indexYZ(y, z)];
         }
 
         if (y == 0) {
-            return minYRotations[IndexCalculator.calculateBlockIndex2D(x, z)];
+            return minYRotations[indexXZ(x, z)];
         }
 
-        if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1) {
-            return maxYRotations[IndexCalculator.calculateBlockIndex2D(x, z)];
+        if (y == height - 1) {
+            return maxYRotations[indexXZ(x, z)];
         }
 
         if (z == 0) {
-            return minZRotations[IndexCalculator.calculateBlockIndex2D(x, y)];
+            return minZRotations[indexXY(x, y)];
         }
 
-        if (z == ConstantCommonSettings.CHUNK_LENGTH - 1) {
-            return maxZRotations[IndexCalculator.calculateBlockIndex2D(x, y)];
+        if (z == length - 1) {
+            return maxZRotations[indexXY(x, y)];
         }
 
         throw new IllegalArgumentException("Attempted to access interior block of ChunkShell");
@@ -117,35 +180,39 @@ public class ChunkShell<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlockRotation(int x, int y, int z, byte rotation) {
-        rotation = (byte) (rotation & 3);
+        rotation &= 3;
+
+        x = lx(x);
+        y = ly(y);
+        z = lz(z);
 
         if (x == 0) {
-            minXRotations[IndexCalculator.calculateBlockIndex2D(y, z)] = rotation;
+            minXRotations[indexYZ(y, z)] = rotation;
             return this;
         }
 
-        if (x == ConstantCommonSettings.CHUNK_WIDTH - 1) {
-            maxXRotations[IndexCalculator.calculateBlockIndex2D(y, z)] = rotation;
+        if (x == width - 1) {
+            maxXRotations[indexYZ(y, z)] = rotation;
             return this;
         }
 
         if (y == 0) {
-            minYRotations[IndexCalculator.calculateBlockIndex2D(x, z)] = rotation;
+            minYRotations[indexXZ(x, z)] = rotation;
             return this;
         }
 
-        if (y == ConstantCommonSettings.CHUNK_HEIGHT - 1) {
-            maxYRotations[IndexCalculator.calculateBlockIndex2D(x, z)] = rotation;
+        if (y == height - 1) {
+            maxYRotations[indexXZ(x, z)] = rotation;
             return this;
         }
 
         if (z == 0) {
-            minZRotations[IndexCalculator.calculateBlockIndex2D(x, y)] = rotation;
+            minZRotations[indexXY(x, y)] = rotation;
             return this;
         }
 
-        if (z == ConstantCommonSettings.CHUNK_LENGTH - 1) {
-            maxZRotations[IndexCalculator.calculateBlockIndex2D(x, y)] = rotation;
+        if (z == length - 1) {
+            maxZRotations[indexXY(x, y)] = rotation;
             return this;
         }
 
@@ -158,6 +225,10 @@ public class ChunkShell<B> implements Chunk<B> {
     }
 
     public void merge(ChunkShell<B> newShell) {
+        if (newShell.lod != lod) {
+            throw new IllegalArgumentException("Cannot merge ChunkShells with different LODs");
+        }
+
         for (int i = 0; i < minX.length; i++) {
             if (newShell.minX[i] != null) {
                 minX[i] = newShell.minX[i];
@@ -190,5 +261,10 @@ public class ChunkShell<B> implements Chunk<B> {
                 maxZRotations[i] = newShell.maxZRotations[i];
             }
         }
+    }
+
+    @Override
+    public int getLOD() {
+        return lod;
     }
 }

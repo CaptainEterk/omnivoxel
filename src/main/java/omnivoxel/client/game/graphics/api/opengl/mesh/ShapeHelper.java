@@ -1,46 +1,25 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh;
 
 import omnivoxel.common.block.shape.BlockVertex;
-import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantCommonSettings;
 
 public class ShapeHelper {
-    private static final float MAX_PACKED_VALUE = 512f;
+    private static final int POSITION_SCALE = 512 / ConstantCommonSettings.CHUNK_SIZE;
     private static final int BITMASK_3 = 0x7;
     private static final int BITMASK_8 = 0xFF;
     private static final int BITMASK_6 = 0x3F;
-    private static final int BITMASK_12= 0xFFF;
+    private static final int BITMASK_12 = 0xFFF;
 
-    public static int[] packVertexData(BlockVertex vertex, int r, int g, int b, int s, BlockFace blockFace, int u, int v, boolean loose, int type) {
-        int ix = (int) (vertex.px() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_WIDTH));
-        int iy = (int) (vertex.py() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_HEIGHT));
-        int iz = (int) (vertex.pz() * (MAX_PACKED_VALUE / ConstantCommonSettings.CHUNK_LENGTH));
-
-        int packedPosition = (ix << 22) | (iy << 12) | (iz << 2);
-
-        int normalPacked = blockFace.ordinal() & BITMASK_3;
-
-        int uPacked = u & BITMASK_8;
-        int vPacked = v & BITMASK_8;
-
-        int packedType = type & BITMASK_12;
-
-        int packedNormalTextureType = (normalPacked << 29)
-                | (uPacked << 21)
-                | (vPacked << 13)
+    public static void packVertexData(BlockVertex vertex, int r, int g, int b, int s, int blockFace, int u, int v, boolean loose, int type, int[] vertexData) {
+        vertexData[0] = ((int) (vertex.px() * POSITION_SCALE) << 22) | ((int) (vertex.py() * POSITION_SCALE) << 12) | ((int) (vertex.pz() * POSITION_SCALE) << 2);
+        vertexData[1] = ((blockFace & BITMASK_3) << 29)
+                | ((u & BITMASK_8) << 21)
+                | ((v & BITMASK_8) << 13)
                 | ((loose ? 1 : 0) << 12)
-                | (packedType);
-
-        int rPacked = r & BITMASK_6;
-        int gPacked = g & BITMASK_6;
-        int bPacked = b & BITMASK_6;
-        int sPacked = s & BITMASK_6;
-
-        int packedLighting = (rPacked << 28)
-                | (gPacked << 24)
-                | (bPacked << 20)
-                | (sPacked << 16);
-
-        return new int[]{packedPosition, packedNormalTextureType, packedLighting};
+                | (type & BITMASK_12);
+        vertexData[2] = ((r & BITMASK_6) << 28)
+                | ((g & BITMASK_6) << 24)
+                | ((b & BITMASK_6) << 20)
+                | ((s & BITMASK_6) << 16);
     }
 }

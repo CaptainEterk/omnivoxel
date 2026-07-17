@@ -13,6 +13,8 @@ public interface Chunk<B> {
 
     RotationChunk getRotationChunk();
 
+    int getLOD();
+
     default Chunk<B> setBlock(int x, int y, int z, B block, byte rotation) {
         return setBlock(x, y, z, block).setBlockRotation(x, y, z, rotation);
     }

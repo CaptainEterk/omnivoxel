@@ -27,13 +27,13 @@ public class ChunkUnpacker {
             palette[i] = blockService.getBlock(id.toString());
         }
 
-        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(palette[0]);
-        Chunk<BlockWithMesh> negX = new ChunkShell<>();
-        Chunk<BlockWithMesh> posX = new ChunkShell<>();
-        Chunk<BlockWithMesh> negY = new ChunkShell<>();
-        Chunk<BlockWithMesh> posY = new ChunkShell<>();
-        Chunk<BlockWithMesh> negZ = new ChunkShell<>();
-        Chunk<BlockWithMesh> posZ = new ChunkShell<>();
+        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(palette[0], 0);
+        Chunk<BlockWithMesh> negX = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> posX = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> negY = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> posY = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> negZ = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> posZ = new ChunkShell<>(0);
 
         int x = -1, y = -1, z = -1;
 

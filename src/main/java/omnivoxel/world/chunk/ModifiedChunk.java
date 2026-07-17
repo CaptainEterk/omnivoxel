@@ -40,7 +40,7 @@ public class ModifiedChunk<B> implements Chunk<B> {
             this.block = block;
         }
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
-            return new ShortPaletteChunk<>(this).setBlock(x, y, z, block);
+            return new ShortPaletteChunk<>(this, chunk.getLOD()).setBlock(x, y, z, block);
         }
         return new ModifiedChunk<>(x, y, z, block, (byte) 0, this, modificationCount + 1);
     }
@@ -59,7 +59,7 @@ public class ModifiedChunk<B> implements Chunk<B> {
             this.rotation = rotation;
         }
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
-            return new ShortPaletteChunk<>(this).setBlockRotation(x, y, z, rotation);
+            return new ShortPaletteChunk<>(this, chunk.getLOD()).setBlockRotation(x, y, z, rotation);
         }
         return new ModifiedChunk<>(x, y, z, getBlock(x, y, z), rotation, this, modificationCount + 1);
     }
@@ -67,5 +67,10 @@ public class ModifiedChunk<B> implements Chunk<B> {
     @Override
     public RotationChunk getRotationChunk() {
         return null;
+    }
+
+    @Override
+    public int getLOD() {
+        return chunk.getLOD();
     }
 }

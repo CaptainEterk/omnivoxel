@@ -2,9 +2,11 @@ package omnivoxel.world.chunk.rotation;
 
 public class SingleRotationChunk implements RotationChunk {
     private final byte rotation;
+    private final int lod;
 
-    public SingleRotationChunk(byte rotation) {
+    public SingleRotationChunk(byte rotation, int lod) {
         this.rotation = rotation;
+        this.lod = lod;
     }
 
     @Override
@@ -19,5 +21,10 @@ public class SingleRotationChunk implements RotationChunk {
         } else {
             return new ModifiedRotationChunk(this, index, value);
         }
+    }
+
+    @Override
+    public int getLOD() {
+        return lod;
     }
 }

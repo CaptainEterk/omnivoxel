@@ -25,7 +25,8 @@ public final class ChunkGenerator {
     }
 
     public Chunk<ServerBlock> generateChunk(Position3D position3D) {
-        Chunk<ServerBlock> chunk = new SingleBlockChunk<>(ServerBlock.AIR);
+        // TODO: Implement LODs
+        Chunk<ServerBlock> chunk = new SingleBlockChunk<>(ServerBlock.AIR, 0);
         if (worldDataService.shouldGenerateChunk(position3D)) {
             ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D);
             for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {

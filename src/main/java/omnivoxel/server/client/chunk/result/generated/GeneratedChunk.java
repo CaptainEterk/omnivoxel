@@ -25,7 +25,7 @@ public abstract class GeneratedChunk {
             return emptyChunk;
         }
 
-        Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(ServerBlock.AIR);
+        Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(ServerBlock.AIR, 0);
         List<ServerBlock> palette = new ArrayList<>();
         int[] chunk = new int[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
         byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];

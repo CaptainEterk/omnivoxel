@@ -6,14 +6,16 @@ import omnivoxel.world.chunk.rotation.SingleRotationChunk;
 public class SingleBlockChunk<B> implements Chunk<B> {
     private final B block;
     private final byte rotation;
+    private final int lod;
 
-    public SingleBlockChunk(B block) {
-        this(block, (byte) 0);
+    public SingleBlockChunk(B block, int lod) {
+        this(block, (byte) 0, lod);
     }
 
-    public SingleBlockChunk(B block, byte rotation) {
+    public SingleBlockChunk(B block, byte rotation, int lod) {
         this.block = block;
         this.rotation = (byte) (rotation & 3);
+        this.lod = lod;
     }
 
     @Override
@@ -45,6 +47,11 @@ public class SingleBlockChunk<B> implements Chunk<B> {
 
     @Override
     public RotationChunk getRotationChunk() {
-        return new SingleRotationChunk(rotation);
+        return new SingleRotationChunk(rotation, lod);
+    }
+
+    @Override
+    public int getLOD() {
+        return lod;
     }
 }

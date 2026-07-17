@@ -137,8 +137,9 @@ public class ChunkMeshDataLightingGenerator {
     private boolean checkCompleteDirtyNeighbor(Position3D position3D, ClientWorldChunk clientWorldChunk) {
         if (clientWorldChunk != null && clientWorldChunk.getLightingData() != null) {
             if (clientWorldChunk.isCleanLighting()) {
-                completeDirtyChunks.remove(position3D);
-                meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+                if (completeDirtyChunks.remove(position3D)) {
+                    meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+                }
             } else {
                 boolean failed = false;
                 for (int x = -1; x <= 1; x++) {
@@ -153,7 +154,9 @@ public class ChunkMeshDataLightingGenerator {
                     }
                 }
                 if (!failed) {
-                    completeDirtyChunks.remove(position3D);
+                    if (completeDirtyChunks.remove(position3D)) {
+                        meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+                    }
                     clientWorldChunk.setCleanLighting(true);
                     return true;
                 }

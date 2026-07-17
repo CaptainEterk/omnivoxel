@@ -15,15 +15,18 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     private final RotationChunk rotations;
     private final List<B> palette;
     private final Map<B, Short> paletteIndex;
+    private final int lod;
 
-    public ShortPaletteChunk() {
+    public ShortPaletteChunk(int lod) {
+        this.lod = lod;
         this.blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
-        this.rotations = new SingleRotationChunk((byte) 0);
+        this.rotations = new SingleRotationChunk((byte) 0, lod);
         this.palette = new ArrayList<>();
         this.paletteIndex = new HashMap<>();
     }
 
-    public ShortPaletteChunk(Chunk<B> chunk) {
+    public ShortPaletteChunk(Chunk<B> chunk, int lod) {
+        this.lod = lod;
         this.palette = new ArrayList<>();
         this.paletteIndex = new HashMap<>();
         this.blocks = extractBlocks(chunk);
@@ -35,7 +38,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     }
 
     private short[] extractBlocks(Chunk<B> chunk) {
-        short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK >> lod >> lod >> lod];
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
@@ -62,7 +65,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
             return chunk.getRotationChunk();
         }
 
-        RotationChunk rotations = new SingleRotationChunk((byte) 0);
+        RotationChunk rotations = new SingleRotationChunk((byte) 0, lod);
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
@@ -95,7 +98,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
         rotations.setRotation(blockIndex, (byte) 0);
 
         if (palette.size() > Short.MAX_VALUE - 2) {
-            return new IntPaletteChunk<>(this);
+            return new IntPaletteChunk<>(this, lod);
         }
 
         return this;
@@ -115,5 +118,10 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     @Override
     public RotationChunk getRotationChunk() {
         return rotations;
+    }
+
+    @Override
+    public int getLOD() {
+        return lod;
     }
 }

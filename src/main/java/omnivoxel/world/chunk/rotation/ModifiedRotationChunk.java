@@ -32,7 +32,12 @@ public class ModifiedRotationChunk implements RotationChunk {
         } else if (modificationCount < ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
             return new ModifiedRotationChunk(this, index, value, modificationCount + 1);
         } else {
-            return new GeneralRotationChunk(this, index, value);
+            return new GeneralRotationChunk(this, index, value, rotationChunk.getLOD());
         }
+    }
+
+    @Override
+    public int getLOD() {
+        return rotationChunk.getLOD();
     }
 }

@@ -51,7 +51,6 @@ public class EntityMeshDataGenerator {
 
         EntityMeshData[] children = new EntityMeshData[serverEntityMesh.childrenIDs().length];
         for (int i = 0; i < children.length; i++) {
-            System.out.println(serverEntityMesh.childrenIDs()[i]);
             children[i] = generateMeshData(gameResources.serverEntityMeshes().get(serverEntityMesh.childrenIDs()[i]), gameResources);
         }
 

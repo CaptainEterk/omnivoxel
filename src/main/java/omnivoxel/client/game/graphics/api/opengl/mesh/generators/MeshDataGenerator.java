@@ -1,33 +1,23 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators;
 
-import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.ShapeHelper;
-import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.EntityMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.TextureVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueLightVertex;
 import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.UniqueVertex;
-import omnivoxel.client.game.graphics.block.BlockMesh;
-import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.resource.GameResources;
-import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.entity.ServerEntityMesh;
 import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.block.Block;
-import omnivoxel.world.block.BlockService;
-import omnivoxel.world.chunk.Chunk;
-import omnivoxel.world.chunk.ChunkShell;
-import omnivoxel.world.chunk.SingleBlockChunk;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -47,11 +37,11 @@ public final class MeshDataGenerator {
         entityMeshDataGenerator = new EntityMeshDataGenerator();
     }
 
-    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, boolean loose, int type) {
+    public static void addPoint(List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, BlockVertex position, int tx, int ty, BlockFace normal, byte r, byte g, byte b, byte s, boolean loose, int type, int[] vertexData) {
         UniqueVertex vertex = new UniqueLightVertex(position, new TextureVertex(tx, ty), normal, r, g, b, s);
 
         if (!vertexIndexMap.containsKey(vertex)) {
-            int[] vertexData = ShapeHelper.packVertexData(position, r, g, b, s, normal, tx, ty, loose, type);
+            ShapeHelper.packVertexData(position, r, g, b, s, normal.ordinal(), tx, ty, loose, type, vertexData);
             vertexIndexMap.put(vertex, vertices.size());
             for (int data : vertexData) {
                 vertices.add(data);

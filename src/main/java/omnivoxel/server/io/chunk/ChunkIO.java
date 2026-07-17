@@ -72,14 +72,6 @@ public final class ChunkIO {
                 : null;
     }
 
-    private static Chunk<ServerBlock> getEmptyChunk(ServerBlock[] palette) {
-        if (palette.length == 2) {
-            return new BiBlockChunk<>(palette[0]);
-        } else {
-            return new ShortPaletteChunk<>();
-        }
-    }
-
     public static Chunk<ServerBlock> decode(byte[] bytes) {
         if (bytes == null) {
             return null;
@@ -88,18 +80,18 @@ public final class ChunkIO {
         ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
 
         try {
-            boolean hasRotations = byteBuf.getInt(0) == ROTATION_CHUNK_MAGIC;
-            short paletteCount = byteBuf.getShort(20);
+            boolean hasRotations = byteBuf.readInt() == ROTATION_CHUNK_MAGIC;
+            int lod = byteBuf.readInt();
+            byteBuf.readerIndex(20); // No good reason for the padding?
+            short paletteCount = byteBuf.readShort();
             ServerBlock[] palette = new ServerBlock[paletteCount];
 
-            int index = 22;
             for (int i = 0; i < paletteCount; i++) {
-                short paletteLength = byteBuf.getShort(index);
-                index += 2;
+                short paletteLength = byteBuf.readShort();
 
                 StringBuilder blockID = new StringBuilder();
                 for (int j = 0; j < paletteLength; j++) {
-                    byte b = byteBuf.getByte(index++);
+                    byte b = byteBuf.readByte();
                     blockID.append((char) b);
                 }
                 palette[i] = BLOCK_SERVICE.getBlock(blockID.toString());
@@ -107,9 +99,15 @@ public final class ChunkIO {
 
             Chunk<ServerBlock> chunk;
             if (palette.length == 1) {
-                chunk = new SingleBlockChunk<>(palette[0]);
+                chunk = new SingleBlockChunk<>(palette[0], lod);
             } else {
-                chunk = getEmptyChunk(palette);
+                Chunk<ServerBlock> result;
+                if (palette.length == 2) {
+                    result = new BiBlockChunk<>(palette[0], lod);
+                } else {
+                    result = new ShortPaletteChunk<>(lod);
+                }
+                chunk = result;
 
                 int W = ConstantCommonSettings.CHUNK_WIDTH;
                 int H = ConstantCommonSettings.CHUNK_HEIGHT;
@@ -119,10 +117,9 @@ public final class ChunkIO {
 
                 int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK;
                 for (int i = 0; i < totalBlocks; ) {
-                    int blockID = byteBuf.getInt(index);
-                    int blockCount = byteBuf.getInt(index + 4);
-                    byte rotation = hasRotations ? (byte) (byteBuf.getByte(index + 8) & 3) : 0;
-                    index += hasRotations ? 9 : 8;
+                    int blockID = byteBuf.readInt();
+                    int blockCount = byteBuf.readInt();
+                    byte rotation = hasRotations ? (byte) (byteBuf.readByte() & 3) : 0;
 
                     ServerBlock block = palette[blockID];
                     for (int j = 0; j < blockCount && i + j < totalBlocks; j++) {
