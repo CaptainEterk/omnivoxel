@@ -25,6 +25,7 @@ public abstract class GeneratedChunk {
             return emptyChunk;
         }
 
+        // TODO: Implement LODs
         Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(ServerBlock.AIR, 0);
         List<ServerBlock> palette = new ArrayList<>();
         int[] chunk = new int[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
