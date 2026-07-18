@@ -46,6 +46,9 @@ public class ChunkService {
 
                     int chunkIndex = (cx + 1) * 9 + (cz + 1) * 3 + (cy + 1);
                     Chunk<ServerBlock> chunk = chunks[chunkIndex];
+                    if (chunk.getLOD() != lod) {
+                        throw new IllegalStateException("You cannot mix LODs...");
+                    }
 
                     int lx = x < 0 ? size - 1 : (x == size ? 0 : x);
                     int ly = y < 0 ? size - 1 : (y == size ? 0 : y);
@@ -125,7 +128,6 @@ public class ChunkService {
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
                 for (int y = -1; y <= 1; y++) {
-
                     Position3D newChunkPosition = chunkPosition.add(x, y, z);
 
                     Chunk<ServerBlock> chunk = world.get(newChunkPosition);
