@@ -83,12 +83,10 @@ public final class ChunkIO {
             boolean hasRotations = byteBuf.readInt() == ROTATION_CHUNK_MAGIC;
             int lod = byteBuf.readInt();
             short paletteCount = byteBuf.readShort();
-            System.out.println(paletteCount);
             ServerBlock[] palette = new ServerBlock[paletteCount];
 
             for (int i = 0; i < paletteCount; i++) {
                 short paletteLength = byteBuf.readShort();
-                System.out.println(paletteLength);
 
                 StringBuilder blockID = new StringBuilder();
                 for (int j = 0; j < paletteLength; j++) {
