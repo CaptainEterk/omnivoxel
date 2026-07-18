@@ -3,12 +3,20 @@ package omnivoxel.server.client.chunk.result.generated;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.server.client.block.ServerBlock;
 
+public final class SingleBlockGeneratedChunk extends GeneratedChunk {
+    private final ServerBlock serverBlock;
+    private final byte rotation;
+    private final int lod;
 
-// TODO: Turn this into SingleBlockGeneratedChunk
-public final class EmptyGeneratedChunk extends GeneratedChunk {
+    public SingleBlockGeneratedChunk(ServerBlock serverBlock, byte rotation, int lod) {
+        this.serverBlock = serverBlock;
+        this.rotation = rotation;
+        this.lod = lod;
+    }
+
     @Override
     public ServerBlock getBlock(int x, int y, int z) {
-        return ServerBlock.AIR;
+        return serverBlock;
     }
 
     @Override
@@ -18,11 +26,16 @@ public final class EmptyGeneratedChunk extends GeneratedChunk {
 
     @Override
     public byte getBlockRotation(int x, int y, int z) {
-        return 0;
+        return rotation;
     }
 
     @Override
     public GeneratedChunk setBlockRotation(int x, int y, int z, byte rotation) {
-        return new ModifiedGeneratedChunk(x, y, z, ServerBlock.AIR, rotation, this);
+        return new ModifiedGeneratedChunk(x, y, z, serverBlock, rotation, this);
+    }
+
+    @Override
+    public int getLOD() {
+        return lod;
     }
 }

@@ -40,9 +40,9 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     private short[] extractBlocks(Chunk<B> chunk) {
         short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK >> lod >> lod >> lod];
 
-        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
+        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH >> lod; x++) {
+            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH >> lod; z++) {
+                for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT >> lod; y++) {
                     B block = chunk.getBlock(x, y, z);
 
                     Short index = paletteIndex.get(block);
@@ -52,7 +52,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
                         paletteIndex.put(block, index);
                     }
 
-                    blocks[IndexCalculator.calculateBlockIndex(x, y, z)] = index;
+                    blocks[IndexCalculator.calculateBlockIndex(x, y, z, ConstantCommonSettings.CHUNK_WIDTH >> lod, ConstantCommonSettings.CHUNK_HEIGHT >> lod, ConstantCommonSettings.CHUNK_LENGTH >> lod)] = index;
                 }
             }
         }

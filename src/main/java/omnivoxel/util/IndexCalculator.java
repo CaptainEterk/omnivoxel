@@ -22,9 +22,31 @@ public class IndexCalculator {
                 | y;
     }
 
+    public static int calculateBlockIndex(int x, int y, int z, int chunkWidth, int chunkHeight, int chunkLength) {
+        return (x * chunkHeight * chunkLength)
+                | (z * chunkHeight)
+                | y;
+    }
+
     public static int calculateBlockIndexPadded(int x, int y, int z) {
         return (x + 1) * ConstantCommonSettings.PADDED_WIDTH * ConstantCommonSettings.PADDED_HEIGHT
                 + (z + 1) * ConstantCommonSettings.PADDED_LENGTH
+                + (y + 1);
+    }
+
+    public static int calculateBlockIndexPadded(
+            int x,
+            int y,
+            int z,
+            int width,
+            int height,
+            int length
+    ) {
+        int paddedWidth = width + 2;
+        int paddedLength = length + 2;
+
+        return (x + 1) * paddedWidth * paddedLength
+                + (z + 1) * paddedLength
                 + (y + 1);
     }
 

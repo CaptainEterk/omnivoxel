@@ -11,8 +11,21 @@ import omnivoxel.world.chunk.ChunkShell;
 import omnivoxel.world.chunk.SingleBlockChunk;
 
 public class ChunkUnpacker {
-    public static void unpackChunkPadded(ByteBuf byteBuf, Position3D pos, BlockService<BlockWithMesh> blockService, ClientWorld world) {
+    public static void unpackChunkPadded(ByteBuf byteBuf, Position3D pos,
+                                         BlockService<BlockWithMesh> blockService,
+                                         ClientWorld world) {
         byteBuf.readerIndex(24);
+        int lod = byteBuf.readInt();
+        int step = 1 << lod;
+
+        int width = ConstantCommonSettings.CHUNK_WIDTH;
+        int height = ConstantCommonSettings.CHUNK_HEIGHT;
+        int length = ConstantCommonSettings.CHUNK_LENGTH;
+
+        int paddedWidth = (width >> lod) + 2;
+        int paddedHeight = (height >> lod) + 2;
+        int paddedLength = (length >> lod) + 2;
+        int paddedBlocks = paddedWidth * paddedHeight * paddedLength;
 
         BlockWithMesh[] palette = new BlockWithMesh[byteBuf.readShort()];
 
@@ -27,97 +40,123 @@ public class ChunkUnpacker {
             palette[i] = blockService.getBlock(id.toString());
         }
 
-        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(palette[0], 0);
-        Chunk<BlockWithMesh> negX = new ChunkShell<>(0);
-        Chunk<BlockWithMesh> posX = new ChunkShell<>(0);
-        Chunk<BlockWithMesh> negY = new ChunkShell<>(0);
-        Chunk<BlockWithMesh> posY = new ChunkShell<>(0);
-        Chunk<BlockWithMesh> negZ = new ChunkShell<>(0);
-        Chunk<BlockWithMesh> posZ = new ChunkShell<>(0);
+        Chunk<BlockWithMesh> center = new SingleBlockChunk<>(palette[0], lod);
+        Chunk<BlockWithMesh> negX = new ChunkShell<>(lod);
+        Chunk<BlockWithMesh> posX = new ChunkShell<>(lod);
+        Chunk<BlockWithMesh> negY = new ChunkShell<>(lod);
+        Chunk<BlockWithMesh> posY = new ChunkShell<>(lod);
+        Chunk<BlockWithMesh> negZ = new ChunkShell<>(lod);
+        Chunk<BlockWithMesh> posZ = new ChunkShell<>(lod);
 
-        int x = -1, y = -1, z = -1;
+        int fullWidth = ConstantCommonSettings.CHUNK_WIDTH;
+        int fullHeight = ConstantCommonSettings.CHUNK_HEIGHT;
+        int fullLength = ConstantCommonSettings.CHUNK_LENGTH;
 
-        for (int i = 0; i < ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED; ) {
+        int shellWidth = fullWidth >> lod;
+        int shellHeight = fullHeight >> lod;
+        int shellLength = fullLength >> lod;
+
+        int x = -step;
+        int y = -step;
+        int z = -step;
+
+        for (int i = 0; i < paddedBlocks; ) {
             int blockID = byteBuf.readInt();
             int blockCount = byteBuf.readInt();
             byte rotation = (byte) (byteBuf.readByte() & 3);
+
             BlockWithMesh block = palette[blockID];
 
             for (int j = 0; j < blockCount; j++) {
-                if (x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
-                        y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
-                        z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
 
-                    center = center.setBlock(x, y, z,
-                            block,
-                            rotation);
-                } else if (x == -1 && y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
-                        z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
+                if (x >= 0 && x < fullWidth &&
+                        y >= 0 && y < fullHeight &&
+                        z >= 0 && z < fullLength) {
+
+                    center = center.setBlock(x, y, z, block, rotation);
+
+                } else if (x == -step &&
+                        y >= 0 && y < fullHeight &&
+                        z >= 0 && z < fullLength) {
 
                     negX = negX.setBlock(
-                            ConstantCommonSettings.CHUNK_WIDTH - 1,
-                            y,
-                            z,
+                            shellWidth - 1,
+                            y >> lod,
+                            z >> lod,
                             block,
-                            rotation);
-                } else if (x == ConstantCommonSettings.CHUNK_WIDTH &&
-                        y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT &&
-                        z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
+                            rotation
+                    );
+
+                } else if (x == fullWidth &&
+                        y >= 0 && y < fullHeight &&
+                        z >= 0 && z < fullLength) {
 
                     posX = posX.setBlock(
                             0,
-                            y,
-                            z,
+                            y >> lod,
+                            z >> lod,
                             block,
-                            rotation);
-                } else if (z == -1 && x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
-                        y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT) {
+                            rotation
+                    );
 
-                    negZ = negZ.setBlock(
-                            x,
-                            y,
-                            ConstantCommonSettings.CHUNK_LENGTH - 1,
-                            block,
-                            rotation);
-                } else if (z == ConstantCommonSettings.CHUNK_LENGTH &&
-                        x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
-                        y >= 0 && y < ConstantCommonSettings.CHUNK_HEIGHT) {
-
-                    posZ = posZ.setBlock(
-                            x,
-                            y,
-                            0,
-                            block,
-                            rotation);
-                } else if (y == -1 && x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
-                        z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
+                } else if (y == -step &&
+                        x >= 0 && x < fullWidth &&
+                        z >= 0 && z < fullLength) {
 
                     negY = negY.setBlock(
-                            x,
-                            ConstantCommonSettings.CHUNK_HEIGHT - 1,
-                            z,
+                            x >> lod,
+                            shellHeight - 1,
+                            z >> lod,
                             block,
-                            rotation);
-                } else if (y == ConstantCommonSettings.CHUNK_HEIGHT &&
-                        x >= 0 && x < ConstantCommonSettings.CHUNK_WIDTH &&
-                        z >= 0 && z < ConstantCommonSettings.CHUNK_LENGTH) {
+                            rotation
+                    );
+
+                } else if (y == fullHeight &&
+                        x >= 0 && x < fullWidth &&
+                        z >= 0 && z < fullLength) {
 
                     posY = posY.setBlock(
-                            x,
+                            x >> lod,
                             0,
-                            z,
+                            z >> lod,
                             block,
-                            rotation);
+                            rotation
+                    );
+
+                } else if (z == -step &&
+                        x >= 0 && x < fullWidth &&
+                        y >= 0 && y < fullHeight) {
+
+                    negZ = negZ.setBlock(
+                            x >> lod,
+                            y >> lod,
+                            shellLength - 1,
+                            block,
+                            rotation
+                    );
+
+                } else if (z == fullLength &&
+                        x >= 0 && x < fullWidth &&
+                        y >= 0 && y < fullHeight) {
+
+                    posZ = posZ.setBlock(
+                            x >> lod,
+                            y >> lod,
+                            0,
+                            block,
+                            rotation
+                    );
                 }
 
-                y++;
-                if (y > ConstantCommonSettings.CHUNK_HEIGHT) {
-                    y = -1;
-                    z++;
+                y += step;
 
-                    if (z > ConstantCommonSettings.CHUNK_LENGTH) {
-                        z = -1;
-                        x++;
+                if (y > fullHeight) {
+                    y = -step;
+                    z += step;
+
+                    if (z > fullLength) {
+                        z = -step;
+                        x += step;
                     }
                 }
             }

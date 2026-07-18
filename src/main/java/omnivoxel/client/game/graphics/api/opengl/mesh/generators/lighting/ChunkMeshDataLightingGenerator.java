@@ -179,6 +179,12 @@ public class ChunkMeshDataLightingGenerator {
             return out;
         }
 
+        if (clientWorldChunk.getChunkData().getLOD() > 0) {
+            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0)));
+            meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+            return null;
+        }
+
         if (!shouldCalculate(clientWorldChunk)) {
             return null;
         }

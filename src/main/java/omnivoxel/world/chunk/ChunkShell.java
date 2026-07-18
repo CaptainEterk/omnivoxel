@@ -48,18 +48,6 @@ public class ChunkShell<B> implements Chunk<B> {
         maxZRotations = new byte[width * height];
     }
 
-    private int lx(int x) {
-        return x >> lod;
-    }
-
-    private int ly(int y) {
-        return y >> lod;
-    }
-
-    private int lz(int z) {
-        return z >> lod;
-    }
-
     private int indexXZ(int x, int z) {
         return x + z * width;
     }
@@ -75,10 +63,6 @@ public class ChunkShell<B> implements Chunk<B> {
     @SuppressWarnings("unchecked")
     @Override
     public B getBlock(int x, int y, int z) {
-        x = lx(x);
-        y = ly(y);
-        z = lz(z);
-
         if (x == 0) {
             return (B) minX[indexYZ(y, z)];
         }
@@ -108,10 +92,6 @@ public class ChunkShell<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
-        x = lx(x);
-        y = ly(y);
-        z = lz(z);
-
         if (x == 0) {
             minX[indexYZ(y, z)] = block;
             return this;
@@ -142,15 +122,11 @@ public class ChunkShell<B> implements Chunk<B> {
             return this;
         }
 
-        throw new UnsupportedOperationException("Cannot set interior block in ChunkShell");
+        throw new UnsupportedOperationException("Cannot set interior block in ChunkShell (" + x + ", " + y + ", " + z + ")");
     }
 
     @Override
     public byte getBlockRotation(int x, int y, int z) {
-        x = lx(x);
-        y = ly(y);
-        z = lz(z);
-
         if (x == 0) {
             return minXRotations[indexYZ(y, z)];
         }
@@ -181,10 +157,6 @@ public class ChunkShell<B> implements Chunk<B> {
     @Override
     public Chunk<B> setBlockRotation(int x, int y, int z, byte rotation) {
         rotation &= 3;
-
-        x = lx(x);
-        y = ly(y);
-        z = lz(z);
 
         if (x == 0) {
             minXRotations[indexYZ(y, z)] = rotation;

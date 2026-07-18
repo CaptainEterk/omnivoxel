@@ -6,9 +6,8 @@ import omnivoxel.server.PackageID;
 import omnivoxel.server.client.ServerClient;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.client.chunk.blockService.ServerBlockService;
-import omnivoxel.server.client.chunk.result.ChunkResult;
-import omnivoxel.server.client.chunk.result.generated.EmptyGeneratedChunk;
 import omnivoxel.server.client.chunk.result.generated.GeneratedChunk;
+import omnivoxel.server.client.chunk.result.generated.SingleBlockGeneratedChunk;
 import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
 import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
@@ -32,10 +31,53 @@ public class ChunkService {
         this.world = world;
     }
 
+    private static GeneratedChunk createBuiltChunk(int lod, Chunk<ServerBlock>[] chunks) {
+        GeneratedChunk builtChunk = new SingleBlockGeneratedChunk(ServerBlock.AIR, (byte) 0, lod);
+
+        int size = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+
+        for (int x = -1; x <= size; x++) {
+            for (int z = -1; z <= size; z++) {
+                for (int y = -1; y <= size; y++) {
+
+                    int cx = x < 0 ? -1 : (x == size ? 1 : 0);
+                    int cy = y < 0 ? -1 : (y == size ? 1 : 0);
+                    int cz = z < 0 ? -1 : (z == size ? 1 : 0);
+
+                    int chunkIndex = (cx + 1) * 9 + (cz + 1) * 3 + (cy + 1);
+                    Chunk<ServerBlock> chunk = chunks[chunkIndex];
+
+                    int lx = x < 0 ? size - 1 : (x == size ? 0 : x);
+                    int ly = y < 0 ? size - 1 : (y == size ? 0 : y);
+                    int lz = z < 0 ? size - 1 : (z == size ? 0 : z);
+
+                    int sourceX = lx << lod;
+                    int sourceY = ly << lod;
+                    int sourceZ = lz << lod;
+
+                    builtChunk = builtChunk.setBlock(
+                            x,
+                            y,
+                            z,
+                            chunk.getBlock(sourceX, sourceY, sourceZ)
+                    );
+
+                    builtChunk = builtChunk.setBlockRotation(
+                            x,
+                            y,
+                            z,
+                            chunk.getBlockRotation(sourceX, sourceY, sourceZ)
+                    );
+                }
+            }
+        }
+        return builtChunk;
+    }
+
     public List<ChunkTask> serve(ChunkTask chunkTask, int queueSize) {
         try {
             Position3D chunkPosition = new Position3D(chunkTask.x(), chunkTask.y(), chunkTask.z());
-            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient());
+            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient(), 1);
 
             if (chunkTask.serverClient() != null) {
                 Position2D position2D = chunkPosition.getPosition2D();
@@ -47,65 +89,71 @@ public class ChunkService {
 
                 if (chunk2D == null) {
                     Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
-                    chunk2D = chunkGenerator.getWorldDataService().getWorldGenerator().rebuildChunkHeights(world, position2D);
+                    chunk2D = chunkGenerator.getWorldDataService()
+                            .getWorldGenerator()
+                            .rebuildChunkHeights(world, position2D);
                 }
-                NetworkService.sendBytes2D(chunkTask.serverClient().getCTX().channel(), PackageID.HEIGHTS, position2D.x(), position2D.z(), chunkTask.serverClient()::disconnect, ChunkIO.encodeIntegerChunk2D(chunk2D));
 
-                NetworkService.sendBytes3D(chunkTask.serverClient().getCTX().channel(), PackageID.CHUNK, chunkPosition.x(), chunkPosition.y(), chunkPosition.z(), chunkTask.serverClient()::disconnect, chunk);
+                NetworkService.sendBytes2D(
+                        chunkTask.serverClient().getCTX().channel(),
+                        PackageID.HEIGHTS,
+                        position2D.x(),
+                        position2D.z(),
+                        chunkTask.serverClient()::disconnect,
+                        ChunkIO.encodeIntegerChunk2D(chunk2D)
+                );
+
+                NetworkService.sendBytes3D(
+                        chunkTask.serverClient().getCTX().channel(),
+                        PackageID.CHUNK,
+                        chunkPosition.x(),
+                        chunkPosition.y(),
+                        chunkPosition.z(),
+                        chunkTask.serverClient()::disconnect,
+                        chunk
+                );
             }
+
             return null;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private byte[] getChunkBytes(Position3D chunkPosition, ServerClient client) throws IOException {
+    private byte[] getChunkBytes(Position3D chunkPosition, ServerClient client, int lod) throws IOException {
         @SuppressWarnings("unchecked")
         Chunk<ServerBlock>[] chunks = new Chunk[27];
+
         int i = 0;
+
         for (int x = -1; x <= 1; x++) {
             for (int z = -1; z <= 1; z++) {
                 for (int y = -1; y <= 1; y++) {
+
                     Position3D newChunkPosition = chunkPosition.add(x, y, z);
+
                     Chunk<ServerBlock> chunk = world.get(newChunkPosition);
+
                     if (chunk == null) {
                         chunk = ChunkIO.decode(ChunkIO.get(newChunkPosition));
+
                         if (chunk != null) {
                             world.put(newChunkPosition, chunk);
                         }
                     }
+
                     if (chunk == null) {
-                        chunk = chunkGenerator.generateChunk(newChunkPosition);
+                        chunk = chunkGenerator.generateChunk(newChunkPosition, lod);
                         world.put(newChunkPosition, chunk);
                     }
-                    chunks[i] = chunk;
-                    i++;
+
+                    chunks[i++] = chunk;
                 }
             }
         }
 
-        GeneratedChunk builtChunk = new EmptyGeneratedChunk();
-        for (int x = -1; x <= ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            for (int z = -1; z <= ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                for (int y = -1; y <= ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-                    int cx = x < 0 ? -1 : (x == ConstantCommonSettings.CHUNK_WIDTH ? 1 : 0);
-                    int cy = y < 0 ? -1 : (y == ConstantCommonSettings.CHUNK_HEIGHT ? 1 : 0);
-                    int cz = z < 0 ? -1 : (z == ConstantCommonSettings.CHUNK_LENGTH ? 1 : 0);
+        GeneratedChunk builtChunk = createBuiltChunk(lod, chunks);
 
-                    int chunkIndex = (cx + 1) * 9 + (cz + 1) * 3 + (cy + 1);
-                    Chunk<ServerBlock> chunk = chunks[chunkIndex];
-
-                    int lx = x < 0 ? ConstantCommonSettings.CHUNK_WIDTH - 1 : (x == ConstantCommonSettings.CHUNK_WIDTH ? 0 : x);
-                    int ly = y < 0 ? ConstantCommonSettings.CHUNK_HEIGHT - 1 : (y == ConstantCommonSettings.CHUNK_HEIGHT ? 0 : y);
-                    int lz = z < 0 ? ConstantCommonSettings.CHUNK_LENGTH - 1 : (z == ConstantCommonSettings.CHUNK_LENGTH ? 0 : z);
-
-                    builtChunk = builtChunk.setBlock(x, y, z, chunk.getBlock(lx, ly, lz));
-                    builtChunk = builtChunk.setBlockRotation(x, y, z, chunk.getBlockRotation(lx, ly, lz));
-                }
-            }
-        }
-
-        ChunkResult chunkResult = GeneratedChunk.getResult(builtChunk, client);
-        return chunkResult.bytes();
+        return GeneratedChunk.getResult(builtChunk, client).bytes();
     }
 }

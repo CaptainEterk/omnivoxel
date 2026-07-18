@@ -68,9 +68,14 @@ public class ChunkMeshDataGenerator {
     private final Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
     private final Map<UniqueVertex, Integer> decorationVertexIndexMap = new HashMap<>();
     private final int[] vertexData = new int[3];
-    private final BlockMesh[] blockMeshes = new BlockMesh[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
-    private final byte[] rotations = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
+    private BlockMesh[] blockMeshes;
+    private byte[] rotations;
     private boolean unpackingFailed = false;
+    private int lod;
+    private int chunkWidth;
+    private int chunkHeight;
+    private int chunkLength;
+    private int lodScale;
 
     public ChunkMeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, Settings settings) {
         this.AIR = worldDataService.getBlock("omnivoxel:air");
@@ -81,6 +86,21 @@ public class ChunkMeshDataGenerator {
         settings.addSettingListener("ambient_occlusion", v -> {
 
         });
+    }
+
+    private int getPaddedNeighborOffset(BlockFace face) {
+        int paddedWidth = chunkWidth + 2;
+        int paddedLength = chunkLength + 2;
+
+        return switch (face) {
+            case TOP -> paddedWidth * paddedLength;
+            case BOTTOM -> -paddedWidth * paddedLength;
+            case NORTH -> paddedWidth;
+            case SOUTH -> -paddedWidth;
+            case EAST -> 1;
+            case WEST -> -1;
+            default -> 0;
+        };
     }
 
     private MeshData generateChunkMeshData(Position3D position3D) {
@@ -113,10 +133,10 @@ public class ChunkMeshDataGenerator {
         transparentVertexIndexMap.clear();
         decorationVertexIndexMap.clear();
 
-        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-                    int index = IndexCalculator.calculateBlockIndexPadded(x, y, z);
+        for (int x = 0; x < chunkWidth; x++) {
+            for (int z = 0; z < chunkLength; z++) {
+                for (int y = 0; y < chunkHeight; y++) {
+                    int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
                     BlockMesh blockMesh = blockMeshes[index];
                     if (blockMesh != null) {
                         if (blockMesh.shouldRenderTransparentMesh()) {
@@ -125,12 +145,12 @@ public class ChunkMeshDataGenerator {
                                     y,
                                     z,
                                     blockMesh,
-                                    index + BlockFace.TOP.getPaddedNeighborOffset(),
-                                    index + BlockFace.BOTTOM.getPaddedNeighborOffset(),
-                                    index + BlockFace.NORTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.SOUTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.EAST.getPaddedNeighborOffset(),
-                                    index + BlockFace.WEST.getPaddedNeighborOffset(),
+                                    index + getPaddedNeighborOffset(BlockFace.TOP),
+                                    index + getPaddedNeighborOffset(BlockFace.BOTTOM),
+                                    index + getPaddedNeighborOffset(BlockFace.NORTH),
+                                    index + getPaddedNeighborOffset(BlockFace.SOUTH),
+                                    index + getPaddedNeighborOffset(BlockFace.EAST),
+                                    index + getPaddedNeighborOffset(BlockFace.WEST),
                                     transparentVertices,
                                     transparentIndices,
                                     transparentVertexIndexMap,
@@ -145,12 +165,12 @@ public class ChunkMeshDataGenerator {
                                     y,
                                     z,
                                     blockMesh,
-                                    index + BlockFace.TOP.getPaddedNeighborOffset(),
-                                    index + BlockFace.BOTTOM.getPaddedNeighborOffset(),
-                                    index + BlockFace.NORTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.SOUTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.EAST.getPaddedNeighborOffset(),
-                                    index + BlockFace.WEST.getPaddedNeighborOffset(),
+                                    index + getPaddedNeighborOffset(BlockFace.TOP),
+                                    index + getPaddedNeighborOffset(BlockFace.BOTTOM),
+                                    index + getPaddedNeighborOffset(BlockFace.NORTH),
+                                    index + getPaddedNeighborOffset(BlockFace.SOUTH),
+                                    index + getPaddedNeighborOffset(BlockFace.EAST),
+                                    index + getPaddedNeighborOffset(BlockFace.WEST),
                                     decorationVertices,
                                     decorationIndices,
                                     decorationVertexIndexMap,
@@ -165,12 +185,12 @@ public class ChunkMeshDataGenerator {
                                     y,
                                     z,
                                     blockMesh,
-                                    index + BlockFace.TOP.getPaddedNeighborOffset(),
-                                    index + BlockFace.BOTTOM.getPaddedNeighborOffset(),
-                                    index + BlockFace.NORTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.SOUTH.getPaddedNeighborOffset(),
-                                    index + BlockFace.EAST.getPaddedNeighborOffset(),
-                                    index + BlockFace.WEST.getPaddedNeighborOffset(),
+                                    index + getPaddedNeighborOffset(BlockFace.TOP),
+                                    index + getPaddedNeighborOffset(BlockFace.BOTTOM),
+                                    index + getPaddedNeighborOffset(BlockFace.NORTH),
+                                    index + getPaddedNeighborOffset(BlockFace.SOUTH),
+                                    index + getPaddedNeighborOffset(BlockFace.EAST),
+                                    index + getPaddedNeighborOffset(BlockFace.WEST),
                                     vertices,
                                     indices,
                                     vertexIndexMap,
@@ -203,7 +223,7 @@ public class ChunkMeshDataGenerator {
             byte[] rotations,
             Position3D chunkPosition) {
         BlockShape shape = blockMesh.getShape();
-        int index = IndexCalculator.calculateBlockIndexPadded(x, y, z);
+        int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
         byte rotation = blockMesh.isRotatable() ? rotations[index] : 0;
         byte rotationOffset = (byte) ((rotation & 3) * 6);
 
@@ -489,6 +509,24 @@ public class ChunkMeshDataGenerator {
         return coordinate < 0.5f ? -1 : 1;
     }
 
+    private void setupLOD(Chunk<?> chunk) {
+        lod = chunk.getLOD();
+
+        chunkWidth = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+        chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
+        chunkLength = ConstantCommonSettings.CHUNK_LENGTH >> lod;
+
+        lodScale = 1 << lod;
+
+        int paddedSize =
+                (chunkWidth + 2) *
+                        (chunkHeight + 2) *
+                        (chunkLength + 2);
+
+        blockMeshes = new BlockMesh[paddedSize];
+        rotations = new byte[paddedSize];
+    }
+
     private boolean isAmbientOccluder(BlockMesh[] blockMeshes, int x, int y, int z, BlockFace face) {
         if (x < -1 || x > ConstantCommonSettings.CHUNK_WIDTH ||
                 y < -1 || y > ConstantCommonSettings.CHUNK_HEIGHT ||
@@ -510,11 +548,14 @@ public class ChunkMeshDataGenerator {
 
     private void unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
         Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData();
+
         if (center == null) {
             Logger.warn(Logger.Priority.LOW, "The center chunk is null");
             unpackingFailed = true;
             return;
         }
+
+        setupLOD(center);
 
         ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true);
         ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true);
@@ -523,13 +564,11 @@ public class ChunkMeshDataGenerator {
         ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true);
         ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true);
 
-        if (negXChunk == null ||
-                posXChunk == null ||
-                negYChunk == null ||
-                posYChunk == null ||
-                negZChunk == null ||
-                posZChunk == null) {
-            Logger.warn(Logger.Priority.LOW, "One or more shell chunk is null");
+        if (negXChunk == null || posXChunk == null ||
+                negYChunk == null || posYChunk == null ||
+                negZChunk == null || posZChunk == null) {
+
+            Logger.warn(Logger.Priority.LOW, "One or more shell chunks are null");
             unpackingFailed = true;
             return;
         }
@@ -541,65 +580,67 @@ public class ChunkMeshDataGenerator {
         Chunk<BlockWithMesh> negZ = negZChunk.getChunkData();
         Chunk<BlockWithMesh> posZ = posZChunk.getChunkData();
 
-        if (negX == null ||
-                posX == null ||
-                negY == null ||
-                posY == null ||
-                negZ == null ||
-                posZ == null) {
-            Logger.warn(Logger.Priority.LOW, "One or more shell chunk data is null");
+        if (negX == null || posX == null ||
+                negY == null || posY == null ||
+                negZ == null || posZ == null) {
+
+            Logger.warn(Logger.Priority.LOW, "One or more shell chunk data are null");
             unpackingFailed = true;
             return;
         }
 
-        int W = ConstantCommonSettings.CHUNK_WIDTH;
-        int H = ConstantCommonSettings.CHUNK_HEIGHT;
-        int L = ConstantCommonSettings.CHUNK_LENGTH;
+        for (int x = -1; x <= chunkWidth; x++) {
+            for (int y = -1; y <= chunkHeight; y++) {
+                for (int z = -1; z <= chunkLength; z++) {
 
-        for (int x = -1; x <= ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            for (int y = -1; y <= ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-                for (int z = -1; z <= ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                    int outOfBounds = 0;
-                    if (x < 0 || x == ConstantCommonSettings.CHUNK_WIDTH) outOfBounds++;
-                    if (y < 0 || y == ConstantCommonSettings.CHUNK_HEIGHT) outOfBounds++;
-                    if (z < 0 || z == ConstantCommonSettings.CHUNK_LENGTH) outOfBounds++;
+                    int outside = 0;
 
-                    if (outOfBounds > 1) {
+                    if (x < 0 || x >= chunkWidth) outside++;
+                    if (y < 0 || y >= chunkHeight) outside++;
+                    if (z < 0 || z >= chunkLength) outside++;
+
+                    if (outside > 1) {
                         continue;
                     }
 
-                    Chunk<BlockWithMesh> chunk;
-                    int lx = x, ly = y, lz = z;
+                    Chunk<BlockWithMesh> chunk = center;
+
+                    int lx = x;
+                    int ly = y;
+                    int lz = z;
 
                     if (x < 0) {
                         chunk = negX;
-                        lx = W - 1;
-                    } else if (x == W) {
+                        lx = chunkWidth - 1;
+                    } else if (x >= chunkWidth) {
                         chunk = posX;
                         lx = 0;
                     } else if (y < 0) {
                         chunk = negY;
-                        ly = H - 1;
-                    } else if (y == H) {
+                        ly = chunkHeight - 1;
+                    } else if (y >= chunkHeight) {
                         chunk = posY;
                         ly = 0;
                     } else if (z < 0) {
                         chunk = negZ;
-                        lz = L - 1;
-                    } else if (z == L) {
+                        lz = chunkLength - 1;
+                    } else if (z >= chunkLength) {
                         chunk = posZ;
                         lz = 0;
-                    } else {
-                        chunk = center;
                     }
+                    int chunkX = lx;
+                    int chunkY = ly;
+                    int chunkZ = lz;
+                    BlockWithMesh block = chunk.getBlock(chunkX, chunkY, chunkZ);
 
-                    BlockWithMesh block = chunk.getBlock(lx, ly, lz);
-                    BlockMesh blockMesh = block == null ? AIR : block.blockMesh();
+                    BlockMesh blockMesh = block == null
+                            ? AIR
+                            : block.blockMesh();
 
-                    int index = IndexCalculator.calculateBlockIndexPadded(x, y, z);
+                    int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
                     blockMeshes[index] = blockMesh;
-                    rotations[index] = chunk.getBlockRotation(lx, ly, lz);
+                    rotations[index] = chunk.getBlockRotation(chunkX, chunkY, chunkZ);
                 }
             }
         }

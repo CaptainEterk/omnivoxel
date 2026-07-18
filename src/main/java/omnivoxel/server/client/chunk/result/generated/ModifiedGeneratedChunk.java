@@ -42,7 +42,7 @@ public class ModifiedGeneratedChunk extends GeneratedChunk {
     @Override
     public GeneratedChunk setBlock(int x, int y, int z, @NotNull ServerBlock block) {
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
-            return new GeneralGeneratedChunk(this);
+            return new GeneralGeneratedChunk(this, chunk.getLOD());
         }
         return new ModifiedGeneratedChunk(x, y, z, block, (byte) 0, this, modificationCount + 1);
     }
@@ -58,8 +58,13 @@ public class ModifiedGeneratedChunk extends GeneratedChunk {
     @Override
     public GeneratedChunk setBlockRotation(int x, int y, int z, byte rotation) {
         if (modificationCount > ConstantCommonSettings.MODIFICATION_GENERALIZATION_LIMIT) {
-            return new GeneralGeneratedChunk(this).setBlockRotation(x, y, z, rotation);
+            return new GeneralGeneratedChunk(this, chunk.getLOD()).setBlockRotation(x, y, z, rotation);
         }
         return new ModifiedGeneratedChunk(x, y, z, getBlock(x, y, z), rotation, this, modificationCount + 1);
+    }
+
+    @Override
+    public int getLOD() {
+        return chunk.getLOD();
     }
 }
