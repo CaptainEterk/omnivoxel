@@ -68,13 +68,21 @@ public class ChunkUnpacker {
             BlockWithMesh block = palette[blockID];
 
             for (int j = 0; j < blockCount; j++) {
+                int lx = x >> lod;
+                int ly = y >> lod;
+                int lz = z >> lod;
 
                 if (x >= 0 && x < fullWidth &&
                         y >= 0 && y < fullHeight &&
                         z >= 0 && z < fullLength) {
 
-                    center = center.setBlock(x, y, z, block, rotation);
-
+                    center = center.setBlock(
+                            lx,
+                            ly,
+                            lz,
+                            block,
+                            rotation
+                    );
                 } else if (x == -step &&
                         y >= 0 && y < fullHeight &&
                         z >= 0 && z < fullLength) {

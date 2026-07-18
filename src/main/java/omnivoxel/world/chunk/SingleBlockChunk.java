@@ -28,7 +28,7 @@ public class SingleBlockChunk<B> implements Chunk<B> {
         if (this.block == block) {
             return this;
         }
-        return new BiBlockChunk<>(this.block, rotation).setBlock(x, y, z, block);
+        return new BiBlockChunk<>(this.block, rotation, lod).setBlock(x, y, z, block);
     }
 
     @Override
@@ -42,7 +42,7 @@ public class SingleBlockChunk<B> implements Chunk<B> {
         if (this.rotation == rotation) {
             return this;
         }
-        return new BiBlockChunk<>(block, this.rotation).setBlockRotation(x, y, z, rotation);
+        return new BiBlockChunk<>(block, this.rotation, lod).setBlockRotation(x, y, z, rotation);
     }
 
     @Override

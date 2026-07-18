@@ -19,7 +19,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
 
     public ShortPaletteChunk(int lod) {
         this.lod = lod;
-        this.blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        this.blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK >> (lod * 3)];
         this.rotations = new SingleRotationChunk((byte) 0, lod);
         this.palette = new ArrayList<>();
         this.paletteIndex = new HashMap<>();
@@ -38,7 +38,7 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
     }
 
     private short[] extractBlocks(Chunk<B> chunk) {
-        short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK >> lod >> lod >> lod];
+        short[] blocks = new short[ConstantCommonSettings.BLOCKS_IN_CHUNK >> (lod * 3)];
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH >> lod; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH >> lod; z++) {
@@ -67,10 +67,10 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
 
         RotationChunk rotations = new SingleRotationChunk((byte) 0, lod);
 
-        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
-            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
-                    rotations.setRotation(IndexCalculator.calculateBlockIndex(x, y, z), chunk.getBlockRotation(x, y, z));
+        for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH >> lod; x++) {
+            for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH >> lod; z++) {
+                for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT >> lod; y++) {
+                    rotations.setRotation(IndexCalculator.calculateBlockIndex(x, y, z, ConstantCommonSettings.CHUNK_WIDTH >> lod, ConstantCommonSettings.CHUNK_HEIGHT >> lod, ConstantCommonSettings.CHUNK_LENGTH >> lod), chunk.getBlockRotation(x, y, z));
                 }
             }
         }
@@ -80,12 +80,12 @@ public class ShortPaletteChunk<B> implements Chunk<B> {
 
     @Override
     public B getBlock(int x, int y, int z) {
-        return palette.get(blocks[IndexCalculator.calculateBlockIndex(x, y, z)]);
+        return palette.get(blocks[IndexCalculator.calculateBlockIndex(x, y, z, ConstantCommonSettings.CHUNK_WIDTH >> lod, ConstantCommonSettings.CHUNK_HEIGHT >> lod, ConstantCommonSettings.CHUNK_LENGTH >> lod)]);
     }
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
-        int blockIndex = IndexCalculator.calculateBlockIndex(x, y, z);
+        int blockIndex = IndexCalculator.calculateBlockIndex(x, y, z, ConstantCommonSettings.CHUNK_WIDTH >> lod, ConstantCommonSettings.CHUNK_HEIGHT >> lod, ConstantCommonSettings.CHUNK_LENGTH >> lod);
 
         Short index = paletteIndex.get(block);
         if (index == null) {

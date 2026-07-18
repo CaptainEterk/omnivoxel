@@ -82,12 +82,13 @@ public final class ChunkIO {
         try {
             boolean hasRotations = byteBuf.readInt() == ROTATION_CHUNK_MAGIC;
             int lod = byteBuf.readInt();
-            byteBuf.readerIndex(20); // No good reason for the padding?
             short paletteCount = byteBuf.readShort();
+            System.out.println(paletteCount);
             ServerBlock[] palette = new ServerBlock[paletteCount];
 
             for (int i = 0; i < paletteCount; i++) {
                 short paletteLength = byteBuf.readShort();
+                System.out.println(paletteLength);
 
                 StringBuilder blockID = new StringBuilder();
                 for (int j = 0; j < paletteLength; j++) {
@@ -109,13 +110,13 @@ public final class ChunkIO {
                 }
                 chunk = result;
 
-                int W = ConstantCommonSettings.CHUNK_WIDTH;
-                int H = ConstantCommonSettings.CHUNK_HEIGHT;
-                int L = ConstantCommonSettings.CHUNK_LENGTH;
+                int W = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+                int H = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
+                int L = ConstantCommonSettings.CHUNK_LENGTH >> lod;
 
                 int x = 0, y = 0, z = 0;
 
-                int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK;
+                int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK >> (lod * 3);
                 for (int i = 0; i < totalBlocks; ) {
                     int blockID = byteBuf.readInt();
                     int blockCount = byteBuf.readInt();
@@ -156,20 +157,17 @@ public final class ChunkIO {
 
         try {
             byteBuf.writeInt(ROTATION_CHUNK_MAGIC);
-            byteBuf.writeInt(0);
-            byteBuf.writeLong(0L);
-            byteBuf.writeInt(0);
+            byteBuf.writeInt(chunk.getLOD());
 
             Map<ServerBlock, Integer> paletteMap = new LinkedHashMap<>();
             List<ServerBlock> paletteList = new ArrayList<>();
 
-            int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK;
+            int totalBlocks = ConstantCommonSettings.BLOCKS_IN_CHUNK >> (chunk.getLOD() * 3);
 
             for (int i = 0; i < totalBlocks; i++) {
-
-                int x = IndexCalculator.x(i);
-                int y = IndexCalculator.y(i);
-                int z = IndexCalculator.z(i);
+                int x = IndexCalculator.x(i, chunk.getLOD());
+                int y = IndexCalculator.y(i, chunk.getLOD());
+                int z = IndexCalculator.z(i, chunk.getLOD());
 
                 ServerBlock block = chunk.getBlock(x, y, z);
 
@@ -179,14 +177,9 @@ public final class ChunkIO {
                 }
             }
 
-            // ------------------------------------------------------------
-            // Palette
-            // ------------------------------------------------------------
-
             byteBuf.writeShort(paletteList.size());
 
             for (ServerBlock block : paletteList) {
-
                 String blockID = block.id();
                 byte[] idBytes = blockID.getBytes(StandardCharsets.UTF_8);
 
@@ -194,19 +187,14 @@ public final class ChunkIO {
                 byteBuf.writeBytes(idBytes);
             }
 
-            // ------------------------------------------------------------
-            // RLE block stream
-            // ------------------------------------------------------------
-
             int currentPaletteID = -1;
             byte currentRotation = 0;
             int runLength = 0;
 
             for (int i = 0; i < totalBlocks; i++) {
-
-                int x = IndexCalculator.x(i);
-                int y = IndexCalculator.y(i);
-                int z = IndexCalculator.z(i);
+                int x = IndexCalculator.x(i, chunk.getLOD());
+                int y = IndexCalculator.y(i, chunk.getLOD());
+                int z = IndexCalculator.z(i, chunk.getLOD());
 
                 ServerBlock block = chunk.getBlock(x, y, z);
 

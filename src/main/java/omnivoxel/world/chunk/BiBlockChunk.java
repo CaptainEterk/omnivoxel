@@ -17,6 +17,7 @@ public class BiBlockChunk<B> implements Chunk<B> {
     private final int lod;
 
     private final int width;
+    private final int height;
     private final int length;
 
     private RotationChunk rotationChunk;
@@ -31,6 +32,7 @@ public class BiBlockChunk<B> implements Chunk<B> {
         this.lod = lod;
 
         this.width = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+        this.height = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
         this.length = ConstantCommonSettings.CHUNK_LENGTH >> lod;
 
         this.blocks = new int[width * length];
@@ -42,37 +44,17 @@ public class BiBlockChunk<B> implements Chunk<B> {
         return x + z * width;
     }
 
-    private int lx(int x) {
-        return x >> lod;
-    }
-
-    private int ly(int y) {
-        return y >> lod;
-    }
-
-    private int lz(int z) {
-        return z >> lod;
-    }
-
     @Override
     public B getBlock(int x, int y, int z) {
-        int lx = lx(x);
-        int ly = ly(y);
-        int lz = lz(z);
-
-        return (blocks[index(lx, lz)] & (1 << ly)) != 0
+        return (blocks[index(x, z)] & (1 << y)) != 0
                 ? block2
                 : block1;
     }
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
-        int lx = lx(x);
-        int ly = ly(y);
-        int lz = lz(z);
-
-        int index = index(lx, lz);
-        int mask = 1 << ly;
+        int index = index(x, z);
+        int mask = 1 << y;
 
         if (Objects.equals(block1, block)) {
             blocks[index] &= ~mask;
@@ -89,7 +71,7 @@ public class BiBlockChunk<B> implements Chunk<B> {
         }
 
         rotationChunk = rotationChunk.setRotation(
-                IndexCalculator.calculateBlockIndex(lx, ly, lz),
+                IndexCalculator.calculateBlockIndex(x, y, z),
                 block1Rotation
         );
 
@@ -98,16 +80,12 @@ public class BiBlockChunk<B> implements Chunk<B> {
 
     @Override
     public byte getBlockRotation(int x, int y, int z) {
-        int lx = lx(x);
-        int ly = ly(y);
-        int lz = lz(z);
-
-        if ((blocks[index(lx, lz)] & (1 << ly)) == 0) {
+        if ((blocks[index(x, z)] & (1 << y)) == 0) {
             return block1Rotation;
         }
 
         return rotationChunk.getRotation(
-                IndexCalculator.calculateBlockIndex(lx, ly, lz)
+                IndexCalculator.calculateBlockIndex(x, y, z, width, height, length)
         );
     }
 
@@ -115,9 +93,9 @@ public class BiBlockChunk<B> implements Chunk<B> {
     public Chunk<B> setBlockRotation(int x, int y, int z, byte rotation) {
         rotationChunk = rotationChunk.setRotation(
                 IndexCalculator.calculateBlockIndex(
-                        lx(x),
-                        ly(y),
-                        lz(z)
+                        x,
+                        y,
+                        z
                 ),
                 (byte) (rotation & 3)
         );

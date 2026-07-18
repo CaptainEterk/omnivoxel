@@ -76,6 +76,18 @@ public class IndexCalculator {
         return index & Y_MASK;
     }
 
+    public static int x(int index, int lod) {
+        return index / ((ConstantCommonSettings.CHUNK_LENGTH >> lod) * (ConstantCommonSettings.CHUNK_HEIGHT >> lod));
+    }
+
+    public static int z(int index, int lod) {
+        return (index / (ConstantCommonSettings.CHUNK_HEIGHT >> lod) % (ConstantCommonSettings.CHUNK_LENGTH >> lod));
+    }
+
+    public static int y(int index, int lod) {
+        return index % (ConstantCommonSettings.CHUNK_HEIGHT >> lod);
+    }
+
     public static int blockX(int chunkX) {
         return chunkX << X_BITS;
     }

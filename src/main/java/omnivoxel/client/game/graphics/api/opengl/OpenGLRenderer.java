@@ -481,6 +481,7 @@ public class OpenGLRenderer implements Renderer {
             Position3D position3D = positionedChunk.pos();
             if (positionedChunk.chunk().getMesh().solidVAO() > 0 && positionedChunk.chunk().getMesh().solidIndexCount() > 0) {
                 shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData().getLOD());
                 renderVAO(positionedChunk.chunk().getMesh().solidVAO(), positionedChunk.chunk().getMesh().solidIndexCount());
             } else {
                 occluded++;

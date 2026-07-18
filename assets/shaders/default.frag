@@ -3,7 +3,6 @@
 // TODO: Make these uniforms
 #define TEXTURE_SIZE 16u
 in vec2 TexCoord;
-in float shadow;
 smooth in vec3 position;
 in vec4 vLighting;
 in vec3 vNormal;

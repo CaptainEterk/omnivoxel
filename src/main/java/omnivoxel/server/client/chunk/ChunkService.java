@@ -51,22 +51,18 @@ public class ChunkService {
                     int ly = y < 0 ? size - 1 : (y == size ? 0 : y);
                     int lz = z < 0 ? size - 1 : (z == size ? 0 : z);
 
-                    int sourceX = lx << lod;
-                    int sourceY = ly << lod;
-                    int sourceZ = lz << lod;
-
                     builtChunk = builtChunk.setBlock(
                             x,
                             y,
                             z,
-                            chunk.getBlock(sourceX, sourceY, sourceZ)
+                            chunk.getBlock(lx, ly, lz)
                     );
 
                     builtChunk = builtChunk.setBlockRotation(
                             x,
                             y,
                             z,
-                            chunk.getBlockRotation(sourceX, sourceY, sourceZ)
+                            chunk.getBlockRotation(lx, ly, lz)
                     );
                 }
             }

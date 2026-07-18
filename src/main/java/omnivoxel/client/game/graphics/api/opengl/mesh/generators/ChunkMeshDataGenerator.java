@@ -89,16 +89,19 @@ public class ChunkMeshDataGenerator {
     }
 
     private int getPaddedNeighborOffset(BlockFace face) {
-        int paddedWidth = chunkWidth + 2;
         int paddedLength = chunkLength + 2;
+        int paddedHeight = chunkHeight + 2;
 
         return switch (face) {
-            case TOP -> paddedWidth * paddedLength;
-            case BOTTOM -> -paddedWidth * paddedLength;
-            case NORTH -> paddedWidth;
-            case SOUTH -> -paddedWidth;
-            case EAST -> 1;
-            case WEST -> -1;
+            case EAST  -> paddedLength * paddedHeight;  // +X
+            case WEST  -> -paddedLength * paddedHeight; // -X
+
+            case NORTH -> paddedLength;                 // +Z
+            case SOUTH -> -paddedLength;                // -Z
+
+            case TOP   -> 1;                            // +Y
+            case BOTTOM -> -1;                          // -Y
+
             default -> 0;
         };
     }
@@ -270,7 +273,7 @@ public class ChunkMeshDataGenerator {
             return true;
         }
 
-        BlockFace adjacentSourceFace = UNROTATE[((adjacentRotation & 3) * 6) + worldFaceOrdinal ^ 1];
+        BlockFace adjacentSourceFace = UNROTATE[((adjacentRotation & 3) * 6) + (worldFaceOrdinal ^ 1)];
         if (adjacentBlockMesh.getShape().solid()[adjacentSourceFace.ordinal()]) {
             return false;
         }
@@ -303,8 +306,7 @@ public class ChunkMeshDataGenerator {
         int[] faceIndices = shape.indices()[blockFace.ordinal()];
 
         for (int idx : faceIndices) {
-            BlockVertex pointPosition = faceVertices[idx];
-            pointPosition.rotate(rotation);
+            BlockVertex pointPosition = faceVertices[idx].rotate(rotation);
             BlockVertex position = pointPosition.add(x, y, z);
             int ambientOcclusionLevel = ambientOcclusion ? sampleAmbientOcclusion(x, y, z, worldFace, pointPosition, blockMeshes) : 4;
             MeshDataGenerator.addPoint(

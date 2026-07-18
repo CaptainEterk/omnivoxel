@@ -30,15 +30,13 @@ public final class ChunkGenerator {
         if (worldDataService.shouldGenerateChunk(position3D)) {
             ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D);
 
-            int step = 1 << lod;
-
-            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x += step) {
+            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH >> lod; x++) {
                 int worldX = position3D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
 
-                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z += step) {
+                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH >> lod; z++) {
                     int worldZ = position3D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
 
-                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y += step) {
+                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT >> lod; y++) {
                         int worldY = position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT + y;
 
                         ServerBlock block = worldDataService.getBlockAt(
