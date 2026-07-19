@@ -33,10 +33,10 @@ public class ServerWorldHandler {
     }
 
     public void init() {
-        workerThreadPool.submit(new ChunkTask(null, 0, 0, 0));
-        workerThreadPool.submit(new ChunkTask(null, -1, 0, 0));
-        workerThreadPool.submit(new ChunkTask(null, -1, 0, -1));
-        workerThreadPool.submit(new ChunkTask(null, 0, 0, -1));
+        workerThreadPool.submit(new ChunkTask(null, 0, 0, 0, 0));
+        workerThreadPool.submit(new ChunkTask(null, -1, 0, 0, 0));
+        workerThreadPool.submit(new ChunkTask(null, -1, 0, -1, 0));
+        workerThreadPool.submit(new ChunkTask(null, 0, 0, -1, 0));
     }
 
     public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, byte rotation, ServerClient client) {
@@ -113,7 +113,7 @@ public class ServerWorldHandler {
                         clients.forEach((id, serverClient) -> serverClient.queueReplacedBlocks(new ServerBlockAndPosition(worldX, worldY, worldZ, block, finalRotation)));
                     }
                 } else {
-                    ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ);
+                    ChunkTask task = new ChunkTask(null, chunkX, chunkY, chunkZ, 0);
                     if (!workerThreadPool.hasTask(task)) {
                         // TODO: Make it so that generating the chunk if you can't set the block is a setting
                         Logger.debug("Unable to set block (%d, %d, %d) because chunk (%d, %d, %d) is null... generating...".formatted(worldX, worldY, worldZ, chunkX, chunkY, chunkZ));

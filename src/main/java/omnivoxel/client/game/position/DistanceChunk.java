@@ -4,7 +4,7 @@ import omnivoxel.util.math.Position3D;
 
 import java.util.Objects;
 
-public record DistanceChunk(int distance, Position3D pos) {
+public record DistanceChunk(int distance, int sort, Position3D pos) {
     @Override
     public boolean equals(Object o) {
         if (o instanceof Position3D position3D) {

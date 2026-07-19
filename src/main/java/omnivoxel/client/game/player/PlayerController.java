@@ -12,14 +12,12 @@ import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
-import omnivoxel.client.network.request.BlockReplaceRequest;
 import omnivoxel.client.network.request.PlayerUpdateRequest;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.util.IndexCalculator;
-import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.block.Block;
 import omnivoxel.world.block.BlockService;
@@ -141,16 +139,16 @@ public class PlayerController {
                     int localY = IndexCalculator.localY(by);
                     int localZ = IndexCalculator.localZ(bz);
 
-                    if (cachedChunkPos == null || cachedChunk == null || cachedChunk.getChunkData().getLOD() > 0 ||
+                    if (cachedChunkPos == null || cachedChunk == null || cachedChunk.getChunkData(-1).getLOD() > 0 ||
                             cachedChunkPos.x() != chunkX ||
                             cachedChunkPos.y() != chunkY ||
                             cachedChunkPos.z() != chunkZ) {
                         cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
                         cachedChunk = world.get(cachedChunkPos, false, false);
-                        if (cachedChunk == null || cachedChunk.getChunkData().getLOD() > 0) return;
+                        if (cachedChunk == null || cachedChunk.getChunkData(-1).getLOD() > 0) return;
                     }
 
-                    Chunk<BlockWithMesh> chunk = cachedChunk.getChunkData();
+                    Chunk<BlockWithMesh> chunk = cachedChunk.getChunkData(-1);
 
                     Block block = chunk.getBlock(localX, localY, localZ);
                     if (block != null) {
@@ -185,16 +183,16 @@ public class PlayerController {
         int localY = IndexCalculator.localY(by);
         int localZ = IndexCalculator.localZ(bz);
 
-        if (cachedChunkPos == null || cachedChunk == null || cachedChunk.getChunkData().getLOD() > 0 ||
+        if (cachedChunkPos == null || cachedChunk == null || cachedChunk.getChunkData(-1).getLOD() > 0 ||
                 cachedChunkPos.x() != chunkX ||
                 cachedChunkPos.y() != chunkY ||
                 cachedChunkPos.z() != chunkZ) {
             cachedChunkPos = new Position3D(chunkX, chunkY, chunkZ);
             cachedChunk = world.get(cachedChunkPos, false, false);
-            if (cachedChunk == null || cachedChunk.getChunkData().getLOD() > 0) return null;
+            if (cachedChunk == null || cachedChunk.getChunkData(-1).getLOD() > 0) return null;
         }
 
-        return cachedChunk.getChunkData() == null ? null : cachedChunk.getChunkData().getBlock(localX, localY, localZ);
+        return cachedChunk.getChunkData(-1) == null ? null : cachedChunk.getChunkData(-1).getBlock(localX, localY, localZ);
     }
 
     private boolean isSolidAt(double wx, double wy, double wz) {
@@ -224,7 +222,7 @@ public class PlayerController {
                         int localY = IndexCalculator.localY(by);
                         int localZ = IndexCalculator.localZ(bz);
 
-                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
+                        byte rotation = blockMesh.isRotatable() ? cachedChunk.getChunkData(-1).getBlockRotation(localX, localY, localZ) : 0;
                         for (BlockHitbox bh : blockHitbox) {
                             BlockHitbox rotatedHitbox = bh.rotateY(rotation);
                             if (rotatedHitbox.isColliding(hitbox, (float) wx - bx, (float) wy - by, (float) wz - bz)) {
@@ -253,70 +251,70 @@ public class PlayerController {
         BooleanRef changeRot = new BooleanRef(false);
         if (mouseButtonInput.isMouseLocked()) {
             handleInput(deltaTime, changeRot, movementMode != MovementMode.FALL_COLLIDE);
-            Position3DAndBlockRotation currentObservedBlock = findObservedBlock(false);
-            state.setItem("has_observed_block", currentObservedBlock != null);
-            if (currentObservedBlock != null) {
-                state.setItem("observed_block", currentObservedBlock.position);
-                state.setItem("observed_block_id", currentObservedBlock.block.id());
-            }
-
-            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
-                if (!leftMouseDown) {
-                    leftMouseDown = true;
-                    Position3DAndBlockRotation observedBlock = findObservedBlock(false);
-                    if (observedBlock != null) {
-                        client.sendRequest(new BlockReplaceRequest(observedBlock.position, blockService.getBlock("omnivoxel:air/default"), observedBlock.block, (byte) 0, observedBlock.rotation));
-                    }
-                }
-            } else {
-                leftMouseDown = false;
-            }
-
-            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_MIDDLE)) {
-                if (!selectingBlockDown) {
-                    selectedBlock++;
-                    selectedBlock %= blocks.length;
-                    state.setItem("selected_block", blocks[selectedBlock]);
-                }
-                selectingBlockDown = true;
-            } else {
-                selectingBlockDown = false;
-            }
-
-            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
-                if (!rightMouseDown) {
-                    rightMouseDown = true;
-                    Position3DAndBlockRotation observedPositionAndBlock = findObservedBlock(true);
-                    if (observedPositionAndBlock != null) {
-                        Position3D observedBlock = observedPositionAndBlock.position;
-
-                        BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
-                        BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
-                        BlockHitbox[] blockHitbox = blockMesh.getHitbox();
-                        byte rotation = blockMesh.isRotatable() ? rotationFromYaw() : 0;
-
-                        float lx = (float) (x - observedBlock.x());
-                        float ly = (float) (y - observedBlock.y());
-                        float lz = (float) (z - observedBlock.z());
-
-                        boolean isColliding = false;
-                        for (BlockHitbox bh : blockHitbox) {
-                            if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
-                                isColliding = true;
-                                break;
-                            }
-                        }
-
-                        if (isColliding) {
-                            Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
-                        } else {
-                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, observedPositionAndBlock.block, rotation, observedPositionAndBlock.rotation));
-                        }
-                    }
-                }
-            } else {
-                rightMouseDown = false;
-            }
+//            Position3DAndBlockRotation currentObservedBlock = findObservedBlock(false);
+//            state.setItem("has_observed_block", currentObservedBlock != null);
+//            if (currentObservedBlock != null) {
+//                state.setItem("observed_block", currentObservedBlock.position);
+//                state.setItem("observed_block_id", currentObservedBlock.block.id());
+//            }
+//
+//            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT)) {
+//                if (!leftMouseDown) {
+//                    leftMouseDown = true;
+//                    Position3DAndBlockRotation observedBlock = findObservedBlock(false);
+//                    if (observedBlock != null) {
+//                        client.sendRequest(new BlockReplaceRequest(observedBlock.position, blockService.getBlock("omnivoxel:air/default"), observedBlock.block, (byte) 0, observedBlock.rotation));
+//                    }
+//                }
+//            } else {
+//                leftMouseDown = false;
+//            }
+//
+//            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_MIDDLE)) {
+//                if (!selectingBlockDown) {
+//                    selectedBlock++;
+//                    selectedBlock %= blocks.length;
+//                    state.setItem("selected_block", blocks[selectedBlock]);
+//                }
+//                selectingBlockDown = true;
+//            } else {
+//                selectingBlockDown = false;
+//            }
+//
+//            if (mouseButtonInput.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
+//                if (!rightMouseDown) {
+//                    rightMouseDown = true;
+//                    Position3DAndBlockRotation observedPositionAndBlock = findObservedBlock(true);
+//                    if (observedPositionAndBlock != null) {
+//                        Position3D observedBlock = observedPositionAndBlock.position;
+//
+//                        BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
+//                        BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
+//                        BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+//                        byte rotation = blockMesh.isRotatable() ? rotationFromYaw() : 0;
+//
+//                        float lx = (float) (x - observedBlock.x());
+//                        float ly = (float) (y - observedBlock.y());
+//                        float lz = (float) (z - observedBlock.z());
+//
+//                        boolean isColliding = false;
+//                        for (BlockHitbox bh : blockHitbox) {
+//                            if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
+//                                isColliding = true;
+//                                break;
+//                            }
+//                        }
+//
+//                        if (isColliding) {
+//                            Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
+//                        } else {
+//                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, observedPositionAndBlock.block, rotation, observedPositionAndBlock.rotation));
+//                        }
+//                    }
+//                }
+//            } else {
+//                rightMouseDown = false;
+//            }
             if (keyInput.isKeyPressed(GLFW.GLFW_KEY_ESCAPE)) {
                 contextTasks.add(mouseButtonInput::unlockMouse);
             }
@@ -419,7 +417,7 @@ public class PlayerController {
             ClientWorldChunk clientWorldChunk = world.get(new Position3D(chunkX, chunkY, chunkZ), false, false);
             if (clientWorldChunk == null) return null;
 
-            Block block = clientWorldChunk.getChunkData().getBlock(localX, localY, localZ);
+            Block block = clientWorldChunk.getChunkData(-1).getBlock(localX, localY, localZ);
 
             if (block == null) {
                 lastAir = new Position3D(x, y, z);
@@ -429,7 +427,7 @@ public class PlayerController {
                     lastAir = new Position3D(x, y, z);
                 } else {
                     BlockHitbox[] blockHitbox = blockMesh.getHitbox();
-                    byte rotation = blockMesh.isRotatable() ? clientWorldChunk.getChunkData().getBlockRotation(localX, localY, localZ) : 0;
+                    byte rotation = blockMesh.isRotatable() ? clientWorldChunk.getChunkData(-1).getBlockRotation(localX, localY, localZ) : 0;
                     boolean intersects = false;
                     for (BlockHitbox bh : blockHitbox) {
                         if (bh.rotateY(rotation).intersectsRay(originX, originY, originZ, dirX, dirY, dirZ, x, y, z)) {

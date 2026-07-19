@@ -115,10 +115,11 @@ public class Server implements NetworkUser {
                     int count = byteBuf.getInt(index);
                     index += 4;
                     for (int i = 0; i < count; i++) {
-                        int x = byteBuf.getInt(i * 3 * Integer.BYTES + index);
-                        int y = byteBuf.getInt((i * 3 + 1) * Integer.BYTES + index);
-                        int z = byteBuf.getInt((i * 3 + 2) * Integer.BYTES + index);
-                        workerThreadPool.submit(new ChunkTask(clients.get(clientID), x, y, z));
+                        int lod = byteBuf.getInt(i * 4 * Integer.BYTES + index);
+                        int x = byteBuf.getInt((i * 4 + 1) * Integer.BYTES + index);
+                        int y = byteBuf.getInt((i * 4 + 2) * Integer.BYTES + index);
+                        int z = byteBuf.getInt((i * 4 + 3) * Integer.BYTES + index);
+                        workerThreadPool.submit(new ChunkTask(clients.get(clientID), x, y, z, lod));
                     }
                     byteBuf.release();
                     break;

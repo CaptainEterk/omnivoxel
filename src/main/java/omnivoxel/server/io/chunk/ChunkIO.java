@@ -16,6 +16,7 @@ import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk.ShortPaletteChunk;
 import omnivoxel.world.chunk.SingleBlockChunk;
 import omnivoxel.world.chunk2d.Chunk2D;
+import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +44,7 @@ public final class ChunkIO {
         ByteBuf byteBuf = Unpooled.wrappedBuffer(bytes);
 
         try {
-            Chunk2D<Integer> chunk2D = new omnivoxel.world.chunk2d.SingleBlockChunk2D<>(0);
+            Chunk2D<Integer> chunk2D = new SingleBlockChunk2D<>(0);
 
             int index = 0;
 

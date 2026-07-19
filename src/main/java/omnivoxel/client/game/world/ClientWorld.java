@@ -19,6 +19,7 @@ import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.entity.Entity;
 import omnivoxel.util.data.Direction;
+import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
@@ -94,29 +95,35 @@ public class ClientWorld {
     }
 
     public ClientWorldChunk get(Position3D position3D, boolean request, boolean shell) {
+        return get(position3D, request, shell, -1);
+    }
+
+    public ClientWorldChunk get(Position3D position3D, boolean request, boolean shell, int lod) {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
+        ClientWorldChunk out = null;
         if (clientWorldChunk != null) {
             if (!shell) {
                 clientWorldChunk.touch(tick);
             }
-            boolean isShell = clientWorldChunk.getChunkData() instanceof ChunkShell<BlockWithMesh>;
+            boolean isShell = clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>;
             boolean expired = tick - clientWorldChunk.getLastFetchedTick() > ConstantCommonSettings.CHUNK_TICK_TIMEOUT;
 
             if (shell || (!isShell && !expired)) {
-                return clientWorldChunk;
+                out = clientWorldChunk;
             }
         }
         if (requesting && request) {
-            if (inflightRequests.size() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
-                inPipelineChunks.add(position3D);
-                inflightRequests.add(position3D);
-                client.sendRequest(new ChunkRequest(position3D));
+            if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod) {
+                if (inflightRequests.size() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
+                    inPipelineChunks.add(position3D);
+                    inflightRequests.add(position3D);
+                    client.sendRequest(new ChunkRequest(position3D, lod));
+                }
             }
         } else {
             requesting = false;
-
         }
-        return null;
+        return out;
     }
 
     public Position3D[] getKeys() {
@@ -206,7 +213,7 @@ public class ClientWorld {
             return;
         }
 
-        Chunk<BlockWithMesh> existingData = existing.getChunkData();
+        Chunk<BlockWithMesh> existingData = existing.getChunkData(-1);
 
         if (!shell) {
             existing.setChunkData(chunk);
@@ -215,7 +222,7 @@ public class ClientWorld {
 
         if (existingData instanceof ChunkShell<BlockWithMesh> existingShell &&
                 chunk instanceof ChunkShell<BlockWithMesh> newShell) {
-            existingShell.merge(newShell);
+            existing.setChunkData(existingShell.merge(newShell));
         }
     }
 

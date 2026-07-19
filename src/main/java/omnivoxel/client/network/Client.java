@@ -52,7 +52,7 @@ public final class Client implements NetworkUser {
     private final byte[] clientID;
     private final ClientWorldDataService worldDataService;
     private final AtomicBoolean clientRunning = new AtomicBoolean(true);
-    private final Queue<Position3D> queuedChunkTasks = new LinkedBlockingDeque<>();
+    private final Queue<ChunkRequest> queuedChunkTasks = new LinkedBlockingDeque<>();
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
     private final Settings settings;
@@ -302,10 +302,9 @@ public final class Client implements NetworkUser {
 
         ClientWorldChunk clientWorldChunk = world.get(chunkPosition, false, false);
         if (clientWorldChunk != null) {
-            Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData();
+            Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData(-1);
 
             if (chunkData != null) {
-                // TODO: Only recalculate lighting for neighboring chunks if you need to, still remesh them though
                 clientWorldChunk.setCleanLighting(false);
                 BlockWithMesh block = blockService.getBlock(blockID);
                 if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
@@ -462,24 +461,25 @@ public final class Client implements NetworkUser {
         }
         long time = System.currentTimeMillis();
         if (time - lastFlushedTime > ConstantNetworkSettings.CHUNK_REQUEST_BATCHING_TIME || queuedChunkTasks.size() > ConstantNetworkSettings.CHUNK_REQUEST_BATCHING_LIMIT) {
-            List<Position3D> queuedChunkTasksBatch = new ArrayList<>();
+            List<ChunkRequest> queuedChunkTasksBatch = new ArrayList<>();
             while (!queuedChunkTasks.isEmpty()) {
-                Position3D position3D = queuedChunkTasks.remove();
-                if (position3D != null) {
-                    queuedChunkTasksBatch.add(position3D);
+                ChunkRequest chunkRequest = queuedChunkTasks.remove();
+                if (chunkRequest != null) {
+                    queuedChunkTasksBatch.add(chunkRequest);
                 } else {
                     break;
                 }
             }
             if (!queuedChunkTasksBatch.isEmpty()) {
-                int[] data = new int[queuedChunkTasksBatch.size() * 3 + 1];
+                int[] data = new int[queuedChunkTasksBatch.size() * 4 + 1];
                 data[0] = queuedChunkTasksBatch.size();
                 for (int i = 0; !queuedChunkTasksBatch.isEmpty(); i++) {
-                    Position3D req = queuedChunkTasksBatch.removeFirst();
+                    ChunkRequest req = queuedChunkTasksBatch.removeFirst();
 
-                    data[i * 3 + 1] = req.x();
-                    data[i * 3 + 2] = req.y();
-                    data[i * 3 + 3] = req.z();
+                    data[i * 4 + 1] = req.lod();
+                    data[i * 4 + 2] = req.position3D().x();
+                    data[i * 4 + 3] = req.position3D().y();
+                    data[i * 4 + 4] = req.position3D().z();
                 }
                 NetworkService.sendInts(channel, PackageID.CHUNK_REQUEST, clientID, channel::close, data);
             }
@@ -490,8 +490,7 @@ public final class Client implements NetworkUser {
     public void sendRequest(Request request) {
         switch (request.getType()) {
             case CHUNK:
-                Position3D position3D = ((ChunkRequest) request).position3D();
-                queuedChunkTasks.add(position3D);
+                queuedChunkTasks.add((ChunkRequest) request);
                 break;
             case CLOSE:
                 NetworkService.sendBytes(channel, PackageID.CLOSE, clientID, channel::close);
@@ -558,7 +557,6 @@ public final class Client implements NetworkUser {
         meshDataGenerators = new WorkerThreadPool<>(
                 settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()),
                 () -> new MeshDataGenerator(
-                        worldDataService,
                         world,
                         state,
                         settings

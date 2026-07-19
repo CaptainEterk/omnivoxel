@@ -71,17 +71,19 @@ public final class RenderedChunkProvider {
                             z - ccz
                     );
 
+                    int sort = distance;
+
                     if (!frustum.isChunkInFrustum(position)) {
-                        distance *= frustumBias;
+                        sort *= frustumBias;
                     }
 
-                    ArrayList<DistanceChunk> bucket = buckets[distance];
+                    ArrayList<DistanceChunk> bucket = buckets[sort];
                     if (bucket == null) {
                         bucket = new ArrayList<>();
-                        buckets[distance] = bucket;
+                        buckets[sort] = bucket;
                     }
 
-                    bucket.add(new DistanceChunk(distance, position));
+                    bucket.add(new DistanceChunk(distance, sort, position));
                     count++;
                 }
             }

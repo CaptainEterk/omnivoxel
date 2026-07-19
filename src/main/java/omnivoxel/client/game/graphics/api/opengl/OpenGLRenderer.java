@@ -394,9 +394,14 @@ public class OpenGLRenderer implements Renderer {
             renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
             List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
 
+            int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
+            int squaredRenderDistance = rdChunks * rdChunks;
+
             // TODO: This is an expensive operation, optimize it
             for (DistanceChunk chunk : chunks) {
-                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
+                int lod = (chunk.distance() < squaredRenderDistance / 8) ? 0 : 1;
+
+                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false, lod);
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
                     if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
                         solidRenderedChunks.add(chunk);
@@ -478,10 +483,10 @@ public class OpenGLRenderer implements Renderer {
         int occluded = 0;
 
         for (PositionedChunk positionedChunk : solidRenderedChunksInFrustum) {
-            Position3D position3D = positionedChunk.pos();
             if (positionedChunk.chunk().getMesh().solidVAO() > 0 && positionedChunk.chunk().getMesh().solidIndexCount() > 0) {
+                Position3D position3D = positionedChunk.pos();
                 shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData().getLOD());
+                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
                 renderVAO(positionedChunk.chunk().getMesh().solidVAO(), positionedChunk.chunk().getMesh().solidIndexCount());
             } else {
                 occluded++;
@@ -533,6 +538,7 @@ public class OpenGLRenderer implements Renderer {
             Position3D position3D = positionedChunk.pos();
             if (positionedChunk.chunk().getMesh().decorationVAO() > 0 && positionedChunk.chunk().getMesh().decorationIndexCount() > 0) {
                 shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
                 renderVAO(positionedChunk.chunk().getMesh().decorationVAO(), positionedChunk.chunk().getMesh().decorationIndexCount());
             }
         }
@@ -549,6 +555,7 @@ public class OpenGLRenderer implements Renderer {
             PositionedChunk positionedChunk = transparentRenderedChunksInFrustum.get(i);
             Position3D position3D = positionedChunk.pos();
             shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+            shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
             if (positionedChunk.chunk().getMesh().transparentVAO() > 0 && positionedChunk.chunk().getMesh().transparentIndexCount() > 0) {
                 renderVAO(positionedChunk.chunk().getMesh().transparentVAO(), positionedChunk.chunk().getMesh().transparentIndexCount());
             } else {
@@ -580,7 +587,7 @@ public class OpenGLRenderer implements Renderer {
             return;
         }
 
-        Chunk<BlockWithMesh> chunk = clientWorldChunk.getChunkData();
+        Chunk<BlockWithMesh> chunk = clientWorldChunk.getChunkData(-1);
         if (chunk == null) {
             return;
         }

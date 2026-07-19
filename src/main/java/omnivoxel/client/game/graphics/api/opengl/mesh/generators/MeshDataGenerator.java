@@ -30,9 +30,9 @@ public final class MeshDataGenerator {
     private final ClientWorld world;
     private final State state;
 
-    public MeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, State state, Settings settings) {
+    public MeshDataGenerator(ClientWorld world, State state, Settings settings) {
         this.state = state;
-        chunkMeshDataGenerator = new ChunkMeshDataGenerator(worldDataService, world, settings);
+        chunkMeshDataGenerator = new ChunkMeshDataGenerator(world, settings);
         this.world = world;
         entityMeshDataGenerator = new EntityMeshDataGenerator();
     }

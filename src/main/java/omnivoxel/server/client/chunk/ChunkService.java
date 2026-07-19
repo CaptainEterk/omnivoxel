@@ -16,6 +16,7 @@ import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.ChunkLODSampler;
 import omnivoxel.world.chunk2d.Chunk2D;
 
 import java.io.IOException;
@@ -76,7 +77,7 @@ public class ChunkService {
     public List<ChunkTask> serve(ChunkTask chunkTask, int queueSize) {
         try {
             Position3D chunkPosition = new Position3D(chunkTask.x(), chunkTask.y(), chunkTask.z());
-            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient(), 0);
+            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient(), chunkTask.lod());
 
             if (chunkTask.serverClient() != null) {
                 Position2D position2D = chunkPosition.getPosition2D();
@@ -129,7 +130,6 @@ public class ChunkService {
             for (int z = -1; z <= 1; z++) {
                 for (int y = -1; y <= 1; y++) {
                     Position3D newChunkPosition = chunkPosition.add(x, y, z);
-
                     Chunk<ServerBlock> chunk = world.get(newChunkPosition);
 
                     if (chunk == null) {
@@ -140,12 +140,12 @@ public class ChunkService {
                         }
                     }
 
-                    if (chunk == null) {
+                    if (chunk == null || lod < chunk.getLOD()) {
                         chunk = chunkGenerator.generateChunk(newChunkPosition, lod);
                         world.put(newChunkPosition, chunk);
                     }
 
-                    chunks[i++] = chunk;
+                    chunks[i++] = ChunkLODSampler.sample(chunk, lod);
                 }
             }
         }

@@ -1,13 +1,13 @@
 package omnivoxel.client.game.world;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting.ChunkMeshDataLightingGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.ChunkLightingData;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.util.data.Direction;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.ChunkLODSampler;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -73,8 +73,8 @@ public class ClientWorldChunk {
         this.mesh = mesh;
     }
 
-    public Chunk<BlockWithMesh> getChunkData() {
-        return chunkData;
+    public Chunk<BlockWithMesh> getChunkData(int lod) {
+        return ChunkLODSampler.sample(chunkData, lod);
     }
 
     public void setChunkData(Chunk<BlockWithMesh> chunkData) {
@@ -114,14 +114,14 @@ public class ClientWorldChunk {
         return true;
     }
 
-    public boolean isCleanLighting(LightChannels channel) {
-        return cleanLighting[channel.ordinal()].get();
-    }
-
     public void setCleanLighting(boolean cleanLighting) {
         for (AtomicBoolean atomicBoolean : this.cleanLighting) {
             atomicBoolean.set(cleanLighting);
         }
+    }
+
+    public boolean isCleanLighting(LightChannels channel) {
+        return cleanLighting[channel.ordinal()].get();
     }
 
     public void setCleanLighting(LightChannels channel, boolean cleanLighting) {

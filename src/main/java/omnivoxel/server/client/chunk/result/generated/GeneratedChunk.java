@@ -75,20 +75,6 @@ public abstract class GeneratedChunk {
             }
         }
 
-        if (client != null) {
-            for (ServerBlock block : palette) {
-                if (client.registerBlockID(block.id())) {
-                    NetworkService.sendBytes(
-                            client.getCTX().channel(),
-                            PackageID.REGISTER_BLOCK,
-                            null,
-                            client::disconnect,
-                            block.getBytes()
-                    );
-                }
-            }
-        }
-
         List<Integer> runBlockIDs = new ArrayList<>();
         List<Integer> runCounts = new ArrayList<>();
         List<Byte> runRotations = new ArrayList<>();

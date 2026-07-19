@@ -9,7 +9,6 @@ import omnivoxel.client.game.graphics.light.ChunkLightingData;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
-import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
 import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
@@ -53,10 +52,7 @@ public class ChunkMeshDataGenerator {
             BlockFace.SOUTH,
             BlockFace.NORTH
     };
-
-    private final BlockMesh AIR;
     private final ClientWorld world;
-    private final Settings settings;
     private final boolean ambientOcclusion, smoothLighting;
     private final List<Integer> vertices = new ArrayList<>();
     private final List<Integer> indices = new ArrayList<>();
@@ -75,12 +71,9 @@ public class ChunkMeshDataGenerator {
     private int chunkWidth;
     private int chunkHeight;
     private int chunkLength;
-    private int lodScale;
 
-    public ChunkMeshDataGenerator(ClientWorldDataService worldDataService, ClientWorld world, Settings settings) {
-        this.AIR = worldDataService.getBlock("omnivoxel:air");
+    public ChunkMeshDataGenerator(ClientWorld world, Settings settings) {
         this.world = world;
-        this.settings = settings;
         this.ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
         this.smoothLighting = settings.getBooleanSetting("smooth_lighting", false);
         settings.addSettingListener("ambient_occlusion", v -> {
@@ -93,13 +86,13 @@ public class ChunkMeshDataGenerator {
         int paddedHeight = chunkHeight + 2;
 
         return switch (face) {
-            case EAST  -> paddedLength * paddedHeight;  // +X
-            case WEST  -> -paddedLength * paddedHeight; // -X
+            case EAST -> paddedLength * paddedHeight;  // +X
+            case WEST -> -paddedLength * paddedHeight; // -X
 
             case NORTH -> paddedLength;                 // +Z
             case SOUTH -> -paddedLength;                // -Z
 
-            case TOP   -> 1;                            // +Y
+            case TOP -> 1;                            // +Y
             case BOTTOM -> -1;                          // -Y
 
             default -> 0;
@@ -518,8 +511,6 @@ public class ChunkMeshDataGenerator {
         chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
         chunkLength = ConstantCommonSettings.CHUNK_LENGTH >> lod;
 
-        lodScale = 1 << lod;
-
         int paddedSize =
                 (chunkWidth + 2) *
                         (chunkHeight + 2) *
@@ -549,7 +540,7 @@ public class ChunkMeshDataGenerator {
     }
 
     private void unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
-        Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData();
+        Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData(-1);
 
         if (center == null) {
             Logger.warn(Logger.Priority.LOW, "The center chunk is null");
@@ -559,33 +550,31 @@ public class ChunkMeshDataGenerator {
 
         setupLOD(center);
 
-        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true);
-        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true);
-        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true);
-        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true);
-        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true);
-        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true);
+        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true, lod);
+        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true, lod);
+        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true, lod);
+        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true, lod);
+        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true, lod);
+        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true, lod);
 
         if (negXChunk == null || posXChunk == null ||
                 negYChunk == null || posYChunk == null ||
                 negZChunk == null || posZChunk == null) {
-
             Logger.warn(Logger.Priority.LOW, "One or more shell chunks are null");
             unpackingFailed = true;
             return;
         }
 
-        Chunk<BlockWithMesh> negX = negXChunk.getChunkData();
-        Chunk<BlockWithMesh> posX = posXChunk.getChunkData();
-        Chunk<BlockWithMesh> negY = negYChunk.getChunkData();
-        Chunk<BlockWithMesh> posY = posYChunk.getChunkData();
-        Chunk<BlockWithMesh> negZ = negZChunk.getChunkData();
-        Chunk<BlockWithMesh> posZ = posZChunk.getChunkData();
+        Chunk<BlockWithMesh> negX = negXChunk.getChunkData(lod);
+        Chunk<BlockWithMesh> posX = posXChunk.getChunkData(lod);
+        Chunk<BlockWithMesh> negY = negYChunk.getChunkData(lod);
+        Chunk<BlockWithMesh> posY = posYChunk.getChunkData(lod);
+        Chunk<BlockWithMesh> negZ = negZChunk.getChunkData(lod);
+        Chunk<BlockWithMesh> posZ = posZChunk.getChunkData(lod);
 
         if (negX == null || posX == null ||
                 negY == null || posY == null ||
                 negZ == null || posZ == null) {
-
             Logger.warn(Logger.Priority.LOW, "One or more shell chunk data are null");
             unpackingFailed = true;
             return;
@@ -594,7 +583,6 @@ public class ChunkMeshDataGenerator {
         for (int x = -1; x <= chunkWidth; x++) {
             for (int y = -1; y <= chunkHeight; y++) {
                 for (int z = -1; z <= chunkLength; z++) {
-
                     int outside = 0;
 
                     if (x < 0 || x >= chunkWidth) outside++;
@@ -630,19 +618,17 @@ public class ChunkMeshDataGenerator {
                         chunk = posZ;
                         lz = 0;
                     }
-                    int chunkX = lx;
-                    int chunkY = ly;
-                    int chunkZ = lz;
-                    BlockWithMesh block = chunk.getBlock(chunkX, chunkY, chunkZ);
-
-                    BlockMesh blockMesh = block == null
-                            ? AIR
-                            : block.blockMesh();
 
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
-                    blockMeshes[index] = blockMesh;
-                    rotations[index] = chunk.getBlockRotation(chunkX, chunkY, chunkZ);
+                    try {
+                        blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
+                        rotations[index] = chunk.getBlockRotation(lx, ly, lz);
+                    } catch (Exception e) {
+                        unpackingFailed = true;
+                        Logger.warn("Chunk contains null blocks, this should never happen");
+                        return;
+                    }
                 }
             }
         }

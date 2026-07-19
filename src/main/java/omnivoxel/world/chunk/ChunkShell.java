@@ -196,9 +196,64 @@ public class ChunkShell<B> implements Chunk<B> {
         return null;
     }
 
-    public void merge(ChunkShell<B> newShell) {
-        if (newShell.lod != lod) {
-            throw new IllegalArgumentException("Cannot merge ChunkShells with different LODs");
+    public ChunkShell<B> merge(ChunkShell<B> newShell) {
+        if (newShell.lod > lod) {
+            return newShell.merge(this);
+        } else if (newShell.lod < lod) {
+            int scale = 1 << (lod - newShell.lod);
+
+            for (int z = 0; z < length; z++) {
+                for (int y = 0; y < height; y++) {
+                    int coarse = indexYZ(y, z);
+                    int fine = newShell.indexYZ(y * scale, z * scale);
+
+                    if (newShell.minX[fine] != null) {
+                        minX[coarse] = newShell.minX[fine];
+                        minXRotations[coarse] = newShell.minXRotations[fine];
+                    }
+
+                    if (newShell.maxX[fine] != null) {
+                        maxX[coarse] = newShell.maxX[fine];
+                        maxXRotations[coarse] = newShell.maxXRotations[fine];
+                    }
+                }
+            }
+
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    int coarse = indexXZ(x, z);
+                    int fine = newShell.indexXZ(x * scale, z * scale);
+
+                    if (newShell.minY[fine] != null) {
+                        minY[coarse] = newShell.minY[fine];
+                        minYRotations[coarse] = newShell.minYRotations[fine];
+                    }
+
+                    if (newShell.maxY[fine] != null) {
+                        maxY[coarse] = newShell.maxY[fine];
+                        maxYRotations[coarse] = newShell.maxYRotations[fine];
+                    }
+                }
+            }
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int coarse = indexXY(x, y);
+                    int fine = newShell.indexXY(x * scale, y * scale);
+
+                    if (newShell.minZ[fine] != null) {
+                        minZ[coarse] = newShell.minZ[fine];
+                        minZRotations[coarse] = newShell.minZRotations[fine];
+                    }
+
+                    if (newShell.maxZ[fine] != null) {
+                        maxZ[coarse] = newShell.maxZ[fine];
+                        maxZRotations[coarse] = newShell.maxZRotations[fine];
+                    }
+                }
+            }
+
+            return this;
         }
 
         for (int i = 0; i < minX.length; i++) {
@@ -233,6 +288,8 @@ public class ChunkShell<B> implements Chunk<B> {
                 maxZRotations[i] = newShell.maxZRotations[i];
             }
         }
+
+        return this;
     }
 
     @Override
