@@ -71,6 +71,7 @@ public class ChunkService {
                 }
             }
         }
+
         return builtChunk;
     }
 
@@ -150,8 +151,6 @@ public class ChunkService {
             }
         }
 
-        GeneratedChunk builtChunk = createBuiltChunk(lod, chunks);
-
-        return GeneratedChunk.getResult(builtChunk, client).bytes();
+        return GeneratedChunk.getResult(createBuiltChunk(lod, chunks), client).bytes();
     }
 }

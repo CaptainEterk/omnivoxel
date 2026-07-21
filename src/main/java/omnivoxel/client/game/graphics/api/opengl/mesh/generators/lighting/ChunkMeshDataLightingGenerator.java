@@ -168,17 +168,6 @@ public class ChunkMeshDataLightingGenerator {
     private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D, LightChannels channel) {
         ClientWorldChunk clientWorldChunk = world.get(position3D, false, false);
 
-        if (channel == null) {
-            Set<LightingChunkMeshDataTask> out = new HashSet<>();
-            for (LightChannels lightChannel : LightChannels.values()) {
-                Set<LightingChunkMeshDataTask> lightingChunkMeshDataTasks = generateChunkMeshDataLighting(position3D, lightChannel);
-                if (lightingChunkMeshDataTasks != null) {
-                    out.addAll(lightingChunkMeshDataTasks);
-                }
-            }
-            return out;
-        }
-
         if (!shouldCalculate(clientWorldChunk)) {
             return null;
         }
@@ -186,7 +175,7 @@ public class ChunkMeshDataLightingGenerator {
         Set<LightingChunkMeshDataTask> meshDataTasks = new HashSet<>();
 
         if (clientWorldChunk.getChunkData(-1).getLOD() > 0) {
-            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0)));
+            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 0)));
             clientWorldChunk.setCleanLighting(true);
             meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
 
@@ -196,10 +185,9 @@ public class ChunkMeshDataLightingGenerator {
                     for (int z = -1; z <= 1; z++) {
                         if (!(x == 0 && y == 0 && z == 0)) {
                             Position3D neighborPos = position3D.add(x, y, z);
-                            ClientWorldChunk neighborChunk = world.get(neighborPos, false, false);
                             if (completeDirtyChunks.contains(neighborPos)) {
                                 foundCompleteDirtyNeighborPositions[foundCompleteDirtyChunkCount] = neighborPos;
-                                foundCompleteDirtyNeighborChunks[foundCompleteDirtyChunkCount++] = neighborChunk;
+                                foundCompleteDirtyNeighborChunks[foundCompleteDirtyChunkCount++] = world.get(neighborPos, false, false);
                             }
                         }
                     }
@@ -212,6 +200,17 @@ public class ChunkMeshDataLightingGenerator {
                 }
             }
             return meshDataTasks;
+        }
+
+        if (channel == null) {
+            Set<LightingChunkMeshDataTask> out = new HashSet<>();
+            for (LightChannels lightChannel : LightChannels.values()) {
+                Set<LightingChunkMeshDataTask> lightingChunkMeshDataTasks = generateChunkMeshDataLighting(position3D, lightChannel);
+                if (lightingChunkMeshDataTasks != null) {
+                    out.addAll(lightingChunkMeshDataTasks);
+                }
+            }
+            return out;
         }
 
         createLightingDataIfEmpty(clientWorldChunk);

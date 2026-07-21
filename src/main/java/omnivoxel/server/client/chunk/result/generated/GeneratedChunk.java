@@ -18,12 +18,12 @@ public abstract class GeneratedChunk {
     private static ChunkResult emptyChunk = null;
 
     public static ChunkResult getResult(GeneratedChunk generatedChunk, ServerClient client) {
-        if (generatedChunk instanceof SingleBlockGeneratedChunk && client != null) {
-            if (emptyChunk == null) {
-                emptyChunk = getResult(new SingleBlockGeneratedChunk(ServerBlock.AIR, (byte) 0, generatedChunk.getLOD()), null);
-            }
-            return emptyChunk;
-        }
+//        if (generatedChunk instanceof SingleBlockGeneratedChunk && client != null) {
+//            if (emptyChunk == null) {
+//                emptyChunk = getResult(new SingleBlockGeneratedChunk(ServerBlock.AIR, (byte) 0, generatedChunk.getLOD()), null);
+//            }
+//            return emptyChunk;
+//        }
 
         int lod = generatedChunk.getLOD();
 
@@ -33,7 +33,7 @@ public abstract class GeneratedChunk {
 
         int paddedBlocks = (width + 2) * (height + 2) * (length + 2);
 
-        Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(ServerBlock.AIR, lod);
+        Chunk<ServerBlock> chunkOut = new SingleBlockChunk<>(generatedChunk.getBlock(0, 0, 0), lod);
 
         List<ServerBlock> palette = new ArrayList<>();
 

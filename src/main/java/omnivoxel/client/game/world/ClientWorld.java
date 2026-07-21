@@ -113,7 +113,7 @@ public class ClientWorld {
             }
         }
         if (requesting && request) {
-            if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod) {
+            if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod || clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>) {
                 if (inflightRequests.size() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
                     inPipelineChunks.add(position3D);
                     inflightRequests.add(position3D);
@@ -148,7 +148,9 @@ public class ClientWorld {
     }
 
     public void receivedChunk(Position3D position3D) {
-        inflightRequests.remove(position3D);
+        if (!inflightRequests.remove(position3D)) {
+            Logger.warn("Received chunk that wasn't requested...");
+        }
     }
 
     public int inflightRequestCount() {
