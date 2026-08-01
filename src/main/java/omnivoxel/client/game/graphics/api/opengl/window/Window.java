@@ -107,29 +107,42 @@ public final class Window {
 
     public void toggleFullscreen() {
         contextTasks.add(window -> {
-            long currentWindow = org.lwjgl.glfw.GLFW.glfwGetCurrentContext();
+            long windowHandle = window.window();
+
             long monitor = GLFW.glfwGetPrimaryMonitor();
             GLFWVidMode vidMode = GLFW.glfwGetVideoMode(monitor);
 
-            boolean isFullscreen = GLFW.glfwGetWindowMonitor(currentWindow) != MemoryUtil.NULL;
+            boolean isFullscreen = GLFW.glfwGetWindowMonitor(windowHandle) != MemoryUtil.NULL;
 
             if (isFullscreen) {
-                GLFW.glfwSetWindowMonitor(currentWindow, MemoryUtil.NULL, oldWindowX, oldWindowY, oldWindowWidth, oldWindowHeight, GLFW.GLFW_DONT_CARE);
+                GLFW.glfwSetWindowMonitor(
+                        windowHandle,
+                        MemoryUtil.NULL,
+                        100,
+                        100,
+                        oldWindowWidth,
+                        oldWindowHeight,
+                        GLFW.GLFW_DONT_CARE
+                );
             } else {
                 int[] width = new int[1];
                 int[] height = new int[1];
-                GLFW.glfwGetWindowSize(currentWindow, width, height);
+                GLFW.glfwGetWindowSize(windowHandle, width, height);
+
                 oldWindowWidth = width[0];
                 oldWindowHeight = height[0];
 
-                int[] x = new int[1];
-                int[] y = new int[1];
-                GLFW.glfwGetWindowPos(window.window(), x, y);
-                oldWindowX = x[0];
-                oldWindowY = y[0];
-
-                assert vidMode != null;
-                GLFW.glfwSetWindowMonitor(currentWindow, monitor, 0, 0, vidMode.width(), vidMode.height(), vidMode.refreshRate());
+                if (vidMode != null) {
+                    GLFW.glfwSetWindowMonitor(
+                            windowHandle,
+                            monitor,
+                            0,
+                            0,
+                            vidMode.width(),
+                            vidMode.height(),
+                            GLFW.GLFW_DONT_CARE
+                    );
+                }
             }
         });
     }

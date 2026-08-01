@@ -424,6 +424,7 @@ public class OpenGLRenderer implements Renderer {
 
         if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
             window.toggleFullscreen();
+            state.setItem("shouldToggleWindowFullscreen", false);
         }
     }
 
