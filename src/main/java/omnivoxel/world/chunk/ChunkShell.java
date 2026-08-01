@@ -48,6 +48,29 @@ public class ChunkShell<B> implements Chunk<B> {
         maxZRotations = new byte[width * height];
     }
 
+    public ChunkShell(ChunkShell<B> other) {
+        this.lod = other.lod;
+
+        width = other.width;
+        height = other.height;
+        length = other.length;
+
+        minX = other.minX.clone();
+        maxX = other.maxX.clone();
+        minXRotations = other.minXRotations.clone();
+        maxXRotations = other.maxXRotations.clone();
+
+        minY = other.minY.clone();
+        maxY = other.maxY.clone();
+        minYRotations = other.minYRotations.clone();
+        maxYRotations = other.maxYRotations.clone();
+
+        minZ = other.minZ.clone();
+        maxZ = other.maxZ.clone();
+        minZRotations = other.minZRotations.clone();
+        maxZRotations = other.maxZRotations.clone();
+    }
+
     private int indexXZ(int x, int z) {
         return x + z * width;
     }
@@ -199,101 +222,204 @@ public class ChunkShell<B> implements Chunk<B> {
     public ChunkShell<B> merge(ChunkShell<B> newShell) {
         if (newShell.lod > lod) {
             return newShell.merge(this);
-        } else if (newShell.lod < lod) {
+        }
+
+        ChunkShell<B> result = new ChunkShell<>(this);
+
+        if (newShell.lod < lod) {
             int scale = 1 << (lod - newShell.lod);
 
             for (int z = 0; z < length; z++) {
                 for (int y = 0; y < height; y++) {
-                    int coarse = indexYZ(y, z);
-                    int fine = newShell.indexYZ(y * scale, z * scale);
+                    int fy = y * scale;
+                    int fz = z * scale;
 
-                    if (newShell.minX[fine] != null) {
-                        minX[coarse] = newShell.minX[fine];
-                        minXRotations[coarse] = newShell.minXRotations[fine];
+                    B block = newShell.getBlock(0, fy, fz);
+                    if (block != null) {
+                        result.setBlock(0, y, z, block);
+                        result.setBlockRotation(0, y, z, newShell.getBlockRotation(0, fy, fz));
                     }
 
-                    if (newShell.maxX[fine] != null) {
-                        maxX[coarse] = newShell.maxX[fine];
-                        maxXRotations[coarse] = newShell.maxXRotations[fine];
+                    block = newShell.getBlock(newShell.width - 1, fy, fz);
+                    if (block != null) {
+                        result.setBlock(width - 1, y, z, block);
+                        result.setBlockRotation(width - 1, y, z,
+                                newShell.getBlockRotation(newShell.width - 1, fy, fz));
                     }
                 }
             }
 
             for (int z = 0; z < length; z++) {
                 for (int x = 0; x < width; x++) {
-                    int coarse = indexXZ(x, z);
-                    int fine = newShell.indexXZ(x * scale, z * scale);
+                    int fx = x * scale;
+                    int fz = z * scale;
 
-                    if (newShell.minY[fine] != null) {
-                        minY[coarse] = newShell.minY[fine];
-                        minYRotations[coarse] = newShell.minYRotations[fine];
+                    B block = newShell.getBlock(fx, 0, fz);
+                    if (block != null) {
+                        result.setBlock(x, 0, z, block);
+                        result.setBlockRotation(x, 0, z, newShell.getBlockRotation(fx, 0, fz));
                     }
 
-                    if (newShell.maxY[fine] != null) {
-                        maxY[coarse] = newShell.maxY[fine];
-                        maxYRotations[coarse] = newShell.maxYRotations[fine];
+                    block = newShell.getBlock(fx, newShell.height - 1, fz);
+                    if (block != null) {
+                        result.setBlock(x, height - 1, z, block);
+                        result.setBlockRotation(x, height - 1, z,
+                                newShell.getBlockRotation(fx, newShell.height - 1, fz));
                     }
                 }
             }
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    int coarse = indexXY(x, y);
-                    int fine = newShell.indexXY(x * scale, y * scale);
+                    int fx = x * scale;
+                    int fy = y * scale;
 
-                    if (newShell.minZ[fine] != null) {
-                        minZ[coarse] = newShell.minZ[fine];
-                        minZRotations[coarse] = newShell.minZRotations[fine];
+                    B block = newShell.getBlock(fx, fy, 0);
+                    if (block != null) {
+                        result.setBlock(x, y, 0, block);
+                        result.setBlockRotation(x, y, 0, newShell.getBlockRotation(fx, fy, 0));
                     }
 
-                    if (newShell.maxZ[fine] != null) {
-                        maxZ[coarse] = newShell.maxZ[fine];
-                        maxZRotations[coarse] = newShell.maxZRotations[fine];
+                    block = newShell.getBlock(fx, fy, newShell.length - 1);
+                    if (block != null) {
+                        result.setBlock(x, y, length - 1, block);
+                        result.setBlockRotation(x, y, length - 1,
+                                newShell.getBlockRotation(fx, fy, newShell.length - 1));
                     }
                 }
             }
 
-            return this;
+            return result;
         }
 
-        for (int i = 0; i < minX.length; i++) {
-            if (newShell.minX[i] != null) {
-                minX[i] = newShell.minX[i];
-                minXRotations[i] = newShell.minXRotations[i];
-            }
-            if (newShell.maxX[i] != null) {
-                maxX[i] = newShell.maxX[i];
-                maxXRotations[i] = newShell.maxXRotations[i];
-            }
-        }
+        for (int z = 0; z < length; z++) {
+            for (int y = 0; y < height; y++) {
+                B block = newShell.getBlock(0, y, z);
+                if (block != null) {
+                    result.setBlock(0, y, z, block);
+                    result.setBlockRotation(0, y, z, newShell.getBlockRotation(0, y, z));
+                }
 
-        for (int i = 0; i < minY.length; i++) {
-            if (newShell.minY[i] != null) {
-                minY[i] = newShell.minY[i];
-                minYRotations[i] = newShell.minYRotations[i];
-            }
-            if (newShell.maxY[i] != null) {
-                maxY[i] = newShell.maxY[i];
-                maxYRotations[i] = newShell.maxYRotations[i];
+                block = newShell.getBlock(width - 1, y, z);
+                if (block != null) {
+                    result.setBlock(width - 1, y, z, block);
+                    result.setBlockRotation(width - 1, y, z,
+                            newShell.getBlockRotation(width - 1, y, z));
+                }
             }
         }
 
-        for (int i = 0; i < minZ.length; i++) {
-            if (newShell.minZ[i] != null) {
-                minZ[i] = newShell.minZ[i];
-                minZRotations[i] = newShell.minZRotations[i];
-            }
-            if (newShell.maxZ[i] != null) {
-                maxZ[i] = newShell.maxZ[i];
-                maxZRotations[i] = newShell.maxZRotations[i];
+        for (int z = 0; z < length; z++) {
+            for (int x = 0; x < width; x++) {
+                B block = newShell.getBlock(x, 0, z);
+                if (block != null) {
+                    result.setBlock(x, 0, z, block);
+                    result.setBlockRotation(x, 0, z, newShell.getBlockRotation(x, 0, z));
+                }
+
+                block = newShell.getBlock(x, height - 1, z);
+                if (block != null) {
+                    result.setBlock(x, height - 1, z, block);
+                    result.setBlockRotation(x, height - 1, z, newShell.getBlockRotation(x, height - 1, z));
+                }
             }
         }
 
-        return this;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                B block = newShell.getBlock(x, y, 0);
+                if (block != null) {
+                    result.setBlock(x, y, 0, block);
+                    result.setBlockRotation(x, y, 0, newShell.getBlockRotation(x, y, 0));
+                }
+
+                block = newShell.getBlock(x, y, length - 1);
+                if (block != null) {
+                    result.setBlock(x, y, length - 1, block);
+                    result.setBlockRotation(x, y, length - 1,
+                            newShell.getBlockRotation(x, y, length - 1));
+                }
+            }
+        }
+
+        return result;
     }
 
     @Override
     public int getLOD() {
         return lod;
+    }
+
+    public Chunk<B> mergeUp(ChunkShell<B> newShell) {
+        if (newShell.lod >= lod) {
+            throw new IllegalArgumentException("mergeUp requires a finer target LOD");
+        }
+
+        ChunkShell<B> result = new ChunkShell<>(newShell);
+
+        int scale = 1 << (lod - newShell.lod);
+
+        // Copy this coarser shell into the finer result
+        for (int z = 0; z < newShell.length; z++) {
+            for (int y = 0; y < newShell.height; y++) {
+                int cy = y >> (lod - newShell.lod);
+                int cz = z >> (lod - newShell.lod);
+
+                B block = getBlock(0, cy, cz);
+                if (block != null) {
+                    result.setBlock(0, y, z, block);
+                    result.setBlockRotation(0, y, z, getBlockRotation(0, cy, cz));
+                }
+
+                block = getBlock(width - 1, cy, cz);
+                if (block != null) {
+                    result.setBlock(newShell.width - 1, y, z, block);
+                    result.setBlockRotation(newShell.width - 1, y, z,
+                            getBlockRotation(width - 1, cy, cz));
+                }
+            }
+        }
+
+        for (int z = 0; z < newShell.length; z++) {
+            for (int x = 0; x < newShell.width; x++) {
+                int cx = x >> (lod - newShell.lod);
+                int cz = z >> (lod - newShell.lod);
+
+                B block = getBlock(cx, 0, cz);
+                if (block != null) {
+                    result.setBlock(x, 0, z, block);
+                    result.setBlockRotation(x, 0, z, getBlockRotation(cx, 0, cz));
+                }
+
+                block = getBlock(cx, height - 1, cz);
+                if (block != null) {
+                    result.setBlock(x, newShell.height - 1, z, block);
+                    result.setBlockRotation(x, newShell.height - 1, z,
+                            getBlockRotation(cx, height - 1, cz));
+                }
+            }
+        }
+
+        for (int y = 0; y < newShell.height; y++) {
+            for (int x = 0; x < newShell.width; x++) {
+                int cx = x >> (lod - newShell.lod);
+                int cy = y >> (lod - newShell.lod);
+
+                B block = getBlock(cx, cy, 0);
+                if (block != null) {
+                    result.setBlock(x, y, 0, block);
+                    result.setBlockRotation(x, y, 0, getBlockRotation(cx, cy, 0));
+                }
+
+                block = getBlock(cx, cy, length - 1);
+                if (block != null) {
+                    result.setBlock(x, y, newShell.length - 1, block);
+                    result.setBlockRotation(x, y, newShell.length - 1,
+                            getBlockRotation(cx, cy, length - 1));
+                }
+            }
+        }
+
+        return result;
     }
 }

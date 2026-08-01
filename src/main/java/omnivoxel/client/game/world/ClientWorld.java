@@ -106,9 +106,8 @@ public class ClientWorld {
                 clientWorldChunk.touch(tick);
             }
             boolean isShell = clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>;
-            boolean expired = tick - clientWorldChunk.getLastFetchedTick() > ConstantCommonSettings.CHUNK_TICK_TIMEOUT;
 
-            if (shell || (!isShell && !expired)) {
+            if (shell || !isShell) {
                 out = clientWorldChunk;
             }
         }
