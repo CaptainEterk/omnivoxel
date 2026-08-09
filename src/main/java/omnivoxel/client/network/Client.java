@@ -308,7 +308,7 @@ public final class Client implements NetworkUser {
                 clientWorldChunk.setCleanLighting(false);
                 BlockWithMesh block = blockService.getBlock(blockID);
                 if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
-                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
+                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation), chunkData);
                     lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition, null), true);
 
                     if (x == 0)

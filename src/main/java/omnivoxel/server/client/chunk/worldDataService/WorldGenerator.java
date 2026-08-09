@@ -204,7 +204,7 @@ public class WorldGenerator {
                 for (int chunkY = chunkMaxY - 1; chunkY >= chunkMinY; chunkY--) {
                     Chunk<ServerBlock> chunk = world.get(new Position3D(position2D.x(), chunkY, position2D.z()));
 
-                    if (chunk == null) {
+                    if (chunk == null || chunk.getLOD() > 0) {
                         continue;
                     }
 

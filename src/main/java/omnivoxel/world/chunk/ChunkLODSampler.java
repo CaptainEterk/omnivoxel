@@ -16,7 +16,7 @@ public final class ChunkLODSampler {
         }
 
         if (chunk instanceof ChunkShell<B> shell) {
-            return new ChunkShell<B>(lod).merge(shell);
+            return new ChunkShell<B>(lod).mergeDown(shell);
         }
 
         int scale = 1 << (lod - chunk.getLOD());
@@ -67,7 +67,11 @@ public final class ChunkLODSampler {
         int height = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
         int length = ConstantCommonSettings.CHUNK_LENGTH >> lod;
 
-        Chunk<B> result = new ShortPaletteChunk<>(lod);
+        Chunk<B> result = new SingleBlockChunk<>(
+                chunk.getBlock(0, 0, 0),
+                chunk.getBlockRotation(0, 0, 0),
+                lod
+        );
 
         for (int x = 0; x < width; x++) {
             for (int z = 0; z < length; z++) {

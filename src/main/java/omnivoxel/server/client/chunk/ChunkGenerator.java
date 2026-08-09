@@ -29,14 +29,15 @@ public final class ChunkGenerator {
 
         if (worldDataService.shouldGenerateChunk(position3D)) {
             ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D);
+            int scale = 1 << lod;
 
-            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH >> lod; x++) {
+            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x += scale) {
                 int worldX = position3D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
 
-                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH >> lod; z++) {
+                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z += scale) {
                     int worldZ = position3D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
 
-                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT >> lod; y++) {
+                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y += scale) {
                         int worldY = position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT + y;
 
                         ServerBlock block = worldDataService.getBlockAt(
@@ -49,7 +50,7 @@ public final class ChunkGenerator {
                                 chunkInfo
                         );
 
-                        chunk = chunk.setBlock(x, y, z, block);
+                        chunk = chunk.setBlock(x >> lod, y >> lod, z >> lod, block);
                     }
                 }
             }

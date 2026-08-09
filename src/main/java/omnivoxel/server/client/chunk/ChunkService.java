@@ -82,27 +82,30 @@ public class ChunkService {
 
             if (chunkTask.serverClient() != null) {
                 Position2D position2D = chunkPosition.getPosition2D();
-                Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
 
-                if (chunk2D == null) {
-                    chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+                if (chunkTask.lod() == 0) {
+                    Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
+
+                    if (chunk2D == null) {
+                        chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
+                    }
+
+                    if (chunk2D == null) {
+                        Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
+                        chunk2D = chunkGenerator.getWorldDataService()
+                                .getWorldGenerator()
+                                .rebuildChunkHeights(world, position2D);
+                    }
+
+                    NetworkService.sendBytes2D(
+                            chunkTask.serverClient().getCTX().channel(),
+                            PackageID.HEIGHTS,
+                            position2D.x(),
+                            position2D.z(),
+                            chunkTask.serverClient()::disconnect,
+                            ChunkIO.encodeIntegerChunk2D(chunk2D)
+                    );
                 }
-
-                if (chunk2D == null) {
-                    Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
-                    chunk2D = chunkGenerator.getWorldDataService()
-                            .getWorldGenerator()
-                            .rebuildChunkHeights(world, position2D);
-                }
-
-                NetworkService.sendBytes2D(
-                        chunkTask.serverClient().getCTX().channel(),
-                        PackageID.HEIGHTS,
-                        position2D.x(),
-                        position2D.z(),
-                        chunkTask.serverClient()::disconnect,
-                        ChunkIO.encodeIntegerChunk2D(chunk2D)
-                );
 
                 NetworkService.sendBytes3D(
                         chunkTask.serverClient().getCTX().channel(),

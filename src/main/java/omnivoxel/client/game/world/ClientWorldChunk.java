@@ -8,7 +8,9 @@ import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.util.data.Direction;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk.ChunkLODSampler;
+import omnivoxel.world.chunk.ChunkShell;
 
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientWorldChunk {
@@ -77,8 +79,12 @@ public class ClientWorldChunk {
         return ChunkLODSampler.sample(chunkData, lod);
     }
 
-    public void setChunkData(Chunk<BlockWithMesh> chunkData) {
-        this.chunkData = chunkData;
+    public void setChunkData(Chunk<BlockWithMesh> chunkData, Chunk<BlockWithMesh> oldChunkData) {
+        if (chunkData instanceof ChunkShell<BlockWithMesh> newChunkData && this.chunkData instanceof ChunkShell<BlockWithMesh> && this.chunkData != oldChunkData) {
+            setChunkData(((ChunkShell<BlockWithMesh>) this.chunkData).merge(newChunkData), this.chunkData);
+        } else {
+            this.chunkData = chunkData;
+        }
     }
 
     public void touch(int tick) {

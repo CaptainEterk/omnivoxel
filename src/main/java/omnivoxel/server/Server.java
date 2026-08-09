@@ -112,13 +112,13 @@ public class Server implements NetworkUser {
             int index = 40;
             switch (packageID) {
                 case CHUNK_REQUEST:
-                    int count = byteBuf.getInt(index);
-                    index += 4;
+                    byteBuf.readerIndex(40);
+                    int count = byteBuf.readInt();
                     for (int i = 0; i < count; i++) {
-                        int lod = byteBuf.getInt(i * 4 * Integer.BYTES + index);
-                        int x = byteBuf.getInt((i * 4 + 1) * Integer.BYTES + index);
-                        int y = byteBuf.getInt((i * 4 + 2) * Integer.BYTES + index);
-                        int z = byteBuf.getInt((i * 4 + 3) * Integer.BYTES + index);
+                        int lod = byteBuf.readInt();
+                        int x = byteBuf.readInt();
+                        int y = byteBuf.readInt();
+                        int z = byteBuf.readInt();
                         workerThreadPool.submit(new ChunkTask(clients.get(clientID), x, y, z, lod));
                     }
                     byteBuf.release();

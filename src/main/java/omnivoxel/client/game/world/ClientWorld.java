@@ -102,13 +102,11 @@ public class ClientWorld {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
         ClientWorldChunk out = null;
         if (clientWorldChunk != null) {
-            if (!shell) {
-                clientWorldChunk.touch(tick);
-            }
             boolean isShell = clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>;
 
             if (shell || !isShell) {
                 out = clientWorldChunk;
+                clientWorldChunk.touch(tick);
             }
         }
         if (requesting && request) {
@@ -217,13 +215,13 @@ public class ClientWorld {
         Chunk<BlockWithMesh> existingData = existing.getChunkData(-1);
 
         if (!shell) {
-            existing.setChunkData(chunk);
+            existing.setChunkData(chunk, existingData);
             return;
         }
 
         if (existingData instanceof ChunkShell<BlockWithMesh> existingShell &&
                 chunk instanceof ChunkShell<BlockWithMesh> newShell) {
-            existing.setChunkData(existingShell.merge(newShell));
+            existing.setChunkData(existingShell.mergeDown(newShell), existingData);
         }
     }
 
@@ -267,7 +265,6 @@ public class ClientWorld {
 
             freeChunk(chunk.getMesh());
             chunks.remove(pos);
-            inPipelineChunks.remove(pos);
             inflightRequests.remove(pos);
 
             changed = true;

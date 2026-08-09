@@ -219,9 +219,9 @@ public class ChunkShell<B> implements Chunk<B> {
         return null;
     }
 
-    public ChunkShell<B> merge(ChunkShell<B> newShell) {
+    public ChunkShell<B> mergeDown(ChunkShell<B> newShell) {
         if (newShell.lod > lod) {
-            return newShell.merge(this);
+            return newShell.mergeDown(this);
         }
 
         ChunkShell<B> result = new ChunkShell<>(this);
@@ -350,76 +350,105 @@ public class ChunkShell<B> implements Chunk<B> {
         return lod;
     }
 
-    public Chunk<B> mergeUp(ChunkShell<B> newShell) {
+    public ChunkShell<B> mergeUp(ChunkShell<B> newShell) {
         if (newShell.lod >= lod) {
-            throw new IllegalArgumentException("mergeUp requires a finer target LOD");
+            throw new IllegalArgumentException(
+                    "mergeUp requires a finer target LOD"
+            );
         }
 
         ChunkShell<B> result = new ChunkShell<>(newShell);
 
         int scale = 1 << (lod - newShell.lod);
 
-        // Copy this coarser shell into the finer result
+        // X borders
         for (int z = 0; z < newShell.length; z++) {
             for (int y = 0; y < newShell.height; y++) {
-                int cy = y >> (lod - newShell.lod);
-                int cz = z >> (lod - newShell.lod);
+                int cy = y / scale;
+                int cz = z / scale;
 
                 B block = getBlock(0, cy, cz);
                 if (block != null) {
                     result.setBlock(0, y, z, block);
-                    result.setBlockRotation(0, y, z, getBlockRotation(0, cy, cz));
+                    result.setBlockRotation(
+                            0, y, z,
+                            getBlockRotation(0, cy, cz)
+                    );
                 }
 
                 block = getBlock(width - 1, cy, cz);
                 if (block != null) {
-                    result.setBlock(newShell.width - 1, y, z, block);
-                    result.setBlockRotation(newShell.width - 1, y, z,
-                            getBlockRotation(width - 1, cy, cz));
+                    result.setBlock(
+                            newShell.width - 1, y, z, block
+                    );
+                    result.setBlockRotation(
+                            newShell.width - 1, y, z,
+                            getBlockRotation(width - 1, cy, cz)
+                    );
                 }
             }
         }
 
+        // Y borders
         for (int z = 0; z < newShell.length; z++) {
             for (int x = 0; x < newShell.width; x++) {
-                int cx = x >> (lod - newShell.lod);
-                int cz = z >> (lod - newShell.lod);
+                int cx = x / scale;
+                int cz = z / scale;
 
                 B block = getBlock(cx, 0, cz);
                 if (block != null) {
                     result.setBlock(x, 0, z, block);
-                    result.setBlockRotation(x, 0, z, getBlockRotation(cx, 0, cz));
+                    result.setBlockRotation(
+                            x, 0, z,
+                            getBlockRotation(cx, 0, cz)
+                    );
                 }
 
                 block = getBlock(cx, height - 1, cz);
                 if (block != null) {
-                    result.setBlock(x, newShell.height - 1, z, block);
-                    result.setBlockRotation(x, newShell.height - 1, z,
-                            getBlockRotation(cx, height - 1, cz));
+                    result.setBlock(
+                            x, newShell.height - 1, z, block
+                    );
+                    result.setBlockRotation(
+                            x, newShell.height - 1, z,
+                            getBlockRotation(cx, height - 1, cz)
+                    );
                 }
             }
         }
 
+        // Z borders
         for (int y = 0; y < newShell.height; y++) {
             for (int x = 0; x < newShell.width; x++) {
-                int cx = x >> (lod - newShell.lod);
-                int cy = y >> (lod - newShell.lod);
+                int cx = x / scale;
+                int cy = y / scale;
 
                 B block = getBlock(cx, cy, 0);
                 if (block != null) {
                     result.setBlock(x, y, 0, block);
-                    result.setBlockRotation(x, y, 0, getBlockRotation(cx, cy, 0));
+                    result.setBlockRotation(
+                            x, y, 0,
+                            getBlockRotation(cx, cy, 0)
+                    );
                 }
 
                 block = getBlock(cx, cy, length - 1);
                 if (block != null) {
-                    result.setBlock(x, y, newShell.length - 1, block);
-                    result.setBlockRotation(x, y, newShell.length - 1,
-                            getBlockRotation(cx, cy, length - 1));
+                    result.setBlock(
+                            x, y, newShell.length - 1, block
+                    );
+                    result.setBlockRotation(
+                            x, y, newShell.length - 1,
+                            getBlockRotation(cx, cy, length - 1)
+                    );
                 }
             }
         }
 
         return result;
+    }
+
+    public Chunk<B> merge(ChunkShell<B> newChunkData) {
+        return newChunkData.lod >= lod ? mergeDown(newChunkData) : mergeUp(newChunkData);
     }
 }
