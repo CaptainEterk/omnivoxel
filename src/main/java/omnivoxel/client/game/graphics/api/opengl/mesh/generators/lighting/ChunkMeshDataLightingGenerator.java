@@ -175,7 +175,7 @@ public class ChunkMeshDataLightingGenerator {
         Set<LightingChunkMeshDataTask> meshDataTasks = new HashSet<>();
 
         if (clientWorldChunk.getChunkData(-1).getLOD() > 0) {
-            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 15), new SingleLightChannel((byte) 0)));
+            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 15)));
             clientWorldChunk.setCleanLighting(true);
             meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
 
