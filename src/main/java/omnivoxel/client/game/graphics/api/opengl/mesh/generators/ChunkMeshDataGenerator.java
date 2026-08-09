@@ -594,7 +594,6 @@ public class ChunkMeshDataGenerator {
                     }
 
                     Chunk<BlockWithMesh> chunk = center;
-                    ClientWorldChunk debugChunk = centerChunk;
 
                     int lx = x;
                     int ly = y;
@@ -602,39 +601,28 @@ public class ChunkMeshDataGenerator {
 
                     if (x < 0) {
                         chunk = negX;
-                        debugChunk = negXChunk;
                         lx = chunkWidth - 1;
                     } else if (x >= chunkWidth) {
                         chunk = posX;
-                        debugChunk = posXChunk;
                         lx = 0;
                     } else if (y < 0) {
                         chunk = negY;
-                        debugChunk = negYChunk;
                         ly = chunkHeight - 1;
                     } else if (y >= chunkHeight) {
                         chunk = posY;
-                        debugChunk = posYChunk;
                         ly = 0;
                     } else if (z < 0) {
                         chunk = negZ;
-                        debugChunk = negZChunk;
                         lz = chunkLength - 1;
                     } else if (z >= chunkLength) {
                         chunk = posZ;
-                        debugChunk = posZChunk;
                         lz = 0;
                     }
 
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
-                    try {
-                        blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
-                        rotations[index] = chunk.getBlockRotation(lx, ly, lz);
-                    } catch (Exception e) {
-                        System.out.println(chunk + " " + lx + " " + ly + " " + lz + " " + lod + " " + chunk.getLOD());
-                        throw new RuntimeException(e);
-                    }
+                    blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
+                    rotations[index] = chunk.getBlockRotation(lx, ly, lz);
                 }
             }
         }
