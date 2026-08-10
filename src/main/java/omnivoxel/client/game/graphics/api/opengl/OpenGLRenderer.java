@@ -399,7 +399,21 @@ public class OpenGLRenderer implements Renderer {
 
             // TODO: This is an expensive operation, optimize it
             for (DistanceChunk chunk : chunks) {
-                int lod = chunk.distance() < squaredRenderDistance / 8 ? 0 : (chunk.distance() < squaredRenderDistance / 4 ? 1 : 2);
+                int lod;
+
+                if (chunk.distance() < squaredRenderDistance / 32) {
+                    lod = 0;
+                } else if (chunk.distance() < squaredRenderDistance / 16) {
+                    lod = 1;
+                } else if (chunk.distance() < squaredRenderDistance / 8) {
+                    lod = 2;
+                } else if (chunk.distance() < squaredRenderDistance / 4) {
+                    lod = 3;
+                } else if (chunk.distance() < squaredRenderDistance / 2) {
+                    lod = 4;
+                } else {
+                    lod = 5;
+                }
 
                 ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false, lod);
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
