@@ -16,7 +16,7 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 public final class WindowFactory {
-    public static Window createWindow(int width, int height, String title, Queue<Consumer<Window>> contextTasks, Settings settings) throws RuntimeException {
+    public static Window createWindow(int width, int height, String title, Queue<Consumer<Window>> contextTasks, boolean vsync) throws RuntimeException {
         GLFW.glfwSetErrorCallback((error, description) -> {
             String msg = GLFWErrorCallback.getDescription(description);
             Logger.error(String.format("GLFW Error %d: %s", error, msg));
@@ -80,7 +80,7 @@ public final class WindowFactory {
 
         GLFW.glfwMakeContextCurrent(window);
 
-        GLFW.glfwSwapInterval(settings.getBooleanSetting("vsync", true) ? 1 : 0);
+        GLFW.glfwSwapInterval(vsync ? 1 : 0);
 
         GLCapabilities caps = GL.createCapabilities();
 

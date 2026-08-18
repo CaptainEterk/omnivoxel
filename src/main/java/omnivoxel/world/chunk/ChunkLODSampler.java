@@ -25,7 +25,7 @@ public final class ChunkLODSampler {
         int height = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
         int length = ConstantCommonSettings.CHUNK_LENGTH >> lod;
 
-        Chunk<B> result = new ShortPaletteChunk<>(lod);
+        Chunk<B> result = new SingleBlockChunk<>(chunk.getBlock(0, 0, 0), lod);
 
         for (int x = 0; x < width; x++) {
             for (int z = 0; z < length; z++) {

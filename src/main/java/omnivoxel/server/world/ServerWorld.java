@@ -61,6 +61,7 @@ public class ServerWorld {
             if (chunk2D == null) {
                 Logger.warn("Chunk heights are null at " + position2D + ".");
             }
+
             return chunk2D;
         } catch (IOException e) {
             throw new RuntimeException(e);

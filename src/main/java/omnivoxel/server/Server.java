@@ -24,7 +24,6 @@ import omnivoxel.server.entity.EntityStorageManager;
 import omnivoxel.server.entity.mob.PlayerEntity;
 import omnivoxel.server.games.Game;
 import omnivoxel.server.games.ServerResourceParser;
-import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
 import omnivoxel.server.world.ServerWorldHandler;
 import omnivoxel.util.IndexCalculator;
@@ -60,6 +59,7 @@ public class Server implements NetworkUser {
     private final EntityStorageManager entityStorageManager;
     private final EntityService entityService;
     private final GameResources resources;
+    private final WorldGenerator worldGenerator;
 
     public Server(Map<String, ServerClient> clients, long seed, ServerWorld world, EntityStorage entityStorage, Map<String, BlockShape> blockShapeCache, Map<String, BlockHitbox[]> blockHitboxCache, ServerBlockService blockService, Settings settings) throws IOException {
         this.clients = clients;
@@ -73,7 +73,7 @@ public class Server implements NetworkUser {
         GameNode gameNode = GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "main.json")), Game.checkGameNodeType(GameParser.parseNode(Files.readString(Path.of(ConstantServerSettings.GAME_LOCATION + "constants.json")), null), ArrayGameNode.class));
 
         if (gameNode instanceof ObjectGameNode objectGameNode) {
-            WorldGenerator worldGenerator = new WorldGenerator(objectGameNode.object().get("world_generator"), blockShapeCache, blockHitboxCache, seed, blockService);
+            this.worldGenerator = new WorldGenerator(objectGameNode.object().get("world_generator"), blockShapeCache, blockHitboxCache, seed, blockService);
             Set<WorldBoundingBox> worldBoundingBoxes = ConcurrentHashMap.newKeySet();
             workerThreadPool = new WorkerThreadPool<>(ConstantServerSettings.CHUNK_GENERATOR_THREAD_LIMIT, () ->
                     new ChunkService(
@@ -197,7 +197,12 @@ public class Server implements NetworkUser {
                 Random random = new Random();
                 int x = random.nextInt(-ConstantCommonSettings.CHUNK_SIZE, ConstantCommonSettings.CHUNK_SIZE - 1);
                 int z = random.nextInt(-ConstantCommonSettings.CHUNK_SIZE, ConstantCommonSettings.CHUNK_SIZE - 1);
-                Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(new Position2D(IndexCalculator.chunkX(x), IndexCalculator.chunkZ(z)));
+                Position2D position2D = new Position2D(IndexCalculator.chunkX(x), IndexCalculator.chunkZ(z));
+                Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(position2D);
+                if (chunkHeights == null) {
+                    Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
+                    chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);
+                }
                 int height = chunkHeights.getBlock(IndexCalculator.localX(x), IndexCalculator.localZ(z));
                 playerEntity.set(IndexCalculator.localX(x) + 0.5, height + 3, IndexCalculator.localZ(z) + 0.5);
                 serverClient = new ServerClient(clientID, ctx, playerEntity, this::removeClient);
@@ -302,59 +307,51 @@ public class Server implements NetworkUser {
     }
 
     private void sendQueuedClientPackets() {
-        try {
-            for (Map.Entry<String, ServerClient> entry : clients.entrySet()) {
-                String id = entry.getKey();
-                ServerClient serverClient = entry.getValue();
-                Queue<ServerBlockAndPosition> queuedReplacedBlocks = serverClient.getReplacedBlocks();
+        for (Map.Entry<String, ServerClient> entry : clients.entrySet()) {
+            String id = entry.getKey();
+            ServerClient serverClient = entry.getValue();
+            Queue<ServerBlockAndPosition> queuedReplacedBlocks = serverClient.getReplacedBlocks();
 
-                int size = queuedReplacedBlocks.size();
-                byte[][] outBytes = new byte[size][];
-                int byteCount = 4;
-                for (int i = 0; i < size; i++) {
-                    ServerBlockAndPosition block = queuedReplacedBlocks.poll();
-                    if (block == null) {
-                        Logger.warn(Logger.Priority.NORMAL, "Block was null when polling from queue, this should not happen");
-                        break;
-                    }
-                    byte[] blockBytes = block.serverBlock().getBlockBytes();
-                    byte[] out = new byte[17 + blockBytes.length];
-
-                    int chunkX = Math.floorDiv(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
-                    int chunkZ = Math.floorDiv(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
-
-                    int x = Math.floorMod(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
-                    int z = Math.floorMod(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
-
-                    ByteUtils.addInt(out, block.x(), 0);
-                    ByteUtils.addInt(out, block.y(), 4);
-                    ByteUtils.addInt(out, block.z(), 8);
-                    Position2D position2D = new Position2D(chunkX, chunkZ);
-                    Chunk2D<Integer> chunk2D = world.getChunkHeights(position2D);
-                    if (chunk2D == null) {
-                        chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
-                    }
-                    int highestY = chunk2D.getBlock(x, z);
-                    ByteUtils.addInt(out, highestY, 12);
-                    out[16] = (byte) (block.rotation() & 3);
-                    System.arraycopy(blockBytes, 0, out, 17, blockBytes.length);
-                    outBytes[i] = out;
-                    byteCount += out.length;
+            int size = queuedReplacedBlocks.size();
+            byte[][] outBytes = new byte[size][];
+            int byteCount = 4;
+            for (int i = 0; i < size; i++) {
+                ServerBlockAndPosition block = queuedReplacedBlocks.poll();
+                if (block == null) {
+                    Logger.warn(Logger.Priority.NORMAL, "Block was null when polling from queue, this should not happen");
+                    break;
                 }
+                byte[] blockBytes = block.serverBlock().getBlockBytes();
+                byte[] out = new byte[17 + blockBytes.length];
 
-                byte[] out = new byte[byteCount];
-                ByteUtils.addInt(out, size, 0);
+                int chunkX = Math.floorDiv(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
+                int chunkZ = Math.floorDiv(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
 
-                int index = 4;
-                for (int i = 0; i < size; i++) {
-                    System.arraycopy(outBytes[i], 0, out, index, outBytes[i].length);
-                    index += outBytes[i].length;
-                }
+                int x = Math.floorMod(block.x(), ConstantCommonSettings.CHUNK_WIDTH);
+                int z = Math.floorMod(block.z(), ConstantCommonSettings.CHUNK_LENGTH);
 
-                NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REPLACE_BLOCK, null, serverClient::disconnect, out);
+                ByteUtils.addInt(out, block.x(), 0);
+                ByteUtils.addInt(out, block.y(), 4);
+                ByteUtils.addInt(out, block.z(), 8);
+                Position2D position2D = new Position2D(chunkX, chunkZ);
+                int highestY = world.getStoredChunkHeights(position2D).getBlock(x, z);
+                ByteUtils.addInt(out, highestY, 12);
+                out[16] = (byte) (block.rotation() & 3);
+                System.arraycopy(blockBytes, 0, out, 17, blockBytes.length);
+                outBytes[i] = out;
+                byteCount += out.length;
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+
+            byte[] out = new byte[byteCount];
+            ByteUtils.addInt(out, size, 0);
+
+            int index = 4;
+            for (int i = 0; i < size; i++) {
+                System.arraycopy(outBytes[i], 0, out, index, outBytes[i].length);
+                index += outBytes[i].length;
+            }
+
+            NetworkService.sendBytes(serverClient.getCTX().channel(), PackageID.REPLACE_BLOCK, null, serverClient::disconnect, out);
         }
     }
 }

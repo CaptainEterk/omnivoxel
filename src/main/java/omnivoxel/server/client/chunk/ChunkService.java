@@ -77,6 +77,8 @@ public class ChunkService {
 
     public List<ChunkTask> serve(ChunkTask chunkTask, int queueSize) {
         try {
+            long startTime = System.nanoTime();
+
             Position3D chunkPosition = new Position3D(chunkTask.x(), chunkTask.y(), chunkTask.z());
             byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient(), chunkTask.lod());
 
@@ -117,6 +119,8 @@ public class ChunkService {
                         chunk
                 );
             }
+
+            System.out.println(queueSize + " " + (System.nanoTime() - startTime) + "ns");
 
             return null;
         } catch (IOException e) {

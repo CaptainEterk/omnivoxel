@@ -13,6 +13,7 @@ import omnivoxel.util.log.Logger;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 
 public final class Game {
     @SuppressWarnings("unchecked")
@@ -30,8 +31,9 @@ public final class Game {
     }
 
     public static void loadNoises(ArrayGameNode noises, long seed) {
+        Random random = new Random(seed + 1);
         for (GameNode node : noises.nodes()) {
-            loadNoise(checkGameNodeType(node, ObjectGameNode.class), seed);
+            loadNoise(checkGameNodeType(node, ObjectGameNode.class), random.nextLong());
         }
     }
 

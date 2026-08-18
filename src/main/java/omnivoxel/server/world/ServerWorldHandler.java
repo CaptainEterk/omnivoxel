@@ -35,8 +35,22 @@ public class ServerWorldHandler {
     public void init() {
         workerThreadPool.submit(new ChunkTask(null, 0, 0, 0, 0));
         workerThreadPool.submit(new ChunkTask(null, -1, 0, 0, 0));
-        workerThreadPool.submit(new ChunkTask(null, -1, 0, -1, 0));
         workerThreadPool.submit(new ChunkTask(null, 0, 0, -1, 0));
+        workerThreadPool.submit(new ChunkTask(null, -1, 0, -1, 0));
+
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        for (int y = -10; y < 100; y++) {
+            for (int x = -3; x < 3; x++) {
+                for (int z = -3; z < 3; z++) {
+                    workerThreadPool.submit(new ChunkTask(null, x, y, z, 0));
+                }
+            }
+        }
     }
 
     public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, byte rotation, ServerClient client) {
@@ -63,10 +77,7 @@ public class ServerWorldHandler {
                         Logger.debug("Replacing block in chunk: " + chunkX + " " + chunkY + " " + chunkZ + " at " + x + " " + y + " " + z + " with " + block.id());
 
                         Position2D position2D = position3D.getPosition2D();
-                        Chunk2D<Integer> chunkHeights = world.getChunkHeights(position2D);
-                        if (chunkHeights == null) {
-                            chunkHeights = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
-                        }
+                        Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(position2D);
                         if (chunkHeights == null) {
                             Logger.warn("Chunk heights are null at " + position2D + ". Rebuilding heightmap...");
                             chunkHeights = worldGenerator.rebuildChunkHeights(world, position2D);

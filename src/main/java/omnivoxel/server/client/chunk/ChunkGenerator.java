@@ -28,7 +28,7 @@ public final class ChunkGenerator {
         Chunk<ServerBlock> chunk = new SingleBlockChunk<>(ServerBlock.AIR, lod);
 
         if (worldDataService.shouldGenerateChunk(position3D)) {
-            ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D);
+            ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D, lod);
             int scale = 1 << lod;
 
             for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x += scale) {
@@ -55,7 +55,7 @@ public final class ChunkGenerator {
                 }
             }
         } else if (world.getChunkHeights(position3D.getPosition2D()) == null) {
-            worldDataService.getChunkInfo(world, position3D);
+            worldDataService.getChunkInfo(world, position3D, lod);
         }
 
         return chunk;
