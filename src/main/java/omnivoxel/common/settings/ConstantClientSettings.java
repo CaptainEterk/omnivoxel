@@ -1,7 +1,7 @@
 package omnivoxel.common.settings;
 
 public class ConstantClientSettings {
-    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.8.2-alpha";
+    public static final String DEFAULT_WINDOW_TITLE = "OmniVoxel v0.8.3-alpha";
 
     public static final String DEFAULT_SETTING_CONTENTS = """
             width=750
