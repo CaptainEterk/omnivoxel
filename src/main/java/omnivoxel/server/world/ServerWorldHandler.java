@@ -38,6 +38,8 @@ public class ServerWorldHandler {
         workerThreadPool.submit(new ChunkTask(null, 0, 0, -1, 0));
         workerThreadPool.submit(new ChunkTask(null, -1, 0, -1, 0));
 
+        //  1043.46
+
 //        for (int y = -10; y < 100; y++) {
 //            for (int x = -3; x < 3; x++) {
 //                for (int z = -3; z < 3; z++) {

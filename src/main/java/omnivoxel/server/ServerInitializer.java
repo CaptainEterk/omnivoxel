@@ -18,7 +18,7 @@ public class ServerInitializer {
         Files.createDirectories(Path.of(ConstantCommonSettings.LOG_LOCATION));
         Files.createDirectories(Path.of(ConstantServerSettings.WORLD_SAVE_LOCATION));
         Path chunkSaveLocation = Path.of(ConstantServerSettings.CHUNK_SAVE_LOCATION);
-        clearDirectory(chunkSaveLocation);
+//        clearDirectory(chunkSaveLocation);
         Files.createDirectories(chunkSaveLocation);
     }
 
