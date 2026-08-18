@@ -38,19 +38,13 @@ public class ServerWorldHandler {
         workerThreadPool.submit(new ChunkTask(null, 0, 0, -1, 0));
         workerThreadPool.submit(new ChunkTask(null, -1, 0, -1, 0));
 
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        for (int y = -10; y < 100; y++) {
-            for (int x = -3; x < 3; x++) {
-                for (int z = -3; z < 3; z++) {
-                    workerThreadPool.submit(new ChunkTask(null, x, y, z, 0));
-                }
-            }
-        }
+//        for (int y = -10; y < 100; y++) {
+//            for (int x = -3; x < 3; x++) {
+//                for (int z = -3; z < 3; z++) {
+//                    workerThreadPool.submit(new ChunkTask(null, x, y, z, 0));
+//                }
+//            }
+//        }
     }
 
     public void replaceBlock(int worldX, int worldY, int worldZ, ServerBlock block, byte rotation, ServerClient client) {
