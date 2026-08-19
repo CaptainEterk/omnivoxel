@@ -134,7 +134,7 @@ public class ChunkMeshDataLightingGenerator {
         return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D(), lightingChunkMeshDataTask.channel());
     }
 
-    private boolean checkCompleteDirtyNeighbor(Position3D position3D, ClientWorldChunk clientWorldChunk) {
+    private void checkCompleteDirtyNeighbor(Position3D position3D, ClientWorldChunk clientWorldChunk) {
         if (clientWorldChunk != null && clientWorldChunk.getLightingData() != null) {
             if (clientWorldChunk.isCleanLighting()) {
                 if (completeDirtyChunks.remove(position3D)) {
@@ -158,11 +158,9 @@ public class ChunkMeshDataLightingGenerator {
                         meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
                     }
                     clientWorldChunk.setCleanLighting(true);
-                    return true;
                 }
             }
         }
-        return false;
     }
 
     private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D, LightChannels channel) {
@@ -177,6 +175,9 @@ public class ChunkMeshDataLightingGenerator {
         if (clientWorldChunk.getChunkData(-1).getLOD() > 0) {
             clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 15)));
             clientWorldChunk.setCleanLighting(true);
+
+            completeDirtyChunks.remove(position3D);
+
             meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
 
             int foundCompleteDirtyChunkCount = 0;
@@ -195,9 +196,7 @@ public class ChunkMeshDataLightingGenerator {
             }
 
             for (int i = 0; i < foundCompleteDirtyChunkCount; i++) {
-                if (checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i])) {
-                    meshDataTasks.add(new LightingChunkMeshDataTask(null, foundCompleteDirtyNeighborPositions[i], null));
-                }
+                checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i]);
             }
             return meshDataTasks;
         }
@@ -234,19 +233,18 @@ public class ChunkMeshDataLightingGenerator {
             }
         }
 
-        LightChannel lightChannel = generateLighting(clientWorldChunk, position3D, channel, meshDataTasks);
+        LightChannel lightChannel = generateLighting(clientWorldChunk, clientWorldChunk.getChunkData(-1), position3D, channel, meshDataTasks);
         clientWorldChunk.getLightingData().setChannel(channel, lightChannel);
 
         clientWorldChunk.setCleanLighting(channel, !failed);
 
         for (int i = 0; i < foundCompleteDirtyChunkCount; i++) {
-            if (checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i])) {
-                meshDataTasks.add(new LightingChunkMeshDataTask(null, foundCompleteDirtyNeighborPositions[i], null));
-            }
+            checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i]);
         }
 
         if (clientWorldChunk.getLightingData().isComplete()) {
             if (clientWorldChunk.isCleanLighting()) {
+                completeDirtyChunks.remove(position3D);
                 meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
             } else {
                 completeDirtyChunks.add(position3D);
@@ -256,15 +254,15 @@ public class ChunkMeshDataLightingGenerator {
         return meshDataTasks;
     }
 
-    private LightChannel generateLighting(ClientWorldChunk clientWorldChunk, Position3D chunkPos, LightChannels lightChannels, Collection<LightingChunkMeshDataTask> meshDataTasks) {
+    private LightChannel generateLighting(ClientWorldChunk clientWorldChunk, Chunk<BlockWithMesh> chunk, Position3D chunkPos, LightChannels lightChannels, Collection<LightingChunkMeshDataTask> meshDataTasks) {
         if (lightChannels == LightChannels.RED) {
-            return generateLightChannel(meshDataTasks, clientWorldChunk, chunkPos, LightChannels.RED);
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.RED);
         } else if (lightChannels == LightChannels.GREEN) {
-            return generateLightChannel(meshDataTasks, clientWorldChunk, chunkPos, LightChannels.GREEN);
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.GREEN);
         } else if (lightChannels == LightChannels.BLUE) {
-            return generateLightChannel(meshDataTasks, clientWorldChunk, chunkPos, LightChannels.BLUE);
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.BLUE);
         } else if (lightChannels == LightChannels.SKYLIGHT) {
-            return generateLightChannel(meshDataTasks, clientWorldChunk, chunkPos, LightChannels.SKYLIGHT);
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.SKYLIGHT);
         } else {
             throw new IllegalArgumentException("Unexpected light channel: " + lightChannels);
         }
@@ -273,6 +271,7 @@ public class ChunkMeshDataLightingGenerator {
     private LightChannel generateLightChannel(
             Collection<LightingChunkMeshDataTask> lightingTasks,
             ClientWorldChunk clientWorldChunk,
+            Chunk<BlockWithMesh> chunk,
             Position3D chunkPos,
             LightChannels channel
     ) {
@@ -280,7 +279,7 @@ public class ChunkMeshDataLightingGenerator {
 
         byte[] lightChannel = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
 
-        loadChunkLights(channel, chunkPos, clientWorldChunk.getChunkData(-1));
+        loadChunkLights(channel, chunkPos, chunk);
 
         for (Direction dir : Direction.VALUES) {
             short[] neighbor = clientWorldChunk.getNeighborLightOverflow(channel, dir);
@@ -340,7 +339,7 @@ public class ChunkMeshDataLightingGenerator {
             return new SingleLightChannel((byte) 0);
         }
 
-        floodFill(lightChannel, clientWorldChunk.getChunkData(-1), channel);
+        floodFill(lightChannel, chunk, channel);
 
         propagateLighting(chunkPos, channel, lightingTasks);
 

@@ -67,4 +67,28 @@ public class ModifiedGeneratedChunk extends GeneratedChunk {
     public int getLOD() {
         return chunk.getLOD();
     }
+
+    public GeneratedChunk getChunk() {
+        return chunk;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public int getZ() {
+        return z;
+    }
+
+    public ServerBlock getBlock() {
+        return block;
+    }
+
+    public byte getRotation() {
+        return rotation;
+    }
 }

@@ -30,6 +30,12 @@ public class GeneralGeneratedChunk extends GeneratedChunk {
     }
 
     private ServerBlock[] extractBlocks(GeneratedChunk chunk) {
+        if (chunk instanceof ModifiedGeneratedChunk modifiedGeneratedChunk) {
+            ServerBlock[] blocks = extractBlocks(modifiedGeneratedChunk.getChunk());
+            blocks[index(modifiedGeneratedChunk.getX(), modifiedGeneratedChunk.getY(), modifiedGeneratedChunk.getZ())] = modifiedGeneratedChunk.getBlock();
+            return blocks;
+        }
+
         ServerBlock[] blocks = new ServerBlock[paddedSize * paddedSize * paddedSize];
 
         for (int x = -1; x <= size; x++) {
