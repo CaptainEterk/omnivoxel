@@ -80,7 +80,7 @@ public class ChunkService {
             long startTime = System.nanoTime();
 
             Position3D chunkPosition = new Position3D(chunkTask.x(), chunkTask.y(), chunkTask.z());
-            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.serverClient(), chunkTask.lod());
+            byte[] chunk = getChunkBytes(chunkPosition, chunkTask.lod());
 
             if (chunkTask.serverClient() != null) {
                 Position2D position2D = chunkPosition.getPosition2D();
@@ -128,7 +128,7 @@ public class ChunkService {
         }
     }
 
-    private byte[] getChunkBytes(Position3D chunkPosition, ServerClient client, int lod) throws IOException {
+    private byte[] getChunkBytes(Position3D chunkPosition, int lod) throws IOException {
         @SuppressWarnings("unchecked")
         Chunk<ServerBlock>[] chunks = new Chunk[27];
 
@@ -158,6 +158,6 @@ public class ChunkService {
             }
         }
 
-        return GeneratedChunk.getResult(createBuiltChunk(lod, chunks), client).bytes();
+        return GeneratedChunk.getResult(createBuiltChunk(lod, chunks)).bytes();
     }
 }

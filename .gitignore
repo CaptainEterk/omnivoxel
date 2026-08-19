@@ -35,3 +35,4 @@ bin/
 /assets/textures/texture_atlas.xcf
 /assets/icons/favicon.xcf
 /.omnivoxel/
+/.renderdoc/

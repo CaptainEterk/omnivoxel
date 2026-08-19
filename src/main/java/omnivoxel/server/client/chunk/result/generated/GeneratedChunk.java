@@ -15,16 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class GeneratedChunk {
-    private static ChunkResult emptyChunk = null;
-
-    public static ChunkResult getResult(GeneratedChunk generatedChunk, ServerClient client) {
-//        if (generatedChunk instanceof SingleBlockGeneratedChunk && client != null) {
-//            if (emptyChunk == null) {
-//                emptyChunk = getResult(new SingleBlockGeneratedChunk(ServerBlock.AIR, (byte) 0, generatedChunk.getLOD()), null);
-//            }
-//            return emptyChunk;
-//        }
-
+    public static ChunkResult getResult(GeneratedChunk generatedChunk) {
         int lod = generatedChunk.getLOD();
 
         int width = ConstantCommonSettings.CHUNK_WIDTH >> lod;

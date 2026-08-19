@@ -25,9 +25,10 @@ public final class ChunkGenerator {
     }
 
     public Chunk<ServerBlock> generateChunk(Position3D position3D, int lod) {
-        Chunk<ServerBlock> chunk = new SingleBlockChunk<>(ServerBlock.AIR, lod);
+        Chunk<ServerBlock> chunk = null;
 
         if (worldDataService.shouldGenerateChunk(position3D)) {
+            chunk = new SingleBlockChunk<>(null, lod);
             ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D, lod);
             int scale = 1 << lod;
 
@@ -58,7 +59,7 @@ public final class ChunkGenerator {
             worldDataService.getChunkInfo(world, position3D, lod);
         }
 
-        return chunk;
+        return chunk == null ? new SingleBlockChunk<>(ServerBlock.AIR, lod) : chunk;
     }
 
     public ServerWorldDataService getWorldDataService() {

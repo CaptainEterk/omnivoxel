@@ -25,6 +25,9 @@ public class SingleBlockChunk<B> implements Chunk<B> {
 
     @Override
     public Chunk<B> setBlock(int x, int y, int z, B block) {
+        if (this.block == null) {
+            return new SingleBlockChunk<B>(block, rotation, lod);
+        }
         if (this.block == block) {
             return this;
         }
