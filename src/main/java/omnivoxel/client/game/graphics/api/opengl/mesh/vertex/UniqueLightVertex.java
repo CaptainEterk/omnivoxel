@@ -1,5 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.vertex;
 
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.face.BlockFace;
 
@@ -9,7 +10,7 @@ public class UniqueLightVertex extends UniqueVertex {
     private final byte b;
     private final byte s;
 
-    public UniqueLightVertex(@NotNull Vertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace, byte r, byte g, byte b, byte s) {
+    public UniqueLightVertex(@NotNull BlockVertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace, byte r, byte g, byte b, byte s) {
         super(vertex, textureVertex, blockFace);
         this.r = r;
         this.g = g;
@@ -18,7 +19,7 @@ public class UniqueLightVertex extends UniqueVertex {
     }
 
     @Override
-    protected int computeHash(@NotNull Vertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
+    protected int computeHash(@NotNull BlockVertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
         int result = super.computeHash(vertex, textureVertex, blockFace);
         result = 31 * result + Byte.hashCode(r);
         result = 31 * result + Byte.hashCode(g);

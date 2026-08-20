@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3DProvider;
@@ -30,11 +30,10 @@ public class WeirdScaledSamplerDensityFunction extends DensityFunction {
         String noiseId = Game.checkGameNodeType(obj.object().get("noise"), StringGameNode.class).value();
         this.noise = Noise3DProvider.get(noiseId);
 
-        this.input = ServerWorldDataService.getDensityFunction(obj.object().get("input"), seed);
+        this.input = WorldGenerator.getDensityFunction(obj.object().get("input"), seed);
     }
 
     private double mapScale(double value) {
-        // This maps [-1..1] input to a [min..max] scale depending on mapper type
         double min, max;
         if ("type_1".equalsIgnoreCase(rarityValueMapper)) {
             min = 0.75;
@@ -45,7 +44,6 @@ public class WeirdScaledSamplerDensityFunction extends DensityFunction {
         } else {
             throw new IllegalArgumentException("Unknown rarity_value_mapper: " + rarityValueMapper);
         }
-        // Normalize input [-1,1] -> [0,1]
         double t = (value + 1.0) / 2.0;
         return min + (max - min) * t;
     }

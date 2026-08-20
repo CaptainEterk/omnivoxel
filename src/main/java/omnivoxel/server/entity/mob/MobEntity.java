@@ -7,8 +7,8 @@ public abstract class MobEntity extends GravityEntity {
     protected double yaw;
     protected double pitch;
 
-    protected MobEntity(String name, Hitbox hitbox) {
-        super(hitbox);
+    protected MobEntity(String entityID, String name, String meshID, Hitbox hitbox) {
+        super(entityID, meshID, hitbox);
         this.name = name;
     }
 
@@ -26,7 +26,7 @@ public abstract class MobEntity extends GravityEntity {
         return yaw;
     }
 
-    public void setYaw(float yaw) {
+    public void setYaw(double yaw) {
         this.yaw = yaw;
     }
 
@@ -34,7 +34,7 @@ public abstract class MobEntity extends GravityEntity {
         return pitch;
     }
 
-    public void setPitch(float pitch) {
+    public void setPitch(double pitch) {
         this.pitch = pitch;
     }
 }

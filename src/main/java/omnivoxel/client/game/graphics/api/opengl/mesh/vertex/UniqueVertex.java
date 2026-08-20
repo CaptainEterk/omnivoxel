@@ -1,5 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.vertex;
 
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.annotations.NotNull;
 import omnivoxel.common.face.BlockFace;
 
@@ -7,19 +8,19 @@ import java.util.Objects;
 
 
 public class UniqueVertex {
-    private final @NotNull Vertex vertex;
+    private final @NotNull BlockVertex vertex;
     private final @NotNull TextureVertex textureVertex;
     private final @NotNull BlockFace blockFace;
     private final int cachedHash;
 
-    public UniqueVertex(@NotNull Vertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
+    public UniqueVertex(@NotNull BlockVertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
         this.vertex = vertex;
         this.textureVertex = textureVertex;
         this.blockFace = blockFace;
         this.cachedHash = computeHash(vertex, textureVertex, blockFace);
     }
 
-    protected int computeHash(@NotNull Vertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
+    protected int computeHash(@NotNull BlockVertex vertex, @NotNull TextureVertex textureVertex, @NotNull BlockFace blockFace) {
         int result = 17;
         result = 31 * result + Float.hashCode(vertex.px());
         result = 31 * result + Float.hashCode(vertex.py());
@@ -42,7 +43,7 @@ public class UniqueVertex {
         return cachedHash == that.cachedHash && Objects.equals(vertex, that.vertex) && Objects.equals(textureVertex, that.textureVertex) && blockFace == that.blockFace;
     }
 
-    public Vertex vertex() {
+    public BlockVertex vertex() {
         return vertex;
     }
 

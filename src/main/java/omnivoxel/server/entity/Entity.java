@@ -1,16 +1,13 @@
 package omnivoxel.server.entity;
 
-import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.hitbox.Hitbox;
 import omnivoxel.server.client.ServerItem;
 import omnivoxel.util.math.DoublePosition3D;
 
-import java.security.SecureRandom;
-
 public abstract class Entity implements ServerItem {
     protected final float friction = getFriction();
-    protected final byte[] entityID;
+    protected final String entityID;
+    protected final String meshID;
     private final Hitbox hitbox;
     protected double x;
     protected double y;
@@ -18,13 +15,17 @@ public abstract class Entity implements ServerItem {
     protected double velocityX;
     protected double velocityY;
     protected double velocityZ;
-    protected EntityMesh mesh;
-    private MeshData meshData;
+    protected double pitch;
+    protected double yaw;
 
-    protected Entity(Hitbox hitbox) {
+    protected Entity(String entityID, String meshID, Hitbox hitbox) {
+        this.entityID = entityID;
+        this.meshID = meshID;
         this.hitbox = hitbox;
-        entityID = new byte[32];
-        new SecureRandom().nextBytes(entityID);
+    }
+
+    public String getMeshID() {
+        return meshID;
     }
 
     protected float getFriction() {
@@ -42,17 +43,29 @@ public abstract class Entity implements ServerItem {
         velocityZ *= frictionFactor;
     }
 
+    public String getEntityID() {
+        return entityID;
+    }
+
     public void set(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
     }
 
+    public void set(double x, double y, double z, double pitch, double yaw) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.pitch = pitch;
+        this.yaw = yaw;
+    }
+
     public double getX() {
         return x;
     }
 
-    public void setX(float x) {
+    public void setX(double x) {
         this.x = x;
     }
 
@@ -60,7 +73,7 @@ public abstract class Entity implements ServerItem {
         return y;
     }
 
-    public void setY(float y) {
+    public void setY(double y) {
         this.y = y;
     }
 
@@ -68,7 +81,7 @@ public abstract class Entity implements ServerItem {
         return z;
     }
 
-    public void setZ(float z) {
+    public void setZ(double z) {
         this.z = z;
     }
 
@@ -76,7 +89,7 @@ public abstract class Entity implements ServerItem {
         return velocityX;
     }
 
-    public void setVelocityX(float velocityX) {
+    public void setVelocityX(double velocityX) {
         this.velocityX = velocityX;
     }
 
@@ -84,7 +97,7 @@ public abstract class Entity implements ServerItem {
         return velocityY;
     }
 
-    public void setVelocityY(float velocityY) {
+    public void setVelocityY(double velocityY) {
         this.velocityY = velocityY;
     }
 
@@ -92,28 +105,28 @@ public abstract class Entity implements ServerItem {
         return velocityZ;
     }
 
-    public void setVelocityZ(float velocityZ) {
+    public void setVelocityZ(double velocityZ) {
         this.velocityZ = velocityZ;
     }
 
-    public MeshData getMeshData() {
-        return meshData;
+    public double getPitch() {
+        return pitch;
     }
 
-    public void setMeshData(MeshData meshData) {
-        this.meshData = meshData;
+    public void setPitch(double pitch) {
+        this.pitch = pitch;
+    }
+
+    public double getYaw() {
+        return yaw;
+    }
+
+    public void setYaw(double yaw) {
+        this.yaw = yaw;
     }
 
     public Hitbox getHitbox() {
         return hitbox;
-    }
-
-    public EntityMesh getMesh() {
-        return mesh;
-    }
-
-    public void setMesh(EntityMesh mesh) {
-        this.mesh = mesh;
     }
 
     public DoublePosition3D getPosition() {

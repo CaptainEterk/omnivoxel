@@ -14,11 +14,11 @@ public class Spline2D {
 
     public double evaluate(double x) {
         if (points.isEmpty()) return 0.0;
-        if (points.size() == 1) return points.get(0).y;
+        if (points.size() == 1) return points.getFirst().y;
 
         // Clamp if outside bounds
-        if (x <= points.get(0).x) return points.get(0).y;
-        if (x >= points.get(points.size() - 1).x) return points.get(points.size() - 1).y;
+        if (x <= points.getFirst().x) return points.getFirst().y;
+        if (x >= points.getLast().x) return points.getLast().y;
 
         // Find the two points this x is between
         for (int i = 0; i < points.size() - 1; i++) {

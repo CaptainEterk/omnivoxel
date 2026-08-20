@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.server.games.Game;
 import omnivoxel.util.game.nodes.GameNode;
@@ -15,7 +15,7 @@ public class HalfNegativeDensityFunction extends DensityFunction {
         super(args, seed);
 
         ObjectGameNode object = Game.checkGameNodeType(args, ObjectGameNode.class);
-        this.input = ServerWorldDataService.getDensityFunction(object.object().get("arg"), seed);
+        this.input = WorldGenerator.getDensityFunction(object.object().get("arg"), seed);
     }
 
     @Override

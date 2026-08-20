@@ -3,9 +3,8 @@
 // TODO: Make these uniforms
 #define TEXTURE_SIZE 16u
 in vec2 TexCoord;
-in float shadow;
 smooth in vec3 position;
-in vec4 lighting;
+in vec4 vLighting;
 in vec3 vNormal;
 in vec3 faceNormal;
 flat in uint blockType;
@@ -26,9 +25,13 @@ uniform sampler2D skyTexture;
 uniform vec4 fogColor;
 uniform float fogFar;
 uniform float fogNear;
+uniform float renderDistance;
+
 uniform float time;
 
 uniform sampler2D blockTexture;
+uniform float skyIntensity;
+uniform vec4 highlightColor;
 
 // SKY SHADER
 vec3 skyColor(vec3 dir, vec3 sunDir) {
@@ -64,10 +67,10 @@ vec3 getSunDir(float time) {
     float angle = time * 0.05;
 
     return normalize(vec3(
-                     cos(angle),
-                     sin(angle),
-                     0.0
-                     ));
+            cos(angle),
+            sin(angle),
+            0.0
+    ));
 }
 
 vec3 applySun(vec3 dir, vec3 sunDir) {
@@ -235,38 +238,57 @@ float simpleNoise(vec2 pos) {
 
 void main() {
     if (meshType == 0u) {
-        FragColor = texture(blockTexture, TexCoord / TEXTURE_SIZE);
+        vec4 texColor = texture(blockTexture, TexCoord / TEXTURE_SIZE);
+
+        texColor.rgb = pow(texColor.rgb, vec3(2.2));
+
+        FragColor = texColor;
         if (FragColor.a == 0) discard;
 
-        float distance = length(position - cameraPosition);\
-        float fogFactor = (fogFar - distance) / (fogFar - fogNear);
+        float distance = length(position - cameraPosition);
+        float fogFactor = fogColor.a == 1 ? 1 : (fogFar - distance) / (fogFar - fogNear);
         fogFactor = clamp(fogFactor, 0.0, 1.0);
-        if (fogFactor == 0) {
+        if (distance > renderDistance) {
             discard;
         }
 
+        vec4 lighting = pow(vLighting, vec4(2.2));
+        lighting = 1 - pow(vec4(0.5), lighting);
         vec3 blockLight = lighting.rgb;
         float skyLight = lighting.a;
         float ambient = 0.05;
 
         vec4 skyColor = texture(skyTexture, gl_FragCoord.xy / screenResolution);
 
-        // Combine: block light + skylight
-        vec3 totalLight = blockLight + vec3((sin(time / 20) / 2 + 0.5) * skyLight);
+        vec3 sunDir = getSunDir(time);
+
+        float NdotL = max(dot(normalize(faceNormal), sunDir), 0.0);
+
+        float diffuse = mix(0.2, 1.0, NdotL);
+
+        float directionalSky = skyLight * skyIntensity * diffuse;
+
+        vec3 totalLight = blockLight + vec3(directionalSky);
         totalLight = max(totalLight, vec3(ambient));
-        FragColor.rgb *= totalLight * shadow;
+
+        totalLight = pow(totalLight, vec3(1.2));
+
+        FragColor.rgb *= totalLight;
 
         if (blockType == 1u) {
             float fresnel = 1 - abs(dot(vNormal, normalize(faceNormal)));
-            FragColor.a = fresnel * 5;
+            FragColor.a = fresnel / 1.5 + 1 - 0.66666;
         }
         if (fogFactor < 1.0) {
-            FragColor = mix(skyColor, FragColor, fogFactor);
+            FragColor = mix(fogColor, FragColor, fogFactor);
         }
+        FragColor.rgb = pow(FragColor.rgb, vec3(1.0 / 2.2));
         // TODO: Mix with filter color too for water and things.
     } else if (meshType == 1u) {
         FragColor = texture(blockTexture, TexCoord);
     } else if (meshType == 2u) {
         FragColor = skyColorMain();
+    } else if (meshType == 3u) {
+        FragColor = highlightColor;
     }
 }

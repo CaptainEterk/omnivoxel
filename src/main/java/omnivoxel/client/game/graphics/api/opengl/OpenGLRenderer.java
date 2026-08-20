@@ -1,6 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl;
 
-import omnivoxel.client.game.entity.ClientEntity;
+import omnivoxel.client.game.entity.EntityMeshWrapper;
 import omnivoxel.client.game.graphics.Renderer;
 import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
@@ -13,20 +13,31 @@ import omnivoxel.client.game.graphics.api.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.api.opengl.texture.TextureLoader;
 import omnivoxel.client.game.graphics.api.opengl.window.Window;
 import omnivoxel.client.game.graphics.api.opengl.window.WindowFactory;
+import omnivoxel.client.game.graphics.block.BlockMesh;
+import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.camera.Camera;
+import omnivoxel.client.game.graphics.camera.CameraCullingService;
+import omnivoxel.client.game.graphics.chunk.RenderedChunkProvider;
 import omnivoxel.client.game.graphics.menu.MenuSystem;
 import omnivoxel.client.game.position.DistanceChunk;
 import omnivoxel.client.game.position.PositionedChunk;
-import omnivoxel.common.settings.*;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
-import omnivoxel.common.annotations.NotNull;
+import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
+import omnivoxel.common.face.BlockFace;
+import omnivoxel.common.settings.ConstantClientSettings;
+import omnivoxel.common.settings.ConstantCommonSettings;
+import omnivoxel.common.settings.ConstantNetworkSettings;
+import omnivoxel.common.settings.Settings;
+import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.executor.ExecutorCollection;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.time.PeriodicTimeExecutor;
 import omnivoxel.util.time.Timer;
+import omnivoxel.world.chunk.Chunk;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.*;
@@ -40,6 +51,7 @@ public class OpenGLRenderer implements Renderer {
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f().identity();
     private static final int FPS_SAMPLES = 60;
     private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
+    private final List<PositionedChunk> decorationRenderedChunksInFrustum = new ArrayList<>();
     private final List<PositionedChunk> transparentRenderedChunksInFrustum = new ArrayList<>();
     // Client
     private final Client client;
@@ -53,6 +65,9 @@ public class OpenGLRenderer implements Renderer {
     private final AtomicBoolean gameRunning;
     private final Queue<Consumer<Window>> contextTasks;
     private final MenuSystem menuSystem;
+    private final CameraCullingService cameraCullingService;
+    private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
+    private final RenderedChunkProvider renderedChunkProvider;
     // TODO: Remove all TEMP
     // Window
     private Window window;
@@ -71,11 +86,12 @@ public class OpenGLRenderer implements Renderer {
     private boolean renderTracksWindowSize;
     private int renderFilter;
     private List<DistanceChunk> solidRenderedChunks;
+    private List<DistanceChunk> decorationRenderedChunks;
     private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
 
-    public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem) {
+    public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
         this.state = state;
         this.settings = settings;
         this.textRenderer = textRenderer;
@@ -85,13 +101,14 @@ public class OpenGLRenderer implements Renderer {
         this.gameRunning = gameRunning;
         this.contextTasks = contextTasks;
         this.menuSystem = menuSystem;
+        this.cameraCullingService = cameraCullingService;
+        this.renderedChunkProvider = new RenderedChunkProvider();
     }
 
-    // TODO: Create a constructor for as much of this as possible
     @Override
     public void init() throws IOException {
         // Creates an OpenGL window
-        this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantClientSettings.DEFAULT_WINDOW_TITLE, contextTasks);
+        this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantClientSettings.DEFAULT_WINDOW_TITLE, contextTasks, settings.getBooleanSetting("vsync", true));
 
         initShader();
 
@@ -138,10 +155,12 @@ public class OpenGLRenderer implements Renderer {
         this.shaderProgram = shaderProgramHandler.getShaderProgram(shaderProgramID) == null ? shaderProgramHandler.getShaderProgram("default") : shaderProgramHandler.getShaderProgram(shaderProgramID);
         this.textShaderProgram = shaderProgramHandler.getShaderProgram("text");
         this.shaderProgram.bind();
-        this.shaderProgram.setUniform("fogColor", 0.0f, 0.61568627451f, 1.0f, 1.0f);
+        this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 0.0f);
         this.shaderProgram.setUniform("fogFar", settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE);
         this.shaderProgram.setUniform("fogNear", (settings.getFloatSetting("render_distance", 100) - ConstantCommonSettings.CHUNK_SIZE) / 10 * 9);
+        this.shaderProgram.setUniform("renderDistance", settings.getFloatSetting("render_distance", 100));
         this.shaderProgram.setUniform("blockTexture", 0);
+        this.shaderProgram.setUniform("highlightColor", 0.0f, 0.0f, 0.0f, 0.7f);
         this.shaderProgram.unbind();
 
         this.textShaderProgram.bind();
@@ -158,6 +177,12 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("shouldUpdateVisibleMeshes", true);
         state.setItem("shouldCheckNewChunks", false);
         state.setItem("shouldAttemptFreeChunks", false);
+        state.setItem("shouldFreeAll", false);
+        state.setItem("shouldToggleWindowFullscreen", false);
+        state.setItem("has_observed_block", false);
+        // TODO: Remove in_water hardcoding
+        state.setItem("in_water", false);
+        state.setItem("prev_in_water", false);
 
         state.setItem("shouldRenderWireframe", false);
         state.setItem("seeDebug", true);
@@ -171,6 +196,7 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("total_rendered_chunks", 1);
 
         solidRenderedChunks = new ArrayList<>();
+        decorationRenderedChunks = new ArrayList<>();
         transparentRenderedChunks = new ArrayList<>();
 
         periodicTimeExecutorCollection = new ExecutorCollection<>();
@@ -224,15 +250,17 @@ public class OpenGLRenderer implements Renderer {
         calculateFrustumChunks();
 
         renderSolidChunks();
+        renderDecorationChunks();
         renderTransparentChunks();
+        renderBlockHighlight();
 
         bufferizeChunks();
 
         blitToWindowFramebuffer();
 
-//        addFrameAction(this::prepareGuiRendering);
-//        addFrameAction(this.menuSystem::tick);
-//        addFrameAction(this::resetGuiRendering);
+//        prepareGuiRendering();
+//        menuSystem.tick();
+//        resetGuiRendering();
         renderDebugText();
         openGLStateReset();
 
@@ -267,6 +295,11 @@ public class OpenGLRenderer implements Renderer {
 
         shaderProgram.bind();
         shaderProgram.setUniformUnsigned("meshType", 2);
+        float angle = (float) (GLFW.glfwGetTime() / 60 * Math.PI);
+        float sunY = (float) Math.sin(angle);
+
+        float skyIntensity = Math.max(0f, sunY);
+        shaderProgram.setUniform("skyIntensity", skyIntensity);
         fullscreenQuad.render();
 
         GL11C.glEnable(GL11C.GL_CULL_FACE);
@@ -303,6 +336,17 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void update() {
+        boolean inWater = state.getItem("in_water", Boolean.class);
+        if (inWater != state.getItem("prev_in_water", Boolean.class)) {
+            if (inWater) {
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.21f, 0.21f, 0.0f);
+                this.shaderProgram.setUniform("fogFar", (float) ConstantCommonSettings.CHUNK_SIZE / 2f);
+                this.shaderProgram.setUniform("fogNear", 0f);
+            } else {
+                this.shaderProgram.setUniform("fogColor", 0.0f, 0.0f, 0.0f, 1.0f);
+            }
+        }
+        state.setItem("prev_in_water", inWater);
         if (state.getItem("shouldRenderWireframe", Boolean.class)) {
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_LINE);
         }
@@ -314,7 +358,7 @@ public class OpenGLRenderer implements Renderer {
             Matrix4f viewMatrix = new Matrix4f().rotate((float) camera.getPitch(), 1, 0, 0).rotate((float) camera.getYaw(), 0, 1, 0);
             Matrix4f cameraViewMatrix = new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ());
 
-            camera.updateFrustum(projectionMatrix, new Matrix4f(viewMatrix).translate((float) -camera.getX(), (float) -camera.getY(), (float) -camera.getZ()));
+            camera.updateFrustum(projectionMatrix, cameraViewMatrix);
             shaderProgram.setUniform("projection", projectionMatrix);
             shaderProgram.setUniform("view", cameraViewMatrix);
             shaderProgram.setUniform("cameraView", cameraViewMatrix);
@@ -328,26 +372,56 @@ public class OpenGLRenderer implements Renderer {
             state.setItem("shouldUpdateView", false);
         }
 
-        if (world.chunkRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
+        if (world.inflightRequestCount() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MINIMUM) {
             state.setItem("shouldUpdateVisibleMeshes", true);
         }
 
-        List<DistanceChunk> chunks;
+        if (state.getItem("shouldFreeAll", Boolean.class)) {
+            world.freeAllChunksNotInAndNotRecentlyAccessed((position3D) -> false, Integer.MAX_VALUE);
+        }
+
+        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
+            attemptFreeChunks();
+        }
+
         if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
             solidRenderedChunks.clear();
+            decorationRenderedChunks.clear();
             transparentRenderedChunks.clear();
 
             int renderDistance = settings.getIntSetting("render_distance", 100);
 
-            attemptFreeChunks();
+            renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
+            List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
 
-            chunks = calculateRenderedChunks(renderDistance);
+            int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
+            int squaredRenderDistance = rdChunks * rdChunks;
 
+            // TODO: This is an expensive operation, optimize it
             for (DistanceChunk chunk : chunks) {
-                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false);
+                int lod = 0;
+
+//                if (chunk.distance() < squaredRenderDistance / 32) {
+//                    lod = 0;
+//                } else if (chunk.distance() < squaredRenderDistance / 16) {
+//                    lod = 1;
+//                } else if (chunk.distance() < squaredRenderDistance / 8) {
+//                    lod = 2;
+//                } else if (chunk.distance() < squaredRenderDistance / 4) {
+//                    lod = 3;
+//                } else if (chunk.distance() < squaredRenderDistance / 2) {
+//                    lod = 4;
+//                } else {
+//                    lod = 5;
+//                }
+
+                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false, lod);
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
                     if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
                         solidRenderedChunks.add(chunk);
+                    }
+                    if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
+                        decorationRenderedChunks.add(chunk);
                     }
                     if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
                         transparentRenderedChunks.add(chunk);
@@ -362,8 +436,9 @@ public class OpenGLRenderer implements Renderer {
             state.setItem("shouldUpdateVisibleMeshes", false);
         }
 
-        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
-            attemptFreeChunks();
+        if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
+            window.toggleFullscreen();
+            state.setItem("shouldToggleWindowFullscreen", false);
         }
     }
 
@@ -379,11 +454,11 @@ public class OpenGLRenderer implements Renderer {
     private void renderEntities() {
         GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, TEMP_texture);
         shaderProgram.setUniformUnsigned("meshType", 1);
-        Map<String, ClientEntity> entityMeshes = world.getEntities();
+        Map<String, EntityMeshWrapper> entityMeshes = world.getEntityMeshes();
 
-        entityMeshes.forEach((id, clientEntity) -> {
+        entityMeshes.forEach((id, entityMeshWrapper) -> {
 //            if (camera.getFrustum().isEntityInFrustum(clientEntity, camera)) {
-            renderEntityMesh(clientEntity.getMesh(), IDENTITY_MATRIX);
+            renderEntityMesh(entityMeshWrapper.entityMeshReference().getEntityMesh(), IDENTITY_MATRIX);
 //            }
         });
     }
@@ -393,6 +468,13 @@ public class OpenGLRenderer implements Renderer {
         for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
             if (camera.getFrustum().isChunkInFrustum(solidRenderedChunk.pos())) {
                 solidRenderedChunksInFrustum.add(new PositionedChunk(solidRenderedChunk.pos(), world.get(solidRenderedChunk.pos(), false, false)));
+            }
+        }
+
+        decorationRenderedChunksInFrustum.clear();
+        for (DistanceChunk decorationRenderedChunk : decorationRenderedChunks) {
+            if (camera.getFrustum().isChunkInFrustum(decorationRenderedChunk.pos())) {
+                decorationRenderedChunksInFrustum.add(new PositionedChunk(decorationRenderedChunk.pos(), world.get(decorationRenderedChunk.pos(), false, false)));
             }
         }
 
@@ -416,9 +498,10 @@ public class OpenGLRenderer implements Renderer {
         int occluded = 0;
 
         for (PositionedChunk positionedChunk : solidRenderedChunksInFrustum) {
-            Position3D position3D = positionedChunk.pos();
             if (positionedChunk.chunk().getMesh().solidVAO() > 0 && positionedChunk.chunk().getMesh().solidIndexCount() > 0) {
+                Position3D position3D = positionedChunk.pos();
                 shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
                 renderVAO(positionedChunk.chunk().getMesh().solidVAO(), positionedChunk.chunk().getMesh().solidIndexCount());
             } else {
                 occluded++;
@@ -428,9 +511,57 @@ public class OpenGLRenderer implements Renderer {
         state.setItem("geometry_culled_chunks", occluded);
     }
 
+    private void setMipmapping(boolean mipmapped) {
+        if (mipmapped) {
+            // Enable mipmaps
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MIN_FILTER,
+                    GL11C.GL_NEAREST_MIPMAP_LINEAR);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MAG_FILTER,
+                    GL11C.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    1000);
+        } else {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MIN_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MAG_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_BASE_LEVEL,
+                    0);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    0);
+        }
+    }
+
+    private void renderDecorationChunks() {
+        GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
+        setMipmapping(false);
+        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+        GL11C.glDisable(GL11C.GL_CULL_FACE);
+        for (PositionedChunk positionedChunk : decorationRenderedChunksInFrustum) {
+            Position3D position3D = positionedChunk.pos();
+            if (positionedChunk.chunk().getMesh().decorationVAO() > 0 && positionedChunk.chunk().getMesh().decorationIndexCount() > 0) {
+                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
+                renderVAO(positionedChunk.chunk().getMesh().decorationVAO(), positionedChunk.chunk().getMesh().decorationIndexCount());
+            }
+        }
+        setMipmapping(true);
+    }
+
     private void renderTransparentChunks() {
         GL11C.glDepthFunc(GL11C.GL_LESS);
-        GL11C.glDisable(GL11C.GL_CULL_FACE);
         GL11C.glDepthMask(false);
         GL11C.glEnable(GL11C.GL_BLEND);
         GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
@@ -439,6 +570,7 @@ public class OpenGLRenderer implements Renderer {
             PositionedChunk positionedChunk = transparentRenderedChunksInFrustum.get(i);
             Position3D position3D = positionedChunk.pos();
             shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
+            shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
             if (positionedChunk.chunk().getMesh().transparentVAO() > 0 && positionedChunk.chunk().getMesh().transparentIndexCount() > 0) {
                 renderVAO(positionedChunk.chunk().getMesh().transparentVAO(), positionedChunk.chunk().getMesh().transparentIndexCount());
             } else {
@@ -446,6 +578,160 @@ public class OpenGLRenderer implements Renderer {
             }
         }
         state.setItem("geometry_culled_chunks", state.getItem("geometry_culled_chunks", Integer.class) + occluded);
+    }
+
+    private void renderBlockHighlight() {
+        if (!Boolean.TRUE.equals(state.getItem("has_observed_block", Boolean.class))) {
+            return;
+        }
+
+        Position3D observedBlock = state.getItem("observed_block", Position3D.class);
+        if (observedBlock == null) {
+            return;
+        }
+
+        int chunkX = IndexCalculator.chunkX(observedBlock.x());
+        int chunkY = IndexCalculator.chunkY(observedBlock.y());
+        int chunkZ = IndexCalculator.chunkZ(observedBlock.z());
+        int localX = IndexCalculator.localX(observedBlock.x());
+        int localY = IndexCalculator.localY(observedBlock.y());
+        int localZ = IndexCalculator.localZ(observedBlock.z());
+
+        ClientWorldChunk clientWorldChunk = world.get(new Position3D(chunkX, chunkY, chunkZ), false, false);
+        if (clientWorldChunk == null) {
+            return;
+        }
+
+        Chunk<BlockWithMesh> chunk = clientWorldChunk.getChunkData(-1);
+        if (chunk == null) {
+            return;
+        }
+
+        BlockWithMesh block = chunk.getBlock(localX, localY, localZ);
+        if (block == null) {
+            return;
+        }
+
+        BlockMesh blockMesh = block.blockMesh();
+        if (blockMesh == null || BlockShape.EMPTY_BLOCK_SHAPE_STRING.equals(blockMesh.getShape().id())) {
+            return;
+        }
+
+        WireframeShapeMesh wireframeMesh = wireframeShapeMeshes.computeIfAbsent(blockMesh.getShape().id(), ignored -> createWireframeShapeMesh(blockMesh.getShape()));
+        if (wireframeMesh.indexCount() == 0) {
+            return;
+        }
+
+        byte rotation = blockMesh.isRotatable() ? chunk.getBlockRotation(localX, localY, localZ) : 0;
+        Matrix4f model = new Matrix4f()
+                .translate(observedBlock.x(), observedBlock.y(), observedBlock.z())
+                .translate(0.5f, 0.0f, 0.5f)
+                .rotateY((float) ((rotation & 3) * Math.PI / 2.0))
+                .translate(-0.5f, 0.0f, -0.5f);
+
+        shaderProgram.setUniformUnsigned("meshType", 3);
+        shaderProgram.setUniform("model", model);
+        shaderProgram.setUniform("highlightColor", 0.0f, 0.0f, 0.0f, 0.5f);
+
+        GL11C.glEnable(GL11C.GL_DEPTH_TEST);
+        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
+        GL11C.glDepthMask(false);
+        GL11C.glDisable(GL11C.GL_CULL_FACE);
+        GL11C.glEnable(GL11C.GL_BLEND);
+        GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
+        GL11C.glLineWidth(2.0f);
+
+        GL30C.glBindVertexArray(wireframeMesh.vao());
+        GL11C.glDrawElements(GL11C.GL_LINES, wireframeMesh.indexCount(), GL11C.GL_UNSIGNED_INT, 0);
+        GL30C.glBindVertexArray(0);
+
+        GL11C.glLineWidth(1.0f);
+        GL11C.glDepthMask(true);
+    }
+
+    private WireframeShapeMesh createWireframeShapeMesh(BlockShape shape) {
+        List<Float> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+        Map<BlockVertex, Integer> vertexIndices = new HashMap<>();
+        Set<Long> edges = new HashSet<>();
+
+        for (BlockFace face : BlockFace.values()) {
+            if (face == BlockFace.NONE) {
+                continue;
+            }
+
+            BlockVertex[] faceVertices = shape.vertices()[face.ordinal()];
+            for (int i = 0; i < faceVertices.length; i++) {
+                int a = getWireframeVertexIndex(faceVertices[i], vertices, vertexIndices);
+                int b = getWireframeVertexIndex(faceVertices[(i + 1) % faceVertices.length], vertices, vertexIndices);
+                addWireframeEdge(a, b, edges, indices);
+            }
+        }
+
+        if (vertices.isEmpty() || indices.isEmpty()) {
+            return new WireframeShapeMesh(0, 0, 0, 0);
+        }
+
+        int vao = GL30C.glGenVertexArrays();
+        GL30C.glBindVertexArray(vao);
+
+        int vbo = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vbo);
+        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, toFloatArray(vertices), GL15C.GL_STATIC_DRAW);
+
+        int ebo = GL15C.glGenBuffers();
+        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GL15C.glBufferData(GL15C.GL_ELEMENT_ARRAY_BUFFER, toIntArray(indices), GL15C.GL_STATIC_DRAW);
+
+        GL20C.glEnableVertexAttribArray(3);
+        GL20C.glVertexAttribPointer(3, 3, GL11C.GL_FLOAT, false, 3 * Float.BYTES, 0L);
+
+        GL30C.glBindVertexArray(0);
+        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
+        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        OpenGLChecks.checkError("bufferize block highlight wireframe");
+        return new WireframeShapeMesh(vao, vbo, ebo, indices.size());
+    }
+
+    private int getWireframeVertexIndex(BlockVertex vertex, List<Float> vertices, Map<BlockVertex, Integer> vertexIndices) {
+        Integer index = vertexIndices.get(vertex);
+        if (index != null) {
+            return index;
+        }
+
+        int newIndex = vertexIndices.size();
+        vertexIndices.put(vertex, newIndex);
+        vertices.add(vertex.px());
+        vertices.add(vertex.py());
+        vertices.add(vertex.pz());
+        return newIndex;
+    }
+
+    private void addWireframeEdge(int a, int b, Set<Long> edges, List<Integer> indices) {
+        int min = Math.min(a, b);
+        int max = Math.max(a, b);
+        long edge = ((long) min << 32) | (max & 0xFFFFFFFFL);
+        if (edges.add(edge)) {
+            indices.add(min);
+            indices.add(max);
+        }
+    }
+
+    private float[] toFloatArray(List<Float> list) {
+        float[] out = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            out[i] = list.get(i);
+        }
+        return out;
+    }
+
+    private int[] toIntArray(List<Integer> list) {
+        int[] out = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            out[i] = list.get(i);
+        }
+        return out;
     }
 
     private void bufferizeChunks() {
@@ -538,7 +824,7 @@ public class OpenGLRenderer implements Renderer {
                             Position: %.2f %.2f %.2f
                             Delta Time: %.4f
                             Chunks:
-                            \t- Rendered: %d/%d/%d
+                            \t- Rendered: %d/%d/%d/%d
                             \t- Loaded: %d
                             \t- Should be loaded: %d
                             \t- Bufferized Chunks: %d
@@ -551,13 +837,16 @@ public class OpenGLRenderer implements Renderer {
                             \t- Velocity X: %.2f
                             \t- Velocity Y: %.2f
                             \t- Velocity Z: %.2f
+                            \t- Pitch: %.2f
+                            \t- Yaw: %.2f
                             \t- On Ground: %b
                             \t- Friction Factor: %.2f
                             \t- Movement Mode: %s
+                            \t- Selected Block: %s
+                            \t- Observed Block: %s
+                            \t- In Water: %b
                             Pipelines:
                             \t- Queued Meshes: %d
-                            \t- Queued Mesh Data's: %d
-                            \t- Bufferizing Chunks: %d
                             Lighting Worker Threads:
                             \t- Thread 1: %d
                             \t- Thread 2: %d
@@ -590,25 +879,29 @@ public class OpenGLRenderer implements Renderer {
                     camera.getY(),
                     camera.getZ(),
                     state.getItem("deltaTime", Double.class),
-                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size(),
+                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size() + decorationRenderedChunksInFrustum.size(),
                     solidRenderedChunksInFrustum.size(),
+                    decorationRenderedChunksInFrustum.size(),
                     transparentRenderedChunksInFrustum.size(),
                     world.size(),
                     state.getItem("total_rendered_chunks", Integer.class),
                     state.getItem("bufferizing_chunk_count", Integer.class),
                     state.getItem("bufferizing_queue_size", Integer.class),
-                    world.chunkRequestCount(),
+                    world.inflightRequestCount(),
                     state.getItem("chunk_requests_sent", Integer.class),
                     state.getItem("chunk_requests_received", Integer.class),
                     state.getItem("velocity_x", Double.class),
                     state.getItem("velocity_y", Double.class),
                     state.getItem("velocity_z", Double.class),
+                    state.getItem("pitch", Double.class),
+                    state.getItem("yaw", Double.class),
                     state.getItem("on_ground", Boolean.class),
                     state.getItem("friction_factor", Double.class),
                     state.getItem("movement_mode", String.class),
-                    0,
-                    0,
-                    0,
+                    state.getItem("selected_block", String.class),
+                    state.getItem("observed_block_id", String.class),
+                    state.getItem("in_water", Boolean.class),
+                    world.inPipelineChunkCount(),
                     state.getItem("Worker-0_queue_size_cmdlg", Integer.class),
                     state.getItem("Worker-1_queue_size_cmdlg", Integer.class),
                     state.getItem("Worker-2_queue_size_cmdlg", Integer.class),
@@ -641,7 +934,7 @@ public class OpenGLRenderer implements Renderer {
             GL11.glDisable(GL11.GL_DEPTH_TEST);
 
             textRenderer.queueText(this.menuSystem.getFont(), leftDebugText, 4, 4, 0.6f, Alignment.LEFT);
-            textRenderer.queueText(this.menuSystem.getFont(), "", window.getWidth() - 4, 4, 0.6f, Alignment.RIGHT);
+            textRenderer.queueText(this.menuSystem.getFont(), "+", window.getWidth() / 2f, window.getHeight() / 2f, 0.6f, Alignment.CENTER);
 
             textRenderer.flush();
 
@@ -659,85 +952,18 @@ public class OpenGLRenderer implements Renderer {
     }
 
     private void renderVAO(int vao, int indexCount) {
-        // Bind the VAO
         GL30C.glBindVertexArray(vao);
 
-        // Draw the elements using indices in the VAO
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
     }
 
-    private @NotNull List<DistanceChunk> calculateRenderedChunks(int renderDistance) {
-        int frustumBias = settings.getIntSetting("frustum_bias", 10);
-
-        int chunkX = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_WIDTH) + 1;
-        int chunkY = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_HEIGHT) + 1;
-        int chunkZ = Math.round((float) renderDistance / ConstantCommonSettings.CHUNK_LENGTH) + 1;
-
-        int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
-        int squaredRenderDistance = rdChunks * rdChunks;
-        Map<Integer, Set<DistanceChunk>> positionedChunks = new HashMap<>();
-        int highestBucketDistance = 0;
-
-        int ccx = (int) -Math.floor(camera.getX() / ConstantCommonSettings.CHUNK_WIDTH);
-        int ccy = (int) -Math.floor(camera.getY() / ConstantCommonSettings.CHUNK_HEIGHT);
-        int ccz = (int) -Math.floor(camera.getZ() / ConstantCommonSettings.CHUNK_LENGTH);
-        int count = 0;
-
-        for (int x = -chunkX; x <= chunkX; x++) {
-            for (int y = -chunkY; y <= chunkY; y++) {
-                for (int z = -chunkZ; z <= chunkZ; z++) {
-                    int dx = x - ccx;
-                    int dy = y - ccy;
-                    int dz = z - ccz;
-                    int distance = x * x + y * y + z * z;
-
-                    if (distance < squaredRenderDistance) {
-                        Position3D position3D = new Position3D(dx, dy, dz);
-
-                        if (!camera.getFrustum().isChunkInFrustum(position3D)) {
-                            distance *= frustumBias;
-                        }
-
-                        if (distance > highestBucketDistance) {
-                            highestBucketDistance = distance;
-                        }
-
-                        positionedChunks.computeIfAbsent(distance, i -> new HashSet<>()).add(new DistanceChunk(distance, position3D));
-                        count++;
-                    }
-                }
-            }
-        }
-
-        List<DistanceChunk> out = new ArrayList<>(count);
-
-        for (int i = 0; i < highestBucketDistance; i++) {
-            Set<DistanceChunk> posChunks = positionedChunks.get(i);
-            if (posChunks != null) {
-                out.addAll(posChunks);
-            }
-        }
-
-        return out;
-    }
-
     private void attemptFreeChunks() {
-        int ccx = (int) Math.floor(camera.getX() / ConstantCommonSettings.CHUNK_WIDTH);
-        int ccy = (int) Math.floor(camera.getY() / ConstantCommonSettings.CHUNK_HEIGHT);
-        int ccz = (int) Math.floor(camera.getZ() / ConstantCommonSettings.CHUNK_LENGTH);
-
         int renderDistance = settings.getIntSetting("render_distance", 100);
         int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
         int squaredRenderDistance = rdChunks * rdChunks;
 
-        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> {
-            int dx = position3D.x() - ccx;
-            int dy = position3D.y() - ccy;
-            int dz = position3D.z() - ccz;
-            int distance = dx * dx + dy * dy + dz * dz;
-
-            return distance < squaredRenderDistance;
-        });
+        cameraCullingService.calculateChunkPosition();
+        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), settings.getIntSetting("free_chunk_max", 100));
         state.setItem("shouldAttemptFreeChunks", false);
     }
 
@@ -769,6 +995,19 @@ public class OpenGLRenderer implements Renderer {
             fullscreenQuad.cleanup();
         }
 
+        for (WireframeShapeMesh wireframeShapeMesh : wireframeShapeMeshes.values()) {
+            if (wireframeShapeMesh.vao() > 0) {
+                GL30C.glDeleteVertexArrays(wireframeShapeMesh.vao());
+            }
+            if (wireframeShapeMesh.vbo() > 0) {
+                GL15C.glDeleteBuffers(wireframeShapeMesh.vbo());
+            }
+            if (wireframeShapeMesh.ebo() > 0) {
+                GL15C.glDeleteBuffers(wireframeShapeMesh.ebo());
+            }
+        }
+        wireframeShapeMeshes.clear();
+
         if (renderFramebuffer != null) {
             renderFramebuffer.cleanup();
             renderFramebuffer = null;
@@ -788,5 +1027,8 @@ public class OpenGLRenderer implements Renderer {
     @Override
     public Window getWindow() {
         return window;
+    }
+
+    private record WireframeShapeMesh(int vao, int vbo, int ebo, int indexCount) {
     }
 }

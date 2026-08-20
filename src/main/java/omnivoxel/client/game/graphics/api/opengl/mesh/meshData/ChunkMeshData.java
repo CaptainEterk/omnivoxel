@@ -10,14 +10,17 @@ public record ChunkMeshData(
         ByteBuffer solidIndices,
         ByteBuffer transparentVertices,
         ByteBuffer transparentIndices,
+        ByteBuffer decorationVertices,
+        ByteBuffer decorationIndices,
         Position3D chunkPosition
 ) implements MeshData {
     @Override
     public void cleanup() {
-        // Free buffer data
-        MemoryUtil.memFree(solidVertices);
-        MemoryUtil.memFree(solidIndices);
-        MemoryUtil.memFree(transparentVertices);
-        MemoryUtil.memFree(transparentIndices);
+        if (solidVertices != null) MemoryUtil.memFree(solidVertices);
+        if (solidIndices != null) MemoryUtil.memFree(solidIndices);
+        if (transparentVertices != null) MemoryUtil.memFree(transparentVertices);
+        if (transparentIndices != null) MemoryUtil.memFree(transparentIndices);
+        if (decorationVertices != null) MemoryUtil.memFree(decorationVertices);
+        if (decorationIndices != null) MemoryUtil.memFree(decorationIndices);
     }
 }

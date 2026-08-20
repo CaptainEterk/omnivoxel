@@ -6,8 +6,8 @@ import omnivoxel.client.game.input.KeyInput;
 import omnivoxel.client.game.input.MouseButtonInput;
 import omnivoxel.client.game.input.MouseInput;
 import omnivoxel.client.game.player.PlayerController;
-import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.client.network.Client;
+import omnivoxel.common.settings.ConstantClientSettings;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,21 +49,23 @@ public class TickLoop implements Runnable {
             long deltaTime = ConstantClientSettings.TICK_LENGTH_NS;
             long nextTickTime = System.nanoTime();
 
+            int tick = 0;
+
             while (gameRunning.get()) {
                 long now = System.nanoTime();
-                if (now >= nextTickTime) {
-                    playerController.tick(deltaTime / 1_000_000_000.0);
+
+                while (now >= nextTickTime) {
+                    playerController.tick(tick++, deltaTime/1_000_000_000.0);
                     nextTickTime += deltaTime;
-                } else {
-                    long sleepTime = nextTickTime - now;
-                    if (sleepTime > 1_000_000) {
-                        // Sleep most of the time
-                        LockSupport.parkNanos(sleepTime - 500_000);
-                    }
-                    // Short busy-wait for precision
-                    while (System.nanoTime() < nextTickTime) {
-                        Thread.onSpinWait();
-                    }
+                }
+
+                long sleepTime = nextTickTime - System.nanoTime();
+                if (sleepTime > 1_000_000) {
+                    LockSupport.parkNanos(sleepTime - 500_000);
+                }
+
+                while (System.nanoTime() < nextTickTime) {
+                    Thread.onSpinWait();
                 }
             }
         } catch (Exception e) {

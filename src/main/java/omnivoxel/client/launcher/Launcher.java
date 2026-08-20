@@ -7,14 +7,14 @@ import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.camera.Camera;
 import omnivoxel.client.game.graphics.camera.Frustum;
 import omnivoxel.client.game.player.PlayerController;
-import omnivoxel.common.settings.ConstantCommonSettings;
-import omnivoxel.common.settings.Settings;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.tick.TickLoop;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
 import omnivoxel.client.network.ClientLauncher;
 import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.common.settings.ConstantCommonSettings;
+import omnivoxel.common.settings.Settings;
 import omnivoxel.util.log.Logger;
 import omnivoxel.world.block.BlockService;
 
@@ -50,31 +50,32 @@ public class Launcher {
         Settings settings = new Settings();
         settings.load(ConstantCommonSettings.CONFIG_LOCATION);
 
-        ClientWorld world = new ClientWorld(state);
+        ClientWorld world = new ClientWorld(state, settings);
 
         BlockService<BlockWithMesh> blockService = new BlockService<>((id -> new BlockWithMesh(id, clientWorldDataService.getBlock(id))));
 
-        Client client = new Client(clientID, clientWorldDataService, world, blockService);
+        Client client = new Client(clientID, clientWorldDataService, world, blockService, settings);
         ClientLauncher clientLauncher = new ClientLauncher(connected, client);
         Thread clientThread = new Thread(clientLauncher, "Client");
         clientThread.start();
 
         world.setClient(client);
-        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
+
+        BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
+        Camera camera = new Camera(new Frustum(), state);
+        PlayerController playerController = new PlayerController(client, camera, settings, contextTasks, state, world, blockService);
+
+        client.setPlayer(playerController);
 
         if (connected.await(5L, TimeUnit.SECONDS)) {
-            client.setListeners(world.getEntityMeshDefinitionCache(), world.getQueuedEntityMeshData(), state);
+            client.setListeners(state);
             AtomicBoolean gameRunning = new AtomicBoolean(true);
-            BlockingQueue<Consumer<Window>> contextTasks = new LinkedBlockingDeque<>();
-
-            Camera camera = new Camera(new Frustum(), state);
 
             GameLoop gameLoop = new GameLoop(camera, world, gameRunning, contextTasks, client, state, settings);
 
             try {
                 gameLoop.init();
-
-                PlayerController playerController = new PlayerController(client, camera, settings, contextTasks, state, world, blockService, gameLoop.getRenderer().getWindow());
 
                 Thread tickLoopThread = new Thread(new TickLoop(playerController, gameRunning, contextTasks, client), "Tick Loop");
                 tickLoopThread.start();

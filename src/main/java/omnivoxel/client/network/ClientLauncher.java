@@ -1,6 +1,7 @@
 package omnivoxel.client.network;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -57,7 +58,8 @@ public class ClientLauncher implements Runnable {
                                     new NetworkHandler(client)
                             );
                         }
-                    }).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+                    }).option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                    .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
             Logger.info("Connecting to " + HOST + ":" + PORT);
 
@@ -68,7 +70,7 @@ public class ClientLauncher implements Runnable {
 
             Logger.info("Connected to server at " + HOST + ":" + PORT + " with clientID " + ByteUtils.bytesToHex(clientID));
 
-            NetworkService.sendBytes(future.channel(), PackageID.VERSION_HANDSHAKE, clientID, String.format("%-8s", VERSION_ID).getBytes());
+            NetworkService.sendBytes(future.channel(), PackageID.VERSION_HANDSHAKE, clientID, () -> Logger.error("Handshake failed"), String.format("%-8s", VERSION_ID).getBytes());
 
             future.channel().closeFuture().sync();
         } catch (Exception e) {

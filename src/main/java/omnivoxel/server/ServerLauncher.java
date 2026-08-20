@@ -1,22 +1,27 @@
 package omnivoxel.server;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.UnpooledUnsafeDirectByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.hitbox.BlockHitbox;
 import omnivoxel.common.network.NetworkHandler;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.client.ServerClient;
-import omnivoxel.server.client.chunk.ChunkIO;
+import omnivoxel.server.entity.EntityStorage;
+import omnivoxel.server.io.CacheIO;
+import omnivoxel.server.io.chunk.ChunkIO;
 import omnivoxel.server.world.ServerWorld;
-import omnivoxel.server.world.ServerWorldHandler;
 import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
@@ -31,8 +36,6 @@ public class ServerLauncher {
     }
 
     public void run(long seed) throws IOException {
-        Logger.setMinPriority(Logger.Priority.NORMAL);
-
         Settings settings = new Settings();
         settings.load(ConstantCommonSettings.CONFIG_LOCATION);
         int port = settings.getIntSetting("port", 1515);
@@ -44,12 +47,11 @@ public class ServerLauncher {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
         Map<String, BlockShape> blockShapeCache = new HashMap<>();
-
-        ServerWorld world = new ServerWorld();
+        Map<String, BlockHitbox[]> blockHitboxCache = new HashMap<>();
 
         try {
             Map<String, ServerClient> clients = new ConcurrentHashMap<>();
-            Server server = new Server(clients, seed, world, blockShapeCache, ChunkIO.BLOCK_SERVICE, new ServerWorldHandler(world, clients), settings);
+            Server server = new Server(clients, seed, new ServerWorld(), new EntityStorage(), blockShapeCache, blockHitboxCache, ChunkIO.BLOCK_SERVICE, settings);
             Thread thread = new Thread(server::run, "Server Tick Loop");
             thread.start();
 
@@ -66,6 +68,7 @@ public class ServerLauncher {
                             );
                         }
                     });
+            serverBootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
             ChannelFuture future = serverBootstrap.bind(ip, port).sync();
             Logger.info("Server started at " + ip + ":" + port);
@@ -76,6 +79,7 @@ public class ServerLauncher {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            CacheIO.stop();
         }
     }
 }

@@ -1,12 +1,11 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.tasks;
 
-import io.netty.buffer.ByteBuf;
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
 import omnivoxel.util.math.Position3D;
 
 import java.util.Objects;
 
-public record ChunkMeshDataTask(ByteBuf blocks, Position3D position3D) implements MeshDataTask {
+public record ChunkMeshDataTask(Position3D position3D) implements MeshDataTask {
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
@@ -21,8 +20,5 @@ public record ChunkMeshDataTask(ByteBuf blocks, Position3D position3D) implement
 
     @Override
     public void reject() {
-        if (blocks != null) {
-            blocks.release();
-        }
     }
 }

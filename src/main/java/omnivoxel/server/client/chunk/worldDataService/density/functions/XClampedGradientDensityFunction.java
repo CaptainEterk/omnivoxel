@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.util.game.nodes.GameNode;
 import omnivoxel.util.game.nodes.ObjectGameNode;
@@ -17,10 +17,10 @@ public class XClampedGradientDensityFunction extends DensityFunction {
         super(args, seed);
 
         if (args instanceof ObjectGameNode objectGameNode) {
-            this.from = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
-            this.to = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
-            this.fromValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
-            this.toValue = ServerWorldDataService.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.from = WorldGenerator.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.to = WorldGenerator.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.fromValue = WorldGenerator.getDensityFunction(objectGameNode.object().get("arg"), seed);
+            this.toValue = WorldGenerator.getDensityFunction(objectGameNode.object().get("arg"), seed);
         } else {
             throw new IllegalArgumentException("GameNode must be an ObjectGameNode, not " + args.getClass());
         }

@@ -1,45 +1,42 @@
 package omnivoxel.client.game.graphics.block;
 
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
 import omnivoxel.common.face.BlockFace;
 
 public abstract class BlockMesh {
-    protected String state;
+    protected final String state;
 
     protected BlockMesh(String state) {
         this.state = state;
     }
 
-    protected BlockMesh() {
-        this(null);
-    }
-
-    public abstract String getID();
-
     public abstract String getModID();
 
-    public abstract BlockShape getShape(BlockMesh top, BlockMesh bottom, BlockMesh north, BlockMesh south, BlockMesh east, BlockMesh west);
+    public abstract BlockShape getShape();
+
+    public abstract BlockHitbox[] getHitbox();
 
     public abstract int[] getUVCoordinates(BlockFace blockFace);
 
-    public abstract byte getLightDiffuse(LightChannels channel);
+    public abstract byte getLightDiffuse(BlockFace blockFace, LightChannels channel);
 
-    public abstract byte getLightEmitting(LightChannels channel);
+    public abstract byte getLightEmitting(BlockFace blockFace, LightChannels channel);
 
-    public boolean isTransparent() {
-        return false;
-    }
+    public abstract boolean shouldRenderTransparentMesh();
 
-    public boolean shouldRenderTransparentMesh() {
-        return false;
-    }
+    public abstract boolean shouldRenderDecorationMesh();
 
-    public boolean shouldRenderFace(BlockFace face, BlockMesh adjacentBlockMesh) {
-        return adjacentBlockMesh.isTransparent();
-    }
+    public abstract boolean isSelfOccluded();
+
+    public abstract boolean isRotatable();
+
+    public abstract boolean canPlaceOn();
 
     public String getState() {
         return state;
     }
+
+    public abstract int getShaderType();
 }

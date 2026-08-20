@@ -24,25 +24,46 @@ public final class ChunkGenerator {
         this.worldBoundingBoxes = worldBoundingBoxes;
     }
 
-    public Chunk<ServerBlock> generateChunk(Position3D position3D) {
-        Chunk<ServerBlock> chunk = new SingleBlockChunk<>(ServerBlock.AIR);
+    public Chunk<ServerBlock> generateChunk(Position3D position3D, int lod) {
+        Chunk<ServerBlock> chunk = null;
+
         if (worldDataService.shouldGenerateChunk(position3D)) {
-            ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D);
-            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
+            chunk = new SingleBlockChunk<>(null, lod);
+            ChunkInfo chunkInfo = worldDataService.getChunkInfo(world, position3D, lod);
+            int scale = 1 << lod;
+
+            for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x += scale) {
                 int worldX = position3D.x() * ConstantCommonSettings.CHUNK_WIDTH + x;
-                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
+
+                for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z += scale) {
                     int worldZ = position3D.z() * ConstantCommonSettings.CHUNK_LENGTH + z;
-                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y++) {
+
+                    for (int y = 0; y < ConstantCommonSettings.CHUNK_HEIGHT; y += scale) {
                         int worldY = position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT + y;
-                        chunk = chunk.setBlock(x, y, z, worldDataService.getBlockAt(x, y, z, worldX, worldY, worldZ, chunkInfo));
+
+                        ServerBlock block = worldDataService.getBlockAt(
+                                x,
+                                y,
+                                z,
+                                worldX,
+                                worldY,
+                                worldZ,
+                                chunkInfo
+                        );
+
+                        chunk = chunk.setBlock(x >> lod, y >> lod, z >> lod, block);
                     }
                 }
             }
         } else if (world.getChunkHeights(position3D.getPosition2D()) == null) {
-            worldDataService.getChunkInfo(world, position3D);
+            worldDataService.getChunkInfo(world, position3D, lod);
         }
 
-        return chunk;
+        return chunk == null ? new SingleBlockChunk<>(ServerBlock.AIR, lod) : chunk;
+    }
+
+    public ServerWorldDataService getWorldDataService() {
+        return worldDataService;
     }
 
 //    private void generateSurroundingChunks(Position3D position3D, int scale) {

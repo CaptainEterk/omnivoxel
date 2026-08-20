@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.block.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.block.BlockFunction;
 import omnivoxel.server.client.chunk.worldDataService.block.condition.BlockConditionFunction;
 import omnivoxel.server.client.chunk.worldDataService.block.condition.functions.*;
@@ -35,7 +35,7 @@ public class ConditionBlockFunction extends BlockFunction {
 
         ObjectGameNode objectGameNode = Game.checkGameNodeType(args, ObjectGameNode.class);
         condition = getConditionFunction(Game.checkGameNodeType(objectGameNode.object().get("condition"), ObjectGameNode.class), seed);
-        ifTrue = ServerWorldDataService.getBlockFunction(objectGameNode.object().get("if_true"), seed);
+        ifTrue = WorldGenerator.getBlockFunction(objectGameNode.object().get("if_true"), seed);
     }
 
     private static void addBlockConditionFunction(Class<? extends BlockConditionFunction> blockConditionFunctionValueClass) {

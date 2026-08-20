@@ -1,22 +1,22 @@
 package omnivoxel.client.game.world;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting.ChunkMeshDataLightingGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.ChunkLightingData;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
+import omnivoxel.util.data.Direction;
 import omnivoxel.world.chunk.Chunk;
+import omnivoxel.world.chunk.ChunkLODSampler;
+import omnivoxel.world.chunk.ChunkShell;
 
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientWorldChunk {
+    private static final short[] EMPTY_OVERFLOW = new short[0];
     // TODO: Move to ChunkLightingData?
-    private final Map<LightChannels, Map<ChunkMeshDataLightingGenerator.Direction, Queue<ChunkMeshDataLightingGenerator.LightNode>>> neighborLightOverflowQueue;
-    private final Map<LightChannels, Map<ChunkMeshDataLightingGenerator.Direction, Map<Integer, Byte>>> neighborLightOverflowMap;
+    private final short[][] neighborLightOverflow;
+    private final AtomicBoolean[] cleanLighting;
     private MeshData meshData;
     private ChunkMesh mesh;
     private Chunk<BlockWithMesh> chunkData;
@@ -28,20 +28,19 @@ public class ClientWorldChunk {
         this.mesh = mesh;
         this.chunkData = chunkData;
         this.chunkLightingData = chunkLightingData;
-        this.neighborLightOverflowQueue = new ConcurrentHashMap<>();
-        for (LightChannels channel : LightChannels.values()) {
-            neighborLightOverflowQueue.put(channel, new ConcurrentHashMap<>());
-            for (ChunkMeshDataLightingGenerator.Direction direction : ChunkMeshDataLightingGenerator.Direction.values()) {
-                neighborLightOverflowQueue.get(channel).put(direction, new LinkedBlockingDeque<>());
-            }
+        this.neighborLightOverflow = new short[Direction.VALUES.length * LightChannels.values().length][];
+        for (int i = 0; i < neighborLightOverflow.length; i++) {
+            this.neighborLightOverflow[i] = EMPTY_OVERFLOW;
         }
-        this.neighborLightOverflowMap = new ConcurrentHashMap<>();
-        for (LightChannels channel : LightChannels.values()) {
-            neighborLightOverflowMap.put(channel, new ConcurrentHashMap<>());
-            for (ChunkMeshDataLightingGenerator.Direction direction : ChunkMeshDataLightingGenerator.Direction.values()) {
-                neighborLightOverflowMap.get(channel).put(direction, new ConcurrentHashMap<>());
-            }
+        this.cleanLighting = new AtomicBoolean[LightChannels.values().length];
+        for (int i = 0; i < cleanLighting.length; i++) {
+            cleanLighting[i] = new AtomicBoolean(false);
         }
+    }
+
+    public ClientWorldChunk(LightChannels channel, Direction direction, short[] overflowLighting) {
+        this(null, null, null, null);
+        setNeighborLightOverflow(channel, direction, overflowLighting);
     }
 
     public ClientWorldChunk(MeshData meshData) {
@@ -56,8 +55,8 @@ public class ClientWorldChunk {
         this(null, null, chunkData, null);
     }
 
-    public ClientWorldChunk(ChunkLightingData chunkLightingData) {
-        this(null, null, null, chunkLightingData);
+    private static int getOverflowIndex(LightChannels channel, Direction direction) {
+        return channel.ordinal() * Direction.VALUES.length + direction.ordinal();
     }
 
     public MeshData getMeshData() {
@@ -76,12 +75,16 @@ public class ClientWorldChunk {
         this.mesh = mesh;
     }
 
-    public Chunk<BlockWithMesh> getChunkData() {
-        return chunkData;
+    public Chunk<BlockWithMesh> getChunkData(int lod) {
+        return ChunkLODSampler.sample(chunkData, lod);
     }
 
-    public void setChunkData(Chunk<BlockWithMesh> chunkData) {
-        this.chunkData = chunkData;
+    public void setChunkData(Chunk<BlockWithMesh> chunkData, Chunk<BlockWithMesh> oldChunkData) {
+        if (chunkData instanceof ChunkShell<BlockWithMesh> newChunkData && this.chunkData instanceof ChunkShell<BlockWithMesh> && this.chunkData != oldChunkData) {
+            setChunkData(((ChunkShell<BlockWithMesh>) this.chunkData).merge(newChunkData), this.chunkData);
+        } else {
+            this.chunkData = chunkData;
+        }
     }
 
     public void touch(int tick) {
@@ -92,20 +95,12 @@ public class ClientWorldChunk {
         return lastFetched;
     }
 
-    public Queue<ChunkMeshDataLightingGenerator.LightNode> getNeighborLightOverflowQueue(LightChannels channel, ChunkMeshDataLightingGenerator.Direction direction) {
-        return neighborLightOverflowQueue.get(channel).get(direction);
+    public short[] getNeighborLightOverflow(LightChannels channel, Direction direction) {
+        return neighborLightOverflow[getOverflowIndex(channel, direction)];
     }
 
-    public Map<ChunkMeshDataLightingGenerator.Direction, Queue<ChunkMeshDataLightingGenerator.LightNode>> getNeighborLightOverflowQueue(LightChannels channel) {
-        return neighborLightOverflowQueue.get(channel);
-    }
-
-    public Map<Integer, Byte> getNeighborLightOverflowMap(LightChannels channel, ChunkMeshDataLightingGenerator.Direction direction) {
-        return neighborLightOverflowMap.get(channel).get(direction);
-    }
-
-    public Map<ChunkMeshDataLightingGenerator.Direction, Map<Integer, Byte>> getNeighborLightOverflowMap(LightChannels channel) {
-        return neighborLightOverflowMap.get(channel);
+    public void setNeighborLightOverflow(LightChannels channel, Direction direction, short[] overflow) {
+        neighborLightOverflow[getOverflowIndex(channel, direction)] = overflow;
     }
 
     public ChunkLightingData getLightingData() {
@@ -114,5 +109,32 @@ public class ClientWorldChunk {
 
     public void setChunkLightingData(ChunkLightingData chunkLightingData) {
         this.chunkLightingData = chunkLightingData;
+    }
+
+    public boolean isCleanLighting() {
+        for (AtomicBoolean atomicBoolean : cleanLighting) {
+            if (!atomicBoolean.get()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void setCleanLighting(boolean cleanLighting) {
+        for (AtomicBoolean atomicBoolean : this.cleanLighting) {
+            atomicBoolean.set(cleanLighting);
+        }
+    }
+
+    public boolean isCleanLighting(LightChannels channel) {
+        return cleanLighting[channel.ordinal()].get();
+    }
+
+    public void setCleanLighting(LightChannels channel, boolean cleanLighting) {
+        if (channel == null) {
+            setCleanLighting(cleanLighting);
+        } else {
+            this.cleanLighting[channel.ordinal()].set(cleanLighting);
+        }
     }
 }

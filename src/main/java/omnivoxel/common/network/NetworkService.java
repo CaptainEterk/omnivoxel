@@ -7,11 +7,11 @@ import omnivoxel.server.PackageID;
 import omnivoxel.util.log.Logger;
 
 public class NetworkService {
-    private static void flush(Channel channel, ByteBuf byteBuf) {
+    private static void flush(Channel channel, ByteBuf byteBuf, Runnable onError) {
         channel.writeAndFlush(byteBuf).addListener(f -> {
             if (!f.isSuccess()) {
                 Logger.error(Logger.Priority.HIGH, "Failed to send packet: " + f.cause());
-                f.cause().printStackTrace();
+                onError.run();
             }
         });
     }
@@ -32,20 +32,22 @@ public class NetworkService {
         return channel != null && channel.isActive();
     }
 
-    public static void sendDoubles(Channel channel, PackageID id, byte[] clientID, double... numbers) {
+    public static void sendDoubles(Channel channel, PackageID id, byte[] clientID, Runnable onError, double... numbers) {
         if (checkChannel(channel, id)) {
             ByteBuf buffer = Unpooled.buffer();
-            buffer.writeInt(Integer.BYTES + clientID.length + numbers.length * Double.BYTES);
+            buffer.writeInt(Integer.BYTES + (clientID == null ? 0 : clientID.length) + numbers.length * Double.BYTES);
             buffer.writeInt(id.ordinal());
-            buffer.writeBytes(clientID);
+            if (clientID != null) {
+                buffer.writeBytes(clientID);
+            }
             for (double i : numbers) {
                 buffer.writeDouble(i);
             }
-            flush(channel, buffer);
+            flush(channel, buffer, onError);
         }
     }
 
-    public static void sendBytes(Channel channel, PackageID id, byte[] clientID, byte[]... bytes) {
+    public static void sendBytes(Channel channel, PackageID id, byte[] clientID, Runnable onError, byte[]... bytes) {
         if (bytes.length == 0) {
             Logger.warn("NetworkService", "No bytes to send for PackageID." + id.toString());
         }
@@ -63,11 +65,11 @@ public class NetworkService {
             for (byte[] bites : bytes) {
                 buffer.writeBytes(bites);
             }
-            flush(channel, buffer);
+            flush(channel, buffer, onError);
         }
     }
 
-    public static void sendBytes3D(Channel channel, PackageID id, int x, int y, int z, byte[]... bytes) {
+    public static void sendBytes3D(Channel channel, PackageID id, int x, int y, int z, Runnable onError, byte[]... bytes) {
         if (checkChannel(channel, id)) {
             ByteBuf buffer = Unpooled.buffer();
             int length = Integer.BYTES * 5;
@@ -83,11 +85,11 @@ public class NetworkService {
                 buffer.writeInt(bites.length);
                 buffer.writeBytes(bites);
             }
-            flush(channel, buffer);
+            flush(channel, buffer, onError);
         }
     }
 
-    public static void sendBytes2D(Channel channel, PackageID id, int x, int z, byte[]... bytes) {
+    public static void sendBytes2D(Channel channel, PackageID id, int x, int z, Runnable onError, byte[]... bytes) {
         if (checkChannel(channel, id)) {
             ByteBuf buffer = Unpooled.buffer();
             int length = Integer.BYTES * 4;
@@ -102,11 +104,11 @@ public class NetworkService {
                 buffer.writeInt(bites.length);
                 buffer.writeBytes(bites);
             }
-            flush(channel, buffer);
+            flush(channel, buffer, onError);
         }
     }
 
-    public static void sendInts(Channel channel, PackageID id, byte[] clientID, int... numbers) {
+    public static void sendInts(Channel channel, PackageID id, byte[] clientID, Runnable onError, int... numbers) {
         if (checkChannel(channel, id)) {
             ByteBuf buffer = Unpooled.buffer();
             buffer.writeInt(Integer.BYTES + clientID.length + numbers.length * Integer.BYTES);
@@ -115,7 +117,7 @@ public class NetworkService {
             for (int i : numbers) {
                 buffer.writeInt(i);
             }
-            flush(channel, buffer);
+            flush(channel, buffer, onError);
         }
     }
 }

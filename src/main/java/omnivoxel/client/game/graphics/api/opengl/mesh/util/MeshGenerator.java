@@ -2,85 +2,63 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.util;
 
 import omnivoxel.client.game.graphics.api.opengl.OpenGLChecks;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.*;
+import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.EmptyChunkMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.GeneralChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.definition.GeneralEntityMeshDefinition;
+import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
-import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
-import org.joml.Matrix4f;
 
 import java.nio.ByteBuffer;
 
 import static org.lwjgl.opengl.GL30C.*;
 
 public class MeshGenerator {
-    public ChunkMesh bufferizeChunkMesh(MeshData mesh) {
+    public ChunkMesh bufferizeChunkMesh(ChunkMeshData mesh) {
         int[] solid = generateInt(mesh.solidVertices(), mesh.solidIndices());
         int[] transparent = generateInt(mesh.transparentVertices(), mesh.transparentIndices());
-        if (solid == null) {
-            if (transparent == null) {
-                return new EmptyChunkMesh();
-            } else {
-                return new TransparentChunkMesh(
-                        transparent[0],
-                        transparent[1],
-                        transparent[2],
-                        mesh.transparentIndices().capacity() / Integer.BYTES,
-                        mesh
-                );
-            }
-        } else if (transparent == null) {
-            return new SolidChunkMesh(
-                    solid[0],
-                    solid[1],
-                    solid[2],
-                    mesh.solidIndices().capacity() / Integer.BYTES,
-                    mesh
-            );
+        int[] decoration = generateInt(mesh.decorationVertices(), mesh.decorationIndices());
+        if (solid == null && transparent == null && decoration == null) {
+            return new EmptyChunkMesh();
         } else {
             return new GeneralChunkMesh(
-                    solid[0],
-                    solid[1],
-                    solid[2],
-                    mesh.solidIndices().capacity() / Integer.BYTES,
-                    transparent[0],
-                    transparent[1],
-                    transparent[2],
-                    mesh.transparentIndices().capacity() / Integer.BYTES,
+                    solid == null ? 0 : solid[0],
+                    solid == null ? 0 : solid[1],
+                    solid == null ? 0 : solid[2],
+                    solid == null ? 0 : mesh.solidIndices().capacity() / Integer.BYTES,
+                    transparent == null ? 0 : transparent[0],
+                    transparent == null ? 0 : transparent[1],
+                    transparent == null ? 0 : transparent[2],
+                    transparent == null ? 0 : mesh.transparentIndices().capacity() / Integer.BYTES,
+                    decoration == null ? 0 : decoration[0],
+                    decoration == null ? 0 : decoration[1],
+                    decoration == null ? 0 : decoration[2],
+                    decoration == null ? 0 : mesh.decorationIndices().capacity() / Integer.BYTES,
                     mesh
             );
         }
     }
 
     public EntityMesh bufferizeEntityMesh(EntityMeshData mesh) {
-        if (mesh.entity().getMesh() == null) {
-            int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
-            EntityMesh entityMesh = new EntityMesh(
-                    new GeneralEntityMeshDefinition(
-                            solid[0],
-                            solid[1],
-                            solid[2],
-                            mesh.solidIndices().capacity() / Integer.BYTES,
-                            mesh
-                    ),
-                    mesh
-            );
-            mesh.children().forEach(entityMeshData -> {
-                EntityMesh em = bufferizeEntityMesh(entityMeshData);
-                entityMesh.addChild(em);
-            });
-            mesh.entity().getMeshData().setModel(
-                    new Matrix4f()
-                            .translate((float) mesh.entity().getX(), (float) mesh.entity().getY(), (float) mesh.entity().getZ())
-                            .rotateY((float) mesh.entity().getYaw())
-                            .rotateX((float) mesh.entity().getPitch())
-            );
-            return entityMesh;
+        int[] solid = generateFloat(mesh.solidVertices(), mesh.solidIndices());
+        EntityMesh entityMesh = new EntityMesh(
+                new GeneralEntityMeshDefinition(
+                        solid[0],
+                        solid[1],
+                        solid[2],
+                        mesh.solidIndices().capacity() / Integer.BYTES,
+                        mesh
+                ),
+                mesh
+        );
+        for (EntityMeshData child : mesh.children()) {
+            entityMesh.addChild(bufferizeEntityMesh(child));
         }
-        return mesh.entity().getMesh();
+        return entityMesh;
     }
 
     private int[] generateFloat(ByteBuffer vertexBuffer, ByteBuffer indexBuffer) {
-        if (vertexBuffer == null || indexBuffer == null) {
+        if (vertexBuffer == null || indexBuffer == null || vertexBuffer.capacity() == 0 || indexBuffer.capacity() == 0) {
             return null;
         }
 
@@ -116,7 +94,6 @@ public class MeshGenerator {
 
         int vao = glGenVertexArrays();
         glBindVertexArray(vao);
-
         int vbo = glGenBuffers();
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, vertexBuffer, GL_STATIC_DRAW);

@@ -31,7 +31,7 @@ public class PerlinNoise {
     }
 
     private static double fade(double t) {
-        return t * t * t * (t * (t * 6f - 15f) + 10f);
+        return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
     }
 
     private static double lerp(double t, double a, double b) {
@@ -47,13 +47,17 @@ public class PerlinNoise {
     }
 
     public double sample(double x, double y, double z) {
-        int X = fastFloor(x) & 255;
-        int Y = fastFloor(y) & 255;
-        int Z = fastFloor(z) & 255;
+        int floorX = fastFloor(x);
+        int floorY = fastFloor(y);
+        int floorZ = fastFloor(z);
 
-        x -= fastFloor(x);
-        y -= fastFloor(y);
-        z -= fastFloor(z);
+        int X = floorX & 255;
+        int Y = floorY & 255;
+        int Z = floorZ & 255;
+
+        x -= floorX;
+        y -= floorY;
+        z -= floorZ;
 
         double u = fade(x);
         double v = fade(y);

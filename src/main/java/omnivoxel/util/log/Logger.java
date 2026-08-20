@@ -6,17 +6,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Queue;
 
 public final class Logger {
-    private static final Object LOCK = new Object();
-    private static final Map<String, Queue<String>> INFO_LOGS = new HashMap<>();
-    private static final Map<String, Queue<String>> DEBUG_LOGS = new HashMap<>();
-    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-    private static boolean showLogs = true;
+
+    private static final int BUFFER_SIZE = 256;
+
+    private static final ThreadLocal<LogBuffer> BUFFER =
+            ThreadLocal.withInitial(LogBuffer::new);
+
+    private static final StackWalker STACK_WALKER =
+            StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+
+    private static volatile boolean showLogs = true;
     private static volatile Priority minPriority = Priority.LOW;
 
     private Logger() {
@@ -99,96 +100,65 @@ public final class Logger {
     }
 
     private static void logError(String source, Priority priority, String message) {
-        if (!allowed(priority)) return;
+        if (!allowed(priority)) {
+            return;
+        }
 
         String formatted = format(priority, message);
+
         if (showLogs) {
             System.err.println("[" + source + "] " + formatted);
         }
-        synchronized (LOCK) {
-            getQueue(INFO_LOGS, source).add(formatted);
-            getQueue(DEBUG_LOGS, source).add(formatted);
-            writeInfo(source);
-        }
+
+        BUFFER.get().add(source, formatted);
     }
 
     private static void logWarn(String source, Priority priority, String message) {
-        if (!allowed(priority)) return;
+        if (!allowed(priority)) {
+            return;
+        }
 
         String formatted = format(priority, message);
+
         if (showLogs) {
-            System.err.println("\u001B[33m[" + source + "] " + formatted + "\u001B[0m");
+            System.err.println(
+                    "\u001B[33m[" + source + "] " + formatted + "\u001B[0m"
+            );
         }
-        synchronized (LOCK) {
-            getQueue(DEBUG_LOGS, source).add(formatted);
-            write(source);
-        }
+
+        BUFFER.get().add(source, formatted);
     }
 
     private static void logDebug(String source, Priority priority, String message) {
-        if (!allowed(priority)) return;
+        if (!allowed(priority)) {
+            return;
+        }
 
         String formatted = format(priority, message);
+
         if (showLogs) {
-            System.out.println("\u001B[34m[" + source + "] " + formatted + "\u001B[0m");
+            System.out.println(
+                    "\u001B[34m[" + source + "] " + formatted + "\u001B[0m"
+            );
         }
-        synchronized (LOCK) {
-            getQueue(DEBUG_LOGS, source).add(formatted);
-            write(source);
-        }
+
+        BUFFER.get().add(source, formatted);
     }
 
     private static void logInfo(String source, Priority priority, String message) {
-        if (!allowed(priority)) return;
+        if (!allowed(priority)) {
+            return;
+        }
 
         String formatted = format(priority, message);
+
         if (showLogs) {
-            System.out.println("\u001B[32m[" + source + "] " + formatted + "\u001B[0m");
-        }
-        synchronized (LOCK) {
-            getQueue(INFO_LOGS, source).add(formatted);
-            getQueue(DEBUG_LOGS, source).add(formatted);
-            writeInfo(source);
-        }
-    }
-
-    private static Queue<String> getQueue(Map<String, Queue<String>> logs, String source) {
-        return logs.computeIfAbsent(source, ignored -> new ArrayDeque<>());
-    }
-
-    private static void writeDebug(String source) {
-        writeFile(Path.of(ConstantCommonSettings.LOG_LOCATION + sanitize(source) + "_debug.log"), getQueue(DEBUG_LOGS, source));
-    }
-
-    private static void writeInfo(String source) {
-        writeFile(Path.of(ConstantCommonSettings.LOG_LOCATION + sanitize(source) + ".log"), getQueue(INFO_LOGS, source));
-    }
-
-    private static void write(String source) {
-        writeDebug(source);
-        writeInfo(source);
-    }
-
-    private static void writeFile(Path path, Queue<String> logs) {
-        try {
-            Path parent = path.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            Files.writeString(
-                    path,
-                    String.join("\n", logs),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.WRITE
+            System.out.println(
+                    "\u001B[32m[" + source + "] " + formatted + "\u001B[0m"
             );
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
-    }
 
-    private static String sanitize(String source) {
-        return source.toLowerCase().replace(' ', '_');
+        BUFFER.get().add(source, formatted);
     }
 
     private static String format(Priority priority, String message) {
@@ -204,9 +174,78 @@ public final class Logger {
                 .orElse(Logger.class.getSimpleName()));
     }
 
+    public static void writeRecentLogs() {
+        BUFFER.get().write();
+    }
+
+    private static String sanitize(String source) {
+        return source.toLowerCase().replace(' ', '_');
+    }
+
     public enum Priority {
         LOW,
         NORMAL,
         HIGH
+    }
+
+    private static final class LogBuffer {
+
+        private final LogEntry[] entries = new LogEntry[BUFFER_SIZE];
+
+        private int nextIndex;
+        private int size;
+
+        private void add(String source, String message) {
+            entries[nextIndex] = new LogEntry(source, message);
+
+            nextIndex = (nextIndex + 1) % BUFFER_SIZE;
+
+            if (size < BUFFER_SIZE) {
+                size++;
+            }
+        }
+
+        private void write() {
+            for (int i = 0; i < size; i++) {
+                int index = (nextIndex - size + i + BUFFER_SIZE) % BUFFER_SIZE;
+                LogEntry entry = entries[index];
+
+                if (entry == null) {
+                    continue;
+                }
+
+                writeFile(
+                        Path.of(
+                                ConstantCommonSettings.LOG_LOCATION
+                                        + sanitize(entry.source)
+                                        + ".log"
+                        ),
+                        entry.message
+                );
+            }
+        }
+
+        private static void writeFile(Path path, String message) {
+            try {
+                Path parent = path.getParent();
+
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+
+                Files.writeString(
+                        path,
+                        message + "\n",
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.APPEND,
+                        StandardOpenOption.WRITE
+                );
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private record LogEntry(String source, String message) {
     }
 }

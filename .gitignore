@@ -2,6 +2,7 @@
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+/.idea/
 
 ### Eclipse ###
 .apt_generated
@@ -33,3 +34,5 @@ bin/
 /assets/textures/player_texture.xcf
 /assets/textures/texture_atlas.xcf
 /assets/icons/favicon.xcf
+/.omnivoxel/
+/.renderdoc/

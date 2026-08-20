@@ -1,7 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.generators.lighting;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.MeshDataTask;
-import omnivoxel.client.game.graphics.api.opengl.mesh.generators.MeshDataGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.ChunkMeshDataTask;
 import omnivoxel.client.game.graphics.api.opengl.mesh.tasks.LightingChunkMeshDataTask;
 import omnivoxel.client.game.graphics.block.BlockMesh;
@@ -11,13 +10,16 @@ import omnivoxel.client.game.graphics.light.channel.GeneralLightChannel;
 import omnivoxel.client.game.graphics.light.channel.LightChannel;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
 import omnivoxel.client.game.graphics.light.channel.SingleLightChannel;
-import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
-import omnivoxel.client.network.chunk.worldDataService.ClientWorldDataService;
+import omnivoxel.client.network.chunk.ChunkUnpacker;
+import omnivoxel.common.face.BlockFace;
+import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.util.IndexCalculator;
+import omnivoxel.util.data.Direction;
 import omnivoxel.util.log.Logger;
+import omnivoxel.util.map.IntegerMap;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
 import omnivoxel.world.block.BlockService;
@@ -27,63 +29,192 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import java.util.*;
 
 public class ChunkMeshDataLightingGenerator {
-    private final Map<LightChannels, Map<Direction, LightNodeQueue>> borderLightQueues = new EnumMap<>(LightChannels.class);
+    private final Map<Direction, LightNodeQueue> borderLightQueues = new EnumMap<>(Direction.class);
     private final LightNodeQueue chunkLights;
     private final ClientWorld world;
-    private final ClientWorldDataService worldDataService;
     private final WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private final BlockService<BlockWithMesh> blockService;
     private final State state;
+    private final IntegerMap neighborMap = new IntegerMap();
+    private final Set<Position3D> completeDirtyChunks;
+    private final Position3D[] foundCompleteDirtyNeighborPositions = new Position3D[26];
+    private final ClientWorldChunk[] foundCompleteDirtyNeighborChunks = new ClientWorldChunk[26];
 
-    public ChunkMeshDataLightingGenerator(ClientWorld world, ClientWorldDataService worldDataService, WorkerThreadPool<MeshDataTask> meshDataGenerators, BlockService<BlockWithMesh> blockService, State state) {
+    public ChunkMeshDataLightingGenerator(ClientWorld world, WorkerThreadPool<MeshDataTask> meshDataGenerators, BlockService<BlockWithMesh> blockService, State state, Set<Position3D> completeDirtyChunks) {
         this.world = world;
-        this.worldDataService = worldDataService;
         this.meshDataGenerators = meshDataGenerators;
         this.blockService = blockService;
         this.state = state;
+        this.completeDirtyChunks = completeDirtyChunks;
         this.chunkLights = new LightNodeQueue();
+        if (ConstantCommonSettings.CHUNK_WIDTH > 32
+                || ConstantCommonSettings.CHUNK_HEIGHT > 32
+                || ConstantCommonSettings.CHUNK_LENGTH > 32) {
+            throw new IllegalStateException("Border light encoding supports chunk dimensions up to 32.");
+        }
 
-        for (LightChannels channel : LightChannels.values()) {
-            Map<Direction, LightNodeQueue> directionQueueMap = new EnumMap<>(Direction.class);
-            for (Direction dir : Direction.VALUES) {
-                directionQueueMap.put(dir, new LightNodeQueue());
-            }
-            borderLightQueues.put(channel, directionQueueMap);
+        for (Direction dir : Direction.VALUES) {
+            borderLightQueues.put(dir, new LightNodeQueue());
         }
     }
 
-    public List<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
+    private static short encodeUV(int x, int y, int z, Direction dir) {
+        int a = 0, b = 0;
+
+        switch (dir) {
+            case UP, DOWN -> {
+                a = x;
+                b = z;
+            }
+            case NORTH, SOUTH -> {
+                a = x;
+                b = y;
+            }
+            case EAST, WEST -> {
+                a = y;
+                b = z;
+            }
+        }
+
+        return (short) (
+                (a & 0b11111) |
+                        ((b & 0b11111) << 5)
+        );
+    }
+
+    private static int getNeighborLightIndex(Direction dir, int x, int y, int z) {
+        return switch (dir) {
+            case UP -> IndexCalculator.calculateBlockIndex(
+                    x,
+                    ConstantCommonSettings.CHUNK_HEIGHT - 1,
+                    z);
+
+            case DOWN -> IndexCalculator.calculateBlockIndex(
+                    x,
+                    0,
+                    z);
+
+            case NORTH -> IndexCalculator.calculateBlockIndex(
+                    x,
+                    y,
+                    0);
+
+            case SOUTH -> IndexCalculator.calculateBlockIndex(
+                    x,
+                    y,
+                    ConstantCommonSettings.CHUNK_LENGTH - 1);
+
+            case EAST -> IndexCalculator.calculateBlockIndex(
+                    ConstantCommonSettings.CHUNK_WIDTH - 1,
+                    y,
+                    z);
+
+            case WEST -> IndexCalculator.calculateBlockIndex(
+                    0,
+                    y,
+                    z);
+        };
+    }
+
+    private static void createLightingDataIfEmpty(ClientWorldChunk clientWorldChunk) {
+        if (clientWorldChunk.getLightingData() == null) {
+            clientWorldChunk.setChunkLightingData(new ChunkLightingData(null, null, null, null));
+        }
+    }
+
+    private static boolean shouldCalculate(ClientWorldChunk clientWorldChunk) {
+        return clientWorldChunk != null && clientWorldChunk.getChunkData(-1) != null;
+    }
+
+    public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
-            MeshDataGenerator.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), worldDataService, blockService, world);
+            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), blockService, world);
         }
-        try {
-            return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D());
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D(), lightingChunkMeshDataTask.channel());
+    }
+
+    private void checkCompleteDirtyNeighbor(Position3D position3D, ClientWorldChunk clientWorldChunk) {
+        if (clientWorldChunk != null && clientWorldChunk.getLightingData() != null) {
+            if (clientWorldChunk.isCleanLighting()) {
+                if (completeDirtyChunks.remove(position3D)) {
+                    meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+                }
+            } else {
+                boolean failed = false;
+                for (int x = -1; x <= 1; x++) {
+                    for (int y = -1; y <= 1; y++) {
+                        for (int z = -1; z <= 1; z++) {
+                            if (!(x == 0 && y == 0 && z == 0)) {
+                                for (LightChannels c : LightChannels.VALUES) {
+                                    failed |= isNeighborLightingInvalid(world.get(position3D.add(x, y, z), false, false), c);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!failed) {
+                    if (completeDirtyChunks.remove(position3D)) {
+                        meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+                    }
+                    clientWorldChunk.setCleanLighting(true);
+                }
+            }
         }
     }
 
-    private boolean calculateNeighborChunkLighting(Position3D position3D) {
+    private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D, LightChannels channel) {
         ClientWorldChunk clientWorldChunk = world.get(position3D, false, false);
-        if (clientWorldChunk != null && clientWorldChunk.getChunkData() != null) {
-            clientWorldChunk.setChunkLightingData(generateLighting(clientWorldChunk, position3D).chunkLightingData());
-            return false;
-        }
-        return true;
-    }
 
-    private boolean calculateChunkLighting(Position3D position3D) {
-        return calculateNeighborChunkLighting(position3D);
-    }
-
-    private List<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D) throws InterruptedException {
-        ClientWorldChunk clientWorldChunk = world.get(position3D, false, false);
-        if (clientWorldChunk == null) {
+        if (!shouldCalculate(clientWorldChunk)) {
             return null;
         }
 
-        List<LightingChunkMeshDataTask> meshDataTasks = new ArrayList<>();
+        Set<LightingChunkMeshDataTask> meshDataTasks = new HashSet<>();
+
+        if (clientWorldChunk.getChunkData(-1).getLOD() > 0) {
+            clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 15)));
+            clientWorldChunk.setCleanLighting(true);
+
+            completeDirtyChunks.remove(position3D);
+
+            meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+
+            int foundCompleteDirtyChunkCount = 0;
+            for (int x = -1; x <= 1; x++) {
+                for (int y = -1; y <= 1; y++) {
+                    for (int z = -1; z <= 1; z++) {
+                        if (!(x == 0 && y == 0 && z == 0)) {
+                            Position3D neighborPos = position3D.add(x, y, z);
+                            if (completeDirtyChunks.contains(neighborPos)) {
+                                foundCompleteDirtyNeighborPositions[foundCompleteDirtyChunkCount] = neighborPos;
+                                foundCompleteDirtyNeighborChunks[foundCompleteDirtyChunkCount++] = world.get(neighborPos, false, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < foundCompleteDirtyChunkCount; i++) {
+                checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i]);
+            }
+            return meshDataTasks;
+        }
+
+        if (channel == null) {
+            Set<LightingChunkMeshDataTask> out = new HashSet<>();
+            for (LightChannels lightChannel : LightChannels.values()) {
+                Set<LightingChunkMeshDataTask> lightingChunkMeshDataTasks = generateChunkMeshDataLighting(position3D, lightChannel);
+                if (lightingChunkMeshDataTasks != null) {
+                    out.addAll(lightingChunkMeshDataTasks);
+                }
+            }
+            return out;
+        }
+
+        createLightingDataIfEmpty(clientWorldChunk);
+
+        int foundCompleteDirtyChunkCount = 0;
 
         boolean failed = false;
         for (int x = -1; x <= 1; x++) {
@@ -91,67 +222,152 @@ public class ChunkMeshDataLightingGenerator {
                 for (int z = -1; z <= 1; z++) {
                     if (!(x == 0 && y == 0 && z == 0)) {
                         Position3D neighborPos = position3D.add(x, y, z);
-                        failed = failed || calculateChunkLighting(neighborPos);
+                        ClientWorldChunk neighborChunk = world.get(neighborPos, false, false);
+                        failed |= isNeighborLightingInvalid(neighborChunk, channel);
+                        if (completeDirtyChunks.contains(neighborPos)) {
+                            foundCompleteDirtyNeighborPositions[foundCompleteDirtyChunkCount] = neighborPos;
+                            foundCompleteDirtyNeighborChunks[foundCompleteDirtyChunkCount++] = neighborChunk;
+                        }
                     }
                 }
             }
         }
 
-        if (failed) {
-            calculateChunkLighting(position3D);
-            if (world.isChunkInflight(position3D)) {
-                meshDataTasks.add(new LightingChunkMeshDataTask(null, position3D));
+        LightChannel lightChannel = generateLighting(clientWorldChunk, clientWorldChunk.getChunkData(-1), position3D, channel, meshDataTasks);
+        clientWorldChunk.getLightingData().setChannel(channel, lightChannel);
+
+        clientWorldChunk.setCleanLighting(channel, !failed);
+
+        for (int i = 0; i < foundCompleteDirtyChunkCount; i++) {
+            checkCompleteDirtyNeighbor(foundCompleteDirtyNeighborPositions[i], foundCompleteDirtyNeighborChunks[i]);
+        }
+
+        if (clientWorldChunk.getLightingData().isComplete()) {
+            if (clientWorldChunk.isCleanLighting()) {
+                completeDirtyChunks.remove(position3D);
+                meshDataGenerators.submit(new ChunkMeshDataTask(position3D));
+            } else {
+                completeDirtyChunks.add(position3D);
             }
         }
-
-        ChunkLightingDataAndTasks chunkLightingDataAndTasks = generateLighting(clientWorldChunk, position3D);
-        ChunkLightingData chunkLightingData = chunkLightingDataAndTasks.chunkLightingData();
-        clientWorldChunk.setChunkLightingData(chunkLightingData);
-
-        if (chunkLightingDataAndTasks.meshDataTasks() != null && !failed) {
-            meshDataTasks.addAll(chunkLightingDataAndTasks.meshDataTasks());
-        }
-
-        meshDataGenerators.submit(new ChunkMeshDataTask(null, position3D));
 
         return meshDataTasks;
     }
 
-    private ChunkLightingDataAndTasks generateLighting(ClientWorldChunk clientWorldChunk, Position3D chunkPos) {
-        LightChannelAndMeshTasks redChannel = generateLightChannel(clientWorldChunk, chunkPos, LightChannels.RED);
-        LightChannelAndMeshTasks greenChannel = generateLightChannel(clientWorldChunk, chunkPos, LightChannels.GREEN);
-        LightChannelAndMeshTasks blueChannel = generateLightChannel(clientWorldChunk, chunkPos, LightChannels.BLUE);
-        LightChannelAndMeshTasks skyChannel = generateLightChannel(clientWorldChunk, chunkPos, LightChannels.SKYLIGHT);
-
-        List<LightingChunkMeshDataTask> meshDataTasks = null;
-        if (redChannel.meshDataTasks != null) {
-            meshDataTasks = new ArrayList<>(redChannel.meshDataTasks);
+    private LightChannel generateLighting(ClientWorldChunk clientWorldChunk, Chunk<BlockWithMesh> chunk, Position3D chunkPos, LightChannels lightChannels, Collection<LightingChunkMeshDataTask> meshDataTasks) {
+        if (lightChannels == LightChannels.RED) {
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.RED);
+        } else if (lightChannels == LightChannels.GREEN) {
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.GREEN);
+        } else if (lightChannels == LightChannels.BLUE) {
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.BLUE);
+        } else if (lightChannels == LightChannels.SKYLIGHT) {
+            return generateLightChannel(meshDataTasks, clientWorldChunk, chunk, chunkPos, LightChannels.SKYLIGHT);
+        } else {
+            throw new IllegalArgumentException("Unexpected light channel: " + lightChannels);
         }
-        if (greenChannel.meshDataTasks != null) {
-            if (meshDataTasks == null) {
-                meshDataTasks = new ArrayList<>(greenChannel.meshDataTasks);
-            } else {
-                meshDataTasks.addAll(greenChannel.meshDataTasks);
-            }
-        }
-        if (blueChannel.meshDataTasks != null) {
-            if (meshDataTasks == null) {
-                meshDataTasks = new ArrayList<>(blueChannel.meshDataTasks);
-            } else {
-                meshDataTasks.addAll(blueChannel.meshDataTasks);
-            }
-        }
-        if (skyChannel.meshDataTasks != null) {
-            if (meshDataTasks == null) {
-                meshDataTasks = new ArrayList<>(skyChannel.meshDataTasks);
-            } else {
-                meshDataTasks.addAll(skyChannel.meshDataTasks);
-            }
-        }
-
-        return new ChunkLightingDataAndTasks(new ChunkLightingData(redChannel.lightChannel, greenChannel.lightChannel, blueChannel.lightChannel, skyChannel.lightChannel), meshDataTasks);
     }
 
+    private LightChannel generateLightChannel(
+            Collection<LightingChunkMeshDataTask> lightingTasks,
+            ClientWorldChunk clientWorldChunk,
+            Chunk<BlockWithMesh> chunk,
+            Position3D chunkPos,
+            LightChannels channel
+    ) {
+        clearQueues();
+
+        int[] lightChannel =
+                new int[ConstantCommonSettings.BLOCKS_IN_CHUNK >> 3];
+
+        loadChunkLights(channel, chunkPos, chunk);
+
+        for (Direction dir : Direction.VALUES) {
+            short[] neighbor =
+                    clientWorldChunk.getNeighborLightOverflow(channel, dir);
+
+            for (short overflowNode : neighbor) {
+                int a = overflowNode & 0b11111;
+                int b = (overflowNode >> 5) & 0b11111;
+                int light = (overflowNode >> 10) & 0xF;
+
+                int x = 0;
+                int y = 0;
+                int z = 0;
+
+                switch (dir) {
+                    case UP -> {
+                        x = a;
+                        z = b;
+                        y = ConstantCommonSettings.CHUNK_HEIGHT - 1;
+                    }
+
+                    case DOWN -> {
+                        x = a;
+                        z = b;
+                    }
+
+                    case NORTH -> {
+                        x = a;
+                        y = b;
+                    }
+
+                    case SOUTH -> {
+                        x = a;
+                        y = b;
+                        z = ConstantCommonSettings.CHUNK_LENGTH - 1;
+                    }
+
+                    case EAST -> {
+                        y = a;
+                        z = b;
+                        x = ConstantCommonSettings.CHUNK_WIDTH - 1;
+                    }
+
+                    case WEST -> {
+                        y = a;
+                        z = b;
+                    }
+                }
+
+                int blockIndex =
+                        IndexCalculator.calculateBlockIndex(x, y, z);
+
+                int arrayIndex = blockIndex >> 3;
+                int shift = (blockIndex & 7) << 2;
+
+                int oldLight =
+                        (lightChannel[arrayIndex] >>> shift) & 0xF;
+
+                if (light > oldLight) {
+                    int mask = 0xF << shift;
+
+                    lightChannel[arrayIndex] =
+                            (lightChannel[arrayIndex] & ~mask)
+                                    | (light << shift);
+
+                    chunkLights.add(
+                            x,
+                            y,
+                            z,
+                            (byte) light
+                    );
+                }
+            }
+        }
+
+        if (chunkLights.isEmpty()) {
+            return new SingleLightChannel((byte) 0);
+        }
+
+        floodFill(lightChannel, chunk, channel);
+
+        propagateLighting(chunkPos, channel, lightingTasks);
+
+        return new GeneralLightChannel(lightChannel);
+    }
+
+    // TODO: Make this also load all channels and only do a complete search once
     private void loadChunkLights(LightChannels channel, Position3D chunkPos, Chunk<BlockWithMesh> chunk) {
         int chunkYOffset = chunkPos.y() * ConstantCommonSettings.CHUNK_HEIGHT;
 
@@ -163,18 +379,44 @@ public class ChunkMeshDataLightingGenerator {
 
         for (int x = 0; x < ConstantCommonSettings.CHUNK_WIDTH; x++) {
             for (int z = 0; z < ConstantCommonSettings.CHUNK_LENGTH; z++) {
-                for (int y = ConstantCommonSettings.CHUNK_HEIGHT - 1; y >= 0; y--) {
-                    if (channel == LightChannels.SKYLIGHT) {
-                        int highestY = chunkHeights.getBlock(x, z);
+                if (channel == LightChannels.SKYLIGHT) {
+                    int highestY = chunkHeights.getBlock(x, z);
+
+                    if (chunkYOffset + ConstantCommonSettings.CHUNK_HEIGHT < highestY) {
+                        continue;
+                    }
+
+                    for (int y = ConstantCommonSettings.CHUNK_HEIGHT - 1; y >= 0; y--) {
                         if (chunkYOffset + y >= highestY) {
                             chunkLights.add(x, y, z, (byte) 15);
+                        } else {
+                            break;
                         }
-                    } else {
+                    }
+                } else {
+                    for (int y = ConstantCommonSettings.CHUNK_HEIGHT - 1; y >= 0; y--) {
                         BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
 
                         if (mesh != null) {
-                            if (mesh.getLightEmitting(channel) > 0) {
-                                chunkLights.add(x, y, z, mesh.getLightEmitting(channel));
+                            if (mesh.getLightEmitting(BlockFace.TOP, channel) > 0) {
+                                if (x < ConstantCommonSettings.CHUNK_WIDTH - 1) {
+                                    chunkLights.add(x + 1, y, z, mesh.getLightEmitting(BlockFace.EAST, channel));
+                                }
+                                if (x > 0) {
+                                    chunkLights.add(x - 1, y, z, mesh.getLightEmitting(BlockFace.WEST, channel));
+                                }
+                                if (y < ConstantCommonSettings.CHUNK_HEIGHT - 1) {
+                                    chunkLights.add(x, y + 1, z, mesh.getLightEmitting(BlockFace.TOP, channel));
+                                }
+                                if (y > 0) {
+                                    chunkLights.add(x, y - 1, z, mesh.getLightEmitting(BlockFace.BOTTOM, channel));
+                                }
+                                if (z < ConstantCommonSettings.CHUNK_LENGTH - 1) {
+                                    chunkLights.add(x, y, z + 1, mesh.getLightEmitting(BlockFace.NORTH, channel));
+                                }
+                                if (z > 0) {
+                                    chunkLights.add(x, y, z - 1, mesh.getLightEmitting(BlockFace.SOUTH, channel));
+                                }
                             }
                         }
                     }
@@ -183,281 +425,168 @@ public class ChunkMeshDataLightingGenerator {
         }
     }
 
-    private void floodFill(byte[] lightChannel, Chunk<BlockWithMesh> chunk, LightChannels channel) {
+    private void floodFill(int[] lightChannel, Chunk<BlockWithMesh> chunk, LightChannels channel) {
         while (!chunkLights.isEmpty()) {
             chunkLights.poll();
+
             int x = chunkLights.x();
             int y = chunkLights.y();
             int z = chunkLights.z();
-            byte light = chunkLights.lightLevel();
+            int light = chunkLights.lightLevel() & 0xF;
 
-            int idx = IndexCalculator.calculateBlockIndex(x, y, z);
+            int blockIndex = IndexCalculator.calculateBlockIndex(x, y, z);
+            int arrayIndex = blockIndex >> 3;
+            int shift = (blockIndex & 7) << 2;
 
-            lightChannel[idx] = light;
+            int oldLight = (lightChannel[arrayIndex] >>> shift) & 0xF;
 
-            if (light < 1) continue;
+            if (light < oldLight) {
+                continue;
+            }
 
-            byte newLight = (byte) (light - chunk.getBlock(x, y, z).blockMesh().getLightDiffuse(channel));
+            // Store the light level in the 4-bit slot.
+            int mask = 0xF << shift;
+            lightChannel[arrayIndex] =
+                    (lightChannel[arrayIndex] & ~mask) | (light << shift);
+
+            if (light < 1) {
+                continue;
+            }
+
+            BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
 
             for (Direction direction : Direction.VALUES) {
                 int nx = x + direction.dx;
                 int ny = y + direction.dy;
                 int nz = z + direction.dz;
 
+                int diffuse = mesh == null
+                        ? 1
+                        : mesh.getLightDiffuse(
+                        direction.opposite().getBlockFace(),
+                        channel
+                );
+
+                int attenuated = light - diffuse;
+
+                if (attenuated <= 0) {
+                    continue;
+                }
+
                 if (IndexCalculator.checkBounds(nx, ny, nz)) {
-                    int nIdx = IndexCalculator.calculateBlockIndex(nx, ny, nz);
-                    if (newLight > lightChannel[nIdx]) {
-                        lightChannel[nIdx] = newLight;
-                        chunkLights.add(nx, ny, nz, newLight);
+                    int neighborBlockIndex =
+                            IndexCalculator.calculateBlockIndex(nx, ny, nz);
+
+                    int neighborArrayIndex = neighborBlockIndex >> 3;
+                    int neighborShift = (neighborBlockIndex & 7) << 2;
+
+                    int neighborLight =
+                            (lightChannel[neighborArrayIndex] >>> neighborShift) & 0xF;
+
+                    if (attenuated > neighborLight) {
+                        int neighborMask = 0xF << neighborShift;
+
+                        lightChannel[neighborArrayIndex] =
+                                (lightChannel[neighborArrayIndex] & ~neighborMask)
+                                        | (attenuated << neighborShift);
+
+                        chunkLights.add(
+                                nx,
+                                ny,
+                                nz,
+                                (byte) attenuated
+                        );
                     }
+
                 } else {
-                    int ox = nx < 0 ? nx + ConstantCommonSettings.CHUNK_WIDTH : (nx >= ConstantCommonSettings.CHUNK_WIDTH ? nx - ConstantCommonSettings.CHUNK_WIDTH : nx);
-                    int oy = ny < 0 ? ny + ConstantCommonSettings.CHUNK_HEIGHT : (ny >= ConstantCommonSettings.CHUNK_HEIGHT ? ny - ConstantCommonSettings.CHUNK_HEIGHT : ny);
-                    int oz = nz < 0 ? nz + ConstantCommonSettings.CHUNK_LENGTH : (nz >= ConstantCommonSettings.CHUNK_LENGTH ? nz - ConstantCommonSettings.CHUNK_LENGTH : nz);
-                    borderLightQueues.get(channel).get(direction).add(ox, oy, oz, newLight);
+                    int ox = nx < 0
+                            ? nx + ConstantCommonSettings.CHUNK_WIDTH
+                            : (nx >= ConstantCommonSettings.CHUNK_WIDTH
+                            ? nx - ConstantCommonSettings.CHUNK_WIDTH
+                            : nx);
+
+                    int oy = ny < 0
+                            ? ny + ConstantCommonSettings.CHUNK_HEIGHT
+                            : (ny >= ConstantCommonSettings.CHUNK_HEIGHT
+                            ? ny - ConstantCommonSettings.CHUNK_HEIGHT
+                            : ny);
+
+                    int oz = nz < 0
+                            ? nz + ConstantCommonSettings.CHUNK_LENGTH
+                            : (nz >= ConstantCommonSettings.CHUNK_LENGTH
+                            ? nz - ConstantCommonSettings.CHUNK_LENGTH
+                            : nz);
+
+                    borderLightQueues.get(direction)
+                            .add(ox, oy, oz, (byte) attenuated);
                 }
             }
         }
     }
 
-    private List<LightingChunkMeshDataTask> propagateLighting(Position3D chunkPos, LightChannels channel) {
-        List<LightingChunkMeshDataTask> meshDataTasks = null;
+    private void propagateLighting(Position3D chunkPosition, LightChannels channel, Collection<LightingChunkMeshDataTask> lightingTasks) {
+        for (Direction direction : Direction.VALUES) {
+            neighborMap.reset();
 
-        final int W = ConstantCommonSettings.CHUNK_WIDTH;
-        final int H = ConstantCommonSettings.CHUNK_HEIGHT;
-        final int L = ConstantCommonSettings.CHUNK_LENGTH;
+            Position3D directionPosition = chunkPosition.add(direction.dx, direction.dy, direction.dz);
+            ClientWorldChunk neighborChunk = world.get(directionPosition, false, true);
+            LightChannel neighborLightChannel = neighborChunk == null ? null : (neighborChunk.getLightingData() == null ? null : neighborChunk.getLightingData().getChannel(channel));
 
-        for (Direction dir : Direction.VALUES) {
-            LightNodeQueue overflowQueue = borderLightQueues.get(channel).get(dir);
-            if (overflowQueue == null || overflowQueue.isEmpty()) continue;
+            LightNodeQueue overflowQueue = borderLightQueues.get(direction);
 
-            ClientWorldChunk neighborChunk = world.get(chunkPos.add(dir.dx, dir.dy, dir.dz), false, true);
-            if (neighborChunk == null) continue;
+            short[] oldOverflow = neighborChunk == null ? null : neighborChunk.getNeighborLightOverflow(channel, direction.opposite());
 
-            Map<Integer, Byte> neighborMap = new HashMap<>();
+            boolean recalculateNeighbor = false;
 
-            boolean changed = false;
             while (!overflowQueue.isEmpty()) {
                 overflowQueue.poll();
                 int x = overflowQueue.x();
                 int y = overflowQueue.y();
                 int z = overflowQueue.z();
+                int newLight = overflowQueue.lightLevel();
 
-                if (x < 0) x = W - 1;
-                else if (x >= W) x = 0;
+                int idx = encodeUV(x, y, z, direction);
 
-                if (y < 0) y = H - 1;
-                else if (y >= H) y = 0;
+                if (neighborLightChannel != null && !recalculateNeighbor) {
+                    byte lightValue = neighborLightChannel.getLighting(getNeighborLightIndex(direction, x, y, z));
+                    if (newLight > lightValue) {
+                        recalculateNeighbor = true;
+                    }
+                }
 
-                if (z < 0) z = L - 1;
-                else if (z >= L) z = 0;
+                neighborMap.putLarger(idx, newLight);
+            }
 
-                int idx = IndexCalculator.calculateBlockIndex(x, y, z);
+            short[] newOverflow = new short[neighborMap.size()];
 
-                byte newLight = overflowQueue.lightLevel();
-                Byte oldLight = neighborMap.get(idx);
+            final int[] i = {0};
+            neighborMap.forEach((k, v) -> newOverflow[i[0]++] = (short) (
+                    (k & 0x3FF)
+                            | ((v & 0xF) << 10)
+            ));
 
-                if (oldLight == null || newLight > oldLight) {
-                    neighborMap.put(idx, newLight);
-                    changed = true;
+            Arrays.sort(newOverflow);
+
+            if (neighborChunk == null) {
+                world.add(directionPosition, direction.opposite(), newOverflow, channel);
+            } else {
+                if (!Arrays.equals(oldOverflow, newOverflow)) {
+                    neighborChunk.setNeighborLightOverflow(channel, direction.opposite(), newOverflow);
+                    if (recalculateNeighbor && lightingTasks != null) {
+                        completeDirtyChunks.add(directionPosition);
+                        neighborChunk.setCleanLighting(channel, false);
+                    }
                 }
             }
-
-            Map<Integer, Byte> neighborLightOverflowMap = neighborChunk.getNeighborLightOverflowMap(channel, dir);
-            if (neighborLightOverflowMap.equals(neighborMap)) continue;
-
-            neighborLightOverflowMap.clear();
-            neighborLightOverflowMap.putAll(neighborMap);
-
-            if (changed) {
-                if (meshDataTasks == null) meshDataTasks = new ArrayList<>();
-                meshDataTasks.add(new LightingChunkMeshDataTask(null, chunkPos.add(dir.dx, dir.dy, dir.dz)));
-            }
         }
+    }
 
-        return meshDataTasks;
+    private boolean isNeighborLightingInvalid(ClientWorldChunk clientWorldChunk, LightChannels channel) {
+        return clientWorldChunk == null || clientWorldChunk.getLightingData() == null || clientWorldChunk.getLightingData().getChannel(channel) == null;
     }
 
     private void clearQueues() {
         chunkLights.clear();
-        borderLightQueues.values().forEach(c -> c.values().forEach(LightNodeQueue::clear));
-    }
-
-    // TODO: Only update changed light channels
-    private LightChannelAndMeshTasks generateLightChannel(
-            ClientWorldChunk clientWorldChunk,
-            Position3D chunkPos,
-            LightChannels channel
-    ) {
-        clearQueues();
-
-        byte[] lightChannel = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
-
-        loadChunkLights(channel, chunkPos, clientWorldChunk.getChunkData());
-
-        for (Direction dir : Direction.VALUES) {
-            Map<Integer, Byte> neighborMap = clientWorldChunk.getNeighborLightOverflowMap(channel, dir);
-
-            if (neighborMap.isEmpty()) continue;
-
-            for (Map.Entry<Integer, Byte> entry : neighborMap.entrySet()) {
-                int idx = entry.getKey();
-                byte lvl = entry.getValue();
-
-                int x = IndexCalculator.x(idx);
-                int y = IndexCalculator.y(idx);
-                int z = IndexCalculator.z(idx);
-
-                if (lvl > lightChannel[idx]) {
-                    lightChannel[idx] = lvl;
-                    chunkLights.add(x, y, z, lvl);
-                }
-            }
-        }
-
-        if (chunkLights.isEmpty()) {
-            return new LightChannelAndMeshTasks(new SingleLightChannel((byte) 0), null);
-        }
-
-        floodFill(lightChannel, clientWorldChunk.getChunkData(), channel);
-
-        return new LightChannelAndMeshTasks(new GeneralLightChannel(lightChannel), propagateLighting(chunkPos, channel));
-    }
-
-    public enum Direction {
-        UP(0, 1, 0),
-        DOWN(0, -1, 0),
-        NORTH(0, 0, -1),
-        SOUTH(0, 0, 1),
-        EAST(1, 0, 0),
-        WEST(-1, 0, 0);
-
-        public static final Direction[] VALUES = values();
-        public final int dx, dy, dz;
-
-        Direction(int dx, int dy, int dz) {
-            this.dx = dx;
-            this.dy = dy;
-            this.dz = dz;
-        }
-
-        public Direction opposite() {
-            return switch (this) {
-                case UP -> DOWN;
-                case DOWN -> UP;
-                case NORTH -> SOUTH;
-                case SOUTH -> NORTH;
-                case EAST -> WEST;
-                case WEST -> EAST;
-            };
-        }
-    }
-
-    private record LightChannelAndMeshTasks(LightChannel lightChannel, List<LightingChunkMeshDataTask> meshDataTasks) {
-    }
-
-    public record ChunkLightingDataAndTasks(ChunkLightingData chunkLightingData,
-                                            List<LightingChunkMeshDataTask> meshDataTasks) {
-    }
-
-    private static final class LightNodeQueue {
-        private static final int DEFAULT_CAPACITY = 256;
-
-        private int[] xs = new int[DEFAULT_CAPACITY];
-        private int[] ys = new int[DEFAULT_CAPACITY];
-        private int[] zs = new int[DEFAULT_CAPACITY];
-        private byte[] lightLevels = new byte[DEFAULT_CAPACITY];
-        private int head;
-        private int tail;
-        private int x;
-        private int y;
-        private int z;
-        private byte lightLevel;
-
-        public void add(int x, int y, int z, byte lightLevel) {
-            ensureCapacity();
-            xs[tail] = x;
-            ys[tail] = y;
-            zs[tail] = z;
-            lightLevels[tail] = lightLevel;
-            tail++;
-        }
-
-        public void poll() {
-            x = xs[head];
-            y = ys[head];
-            z = zs[head];
-            lightLevel = lightLevels[head];
-            head++;
-            if (head == tail) {
-                clear();
-            }
-        }
-
-        public boolean isEmpty() {
-            return head == tail;
-        }
-
-        public void clear() {
-            head = 0;
-            tail = 0;
-        }
-
-        public int x() {
-            return x;
-        }
-
-        public int y() {
-            return y;
-        }
-
-        public int z() {
-            return z;
-        }
-
-        public byte lightLevel() {
-            return lightLevel;
-        }
-
-        private void ensureCapacity() {
-            if (tail < xs.length) {
-                return;
-            }
-
-            if (head > 0) {
-                int size = tail - head;
-                System.arraycopy(xs, head, xs, 0, size);
-                System.arraycopy(ys, head, ys, 0, size);
-                System.arraycopy(zs, head, zs, 0, size);
-                System.arraycopy(lightLevels, head, lightLevels, 0, size);
-                head = 0;
-                tail = size;
-                return;
-            }
-
-            int newCapacity = xs.length << 1;
-            xs = Arrays.copyOf(xs, newCapacity);
-            ys = Arrays.copyOf(ys, newCapacity);
-            zs = Arrays.copyOf(zs, newCapacity);
-            lightLevels = Arrays.copyOf(lightLevels, newCapacity);
-        }
-    }
-
-    public record LightNode(Position3D position, byte lightLevel) {
-        public LightNode(int x, int y, int z, byte lightLevel) {
-            this(new Position3D(x, y, z), lightLevel);
-        }
-
-        public int x() {
-            return position.x();
-        }
-
-        public int y() {
-            return position.y();
-        }
-
-        public int z() {
-            return position.z();
-        }
+        borderLightQueues.values().forEach(LightNodeQueue::clear);
     }
 }

@@ -1,10 +1,11 @@
 package omnivoxel.client.network.util;
 
 import io.netty.buffer.ByteBuf;
-import omnivoxel.client.game.graphics.api.opengl.mesh.vertex.Vertex;
 import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
-import omnivoxel.common.BlockShape;
+import omnivoxel.common.block.hitbox.BlockHitbox;
+import omnivoxel.common.block.shape.BlockShape;
+import omnivoxel.common.block.shape.BlockVertex;
 import omnivoxel.common.face.BlockFace;
 import omnivoxel.util.log.Logger;
 
@@ -15,28 +16,31 @@ import java.util.Map;
 
 public class ByteBufUtils {
     private static final Map<String, BlockShape> shapeCache = new HashMap<>();
+    private static final Map<String, BlockHitbox[]> hitboxCache = new HashMap<>();
 
     public static void cacheBlockShapeFromByteBuf(ByteBuf byteBuf) {
-        byteBuf.skipBytes(8);
+        byteBuf.readerIndex(8);
         int idLen = byteBuf.readUnsignedShort();
         byte[] idBytes = new byte[idLen];
         byteBuf.readBytes(idBytes);
         String id = new String(idBytes, StandardCharsets.UTF_8);
 
-        Vertex[][] vertices = new Vertex[6][];
+        BlockVertex[][] vertices = new BlockVertex[6][];
         int[][] indices = new int[6][];
         boolean[] solid = new boolean[6];
+        boolean[] coverable = new boolean[6];
+        boolean[] coversOppositeSelfFace = new boolean[6];
 
         for (int face = 0; face < 6; face++) {
             int vCount = byteBuf.readUnsignedShort();
-            Vertex[] verts = new Vertex[vCount];
+            BlockVertex[] vertexArray = new BlockVertex[vCount];
             for (int i = 0; i < vCount; i++) {
                 float x = byteBuf.readFloat();
                 float y = byteBuf.readFloat();
                 float z = byteBuf.readFloat();
-                verts[i] = new Vertex(x, y, z);
+                vertexArray[i] = new BlockVertex(x, y, z);
             }
-            vertices[face] = verts;
+            vertices[face] = vertexArray;
 
             int iCount = byteBuf.readUnsignedShort();
             int[] idx = new int[iCount];
@@ -46,11 +50,43 @@ public class ByteBufUtils {
             indices[face] = idx;
 
             solid[face] = byteBuf.readByte() != 0;
+            coverable[face] = byteBuf.readByte() != 0;
+            coversOppositeSelfFace[face] = byteBuf.readByte() != 0;
         }
 
-        BlockShape blockShape = new BlockShape(id, vertices, indices, solid);
+        BlockShape blockShape = new BlockShape(id, vertices, indices, solid, coverable, coversOppositeSelfFace);
 
         shapeCache.put(id, blockShape);
+    }
+
+    public static void cacheBlockHitboxFromByteBuf(ByteBuf byteBuf) {
+        byteBuf.readerIndex(8);
+        int idLen = byteBuf.readInt();
+        byte[] idBytes = new byte[idLen];
+        byteBuf.readBytes(idBytes);
+        String id = new String(idBytes, StandardCharsets.UTF_8);
+
+        int hitboxCount = byteBuf.readInt();
+        BlockHitbox[] hitboxes = new BlockHitbox[hitboxCount];
+        for (int i = 0; i < hitboxCount; i++) {
+            float minX = byteBuf.readFloat();
+            float minY = byteBuf.readFloat();
+            float minZ = byteBuf.readFloat();
+
+            float maxX = byteBuf.readFloat();
+            float maxY = byteBuf.readFloat();
+            float maxZ = byteBuf.readFloat();
+
+            boolean isVolume = byteBuf.readBoolean();
+            boolean isGround = byteBuf.readBoolean();
+            float gravity = byteBuf.readFloat();
+
+            hitboxes[i] = new BlockHitbox(minX, minY, minZ, maxX, maxY, maxZ, new BlockHitbox.BlockHitboxVolumeProperties(isVolume, gravity, isGround));
+        }
+
+        Logger.info("Registering block hitbox: " + id);
+
+        hitboxCache.put(id, hitboxes);
     }
 
     public static BlockMesh registerBlockFromByteBuf(ByteBuf byteBuf) {
@@ -71,8 +107,6 @@ public class ByteBufUtils {
         }
         String modID = ids[0];
 
-        final String blockID = modID.contains(":") ? modID.split(":", 2)[1] : modID;
-
         int shapeIDLength = byteBuf.getShort(readerIndex);
         readerIndex += 2;
 
@@ -83,8 +117,22 @@ public class ByteBufUtils {
         final String shapeID = new String(shapeIDBytes);
         final BlockShape blockShape = shapeCache.getOrDefault(shapeID, BlockShape.DEFAULT_BLOCK_SHAPE);
 
-        boolean transparent = byteBuf.getByte(readerIndex++) == 1;
+        int hitboxIDLength = byteBuf.getShort(readerIndex);
+
+        readerIndex += 2;
+        byte[] hitboxIDBytes = new byte[hitboxIDLength];
+        byteBuf.getBytes(readerIndex, hitboxIDBytes);
+        readerIndex += hitboxIDLength;
+
+        final String hitboxID = new String(hitboxIDBytes);
+        final BlockHitbox[] hitbox = hitboxCache.getOrDefault(hitboxID, BlockHitbox.EMPTY_BLOCK_HITBOX);
+        hitboxCache.put(hitboxID, hitbox);
+
         boolean transparentMesh = byteBuf.getByte(readerIndex++) == 1;
+        boolean decorationMesh = byteBuf.getByte(readerIndex++) == 1;
+        boolean isSelfOccluded = byteBuf.getByte(readerIndex++) == 1;
+        boolean rotatable = byteBuf.getByte(readerIndex++) == 1;
+        boolean canPlaceOn = byteBuf.getByte(readerIndex++) == 1;
 
         int[][] allUVCoords = new int[6][];
         for (int f = 0; f < 6; f++) {
@@ -98,41 +146,41 @@ public class ByteBufUtils {
             allUVCoords[f] = uvCoords;
         }
 
-        byte[] lightEmitting = new byte[3];
+        byte[][] lightEmitting = new byte[6][3];
 
-        for (int i = 0; i < lightEmitting.length; i++) {
-            lightEmitting[i] = byteBuf.getByte(readerIndex++);
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                lightEmitting[i][j] = byteBuf.getByte(readerIndex++);
+            }
         }
 
-        byte[] lightDiffusing = new byte[4];
+        byte[][] lightDiffusing = new byte[6][4];
 
         for (int i = 0; i < lightDiffusing.length; i++) {
-            lightDiffusing[i] = byteBuf.getByte(readerIndex++);
+            for (int j = 0; j < 4; j++) {
+                lightDiffusing[i][j] = byteBuf.getByte(readerIndex++);
+            }
         }
 
-        Logger.info("Registering block: " + blockIDState + " " + Arrays.toString(lightEmitting) + " " + Arrays.toString(lightDiffusing));
+        Logger.info("Registering block: " + blockIDState + " " + Arrays.deepToString(lightEmitting) + " " + Arrays.deepToString(lightDiffusing));
 
         shapeCache.put(blockShape.id(), blockShape);
 
         return new BlockMesh(ids[1]) {
             @Override
-            public String getID() {
-                return blockID;
-            }
-
-            @Override
             public String getModID() {
                 return modID;
             }
 
+            // TODO: Add rules for block shape
             @Override
-            public BlockShape getShape(BlockMesh top, BlockMesh bottom, BlockMesh north, BlockMesh south, BlockMesh east, BlockMesh west) {
+            public BlockShape getShape() {
                 return blockShape;
             }
 
             @Override
-            public boolean shouldRenderFace(BlockFace face, BlockMesh adjacentBlockMesh) {
-                return !modID.equals("omnivoxel:air") && !adjacentBlockMesh.getModID().equals(modID) && adjacentBlockMesh.isTransparent();
+            public BlockHitbox[] getHitbox() {
+                return hitbox;
             }
 
             @Override
@@ -141,23 +189,44 @@ public class ByteBufUtils {
             }
 
             @Override
-            public byte getLightDiffuse(LightChannels channel) {
-                return lightDiffusing[channel.ordinal()];
+            public byte getLightDiffuse(BlockFace blockFace, LightChannels channel) {
+                return lightDiffusing[blockFace.ordinal()][channel.ordinal()];
             }
 
             @Override
-            public byte getLightEmitting(LightChannels channel) {
-                return lightEmitting[channel.ordinal()];
-            }
-
-            @Override
-            public boolean isTransparent() {
-                return transparent;
+            public byte getLightEmitting(BlockFace blockFace, LightChannels channel) {
+                return lightEmitting[blockFace.ordinal()][channel.ordinal()];
             }
 
             @Override
             public boolean shouldRenderTransparentMesh() {
                 return transparentMesh;
+            }
+
+            @Override
+            public boolean shouldRenderDecorationMesh() {
+                return decorationMesh;
+            }
+
+            @Override
+            public boolean isSelfOccluded() {
+                return isSelfOccluded;
+            }
+
+            @Override
+            public boolean isRotatable() {
+                return rotatable;
+            }
+
+            @Override
+            public boolean canPlaceOn() {
+                return canPlaceOn;
+            }
+
+            @Override
+            public int getShaderType() {
+                // TODO: Add this, but it also needs to run with dynamic shaders, so it needs to be generated at runtime, maybe with a boolean flag in-game called "enable_shaders" or something
+                return 0;
             }
         };
     }

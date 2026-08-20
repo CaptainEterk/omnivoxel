@@ -3,6 +3,7 @@ package omnivoxel.client.game.graphics.api.opengl.window;
 import omnivoxel.client.game.graphics.api.opengl.image.Image;
 import omnivoxel.client.game.graphics.api.opengl.image.ImageLoader;
 import omnivoxel.common.settings.ConstantClientSettings;
+import omnivoxel.common.settings.Settings;
 import omnivoxel.util.log.Logger;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -15,27 +16,30 @@ import java.util.Queue;
 import java.util.function.Consumer;
 
 public final class WindowFactory {
-    public static Window createWindow(int width, int height, String title, Queue<Consumer<Window>> contextTasks) throws RuntimeException {
-        // Set up an error callback. The default implementation will print the error message in System.err.
+    public static Window createWindow(int width, int height, String title, Queue<Consumer<Window>> contextTasks, boolean vsync) throws RuntimeException {
         GLFW.glfwSetErrorCallback((error, description) -> {
             String msg = GLFWErrorCallback.getDescription(description);
             Logger.error(String.format("GLFW Error %d: %s", error, msg));
         });
 
-        String forced = System.getenv("GLFW_PLATFORM");
-        String session = (forced != null && !forced.isBlank())
-                ? forced
-                : System.getenv("XDG_SESSION_TYPE");
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.equals("linux")) {
+            String forced = System.getenv("GLFW_PLATFORM");
+            String session = (forced != null && !forced.isBlank())
+                    ? forced
+                    : System.getenv("XDG_SESSION_TYPE");
 
-        if ("wayland".equalsIgnoreCase(session)) {
-            GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_WAYLAND);
-        } else if ("x11".equalsIgnoreCase(session)) {
-            GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_X11);
+            if ("wayland".equalsIgnoreCase(session)) {
+                GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_WAYLAND);
+            } else if ("x11".equalsIgnoreCase(session)) {
+                GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_X11);
+            } else {
+                throw new IllegalStateException("Unsupported platform: " + session);
+            }
         } else {
-            throw new IllegalStateException("Unsupported platform: " + session);
+            Logger.warn("Unsupported platform: " + os + ". This may not work.");
         }
 
-        // Initialize GLFW. Most GLFW functions will not work before doing this.
         if (!GLFW.glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
         }
@@ -46,21 +50,18 @@ public final class WindowFactory {
                         platform == GLFW.GLFW_PLATFORM_X11 ? "X11" : "Unknown"
         ) + " - \"" + GLFW.glfwGetVersionString() + "\"");
 
-        // Get the resolution of the primary monitor
         GLFWVidMode vidmode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
         assert vidmode != null;
 
         int x = (vidmode.width() - width) / 2;
         int y = (vidmode.height() - height) / 2;
 
-        // Set window hints before window creation
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
         if (GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_X11) {
             GLFW.glfwWindowHint(GLFW.GLFW_POSITION_X, x);
             GLFW.glfwWindowHint(GLFW.GLFW_POSITION_Y, y);
         }
-        // TODO: Turn into a setting
         if (GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND) {
             GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, GLFW.GLFW_FALSE);
         } else {
@@ -68,29 +69,19 @@ public final class WindowFactory {
         }
         GLFW.glfwWindowHint(GLFW.GLFW_DEPTH_BITS, 24);
         GLFW.glfwWindowHint(GLFW.GLFW_DOUBLEBUFFER, GLFW.GLFW_TRUE);
-        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 3);
-        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 3);
+        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, 4);
+        GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, 6);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
 
-        // Create the window
         long window = GLFW.glfwCreateWindow(width, height, title, MemoryUtil.NULL, MemoryUtil.NULL);
         if (window == MemoryUtil.NULL) {
             throw new RuntimeException("Failed to create the GLFW window");
         }
 
-        // Make the OpenGL context current
         GLFW.glfwMakeContextCurrent(window);
 
-        // TODO: Make it so you can turn V-Sync on and off in Settings
-        // Enable v-sync
-        GLFW.glfwSwapInterval(0);
+        GLFW.glfwSwapInterval(vsync ? 1 : 0);
 
-        /*
-         This line is critical for LWJGL's interoperation with GLFW's OpenGL context,
-         or any context that is managed externally.
-         LWJGL detects the context that is current in the current thread,
-         creates the GLCapabilities instance and makes the OpenGL bindings available for use.
-        */
         GLCapabilities caps = GL.createCapabilities();
 
         if (ConstantClientSettings.OPENGL_DEBUG) {
@@ -115,7 +106,6 @@ public final class WindowFactory {
             Logger.info("OpenGL debug logging disabled");
         }
 
-        // Mouse motion
         if (GLFW.glfwRawMouseMotionSupported()) {
             GLFW.glfwSetInputMode(window, GLFW.GLFW_RAW_MOUSE_MOTION, GLFW.GLFW_TRUE);
         }

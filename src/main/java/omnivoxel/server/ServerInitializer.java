@@ -2,6 +2,7 @@ package omnivoxel.server;
 
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantServerSettings;
+import omnivoxel.util.log.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -38,5 +39,7 @@ public class ServerInitializer {
                         }
                     });
         }
+
+        Logger.info("Directory " + dir + " cleared!");
     }
 }

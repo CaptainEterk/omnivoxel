@@ -1,8 +1,6 @@
 package omnivoxel.util.thread;
 
-import java.util.ArrayDeque;
-import java.util.List;
-import java.util.Queue;
+import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,7 +16,7 @@ public class WorkerThreadPool<T extends WorkerTask> {
     private final Set<T> pendingTasks;
 
     @SuppressWarnings("unchecked")
-    public WorkerThreadPool(int threadCount, Supplier<BiFunction<T, Integer, List<T>>> taskHandlerSupplier, boolean daemon) {
+    public WorkerThreadPool(int threadCount, Supplier<BiFunction<T, Integer, Collection<T>>> taskHandlerSupplier, boolean daemon) {
         workers = new WorkerThread[threadCount];
         running = new AtomicBoolean(true);
         pendingTasks = ConcurrentHashMap.newKeySet();
@@ -33,6 +31,10 @@ public class WorkerThreadPool<T extends WorkerTask> {
     }
 
     public void submit(T task) {
+        submit(task, false);
+    }
+
+    public void submit(T task, boolean priority) {
         try {
             if (running.get() && task != null) {
                 if (pendingTasks.contains(task)) {
@@ -52,7 +54,11 @@ public class WorkerThreadPool<T extends WorkerTask> {
                     }
                 }
                 if (smallestQueue != null) {
-                    smallestQueue.put(task);
+                    if (priority) {
+                        smallestQueue.putFirst(task);
+                    } else {
+                        smallestQueue.put(task);
+                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -74,20 +80,22 @@ public class WorkerThreadPool<T extends WorkerTask> {
         }
     }
 
+    public boolean hasTask(T task) {
+        return pendingTasks.contains(task);
+    }
+
     public static final class WorkerThread<V extends WorkerTask> implements Runnable {
         private final BlockingDeque<V> taskQueue;
-        private final BiFunction<V, Integer, List<V>> taskHandler;
+        private final BiFunction<V, Integer, Collection<V>> taskHandler;
         private final AtomicBoolean running;
         private final Set<V> pendingTasks;
-        private final Queue<V> priorityQueue;
         private Thread thread;
 
-        public WorkerThread(BlockingDeque<V> taskQueue, BiFunction<V, Integer, List<V>> taskHandler, AtomicBoolean running, Set<V> pendingTasks) {
+        public WorkerThread(BlockingDeque<V> taskQueue, BiFunction<V, Integer, Collection<V>> taskHandler, AtomicBoolean running, Set<V> pendingTasks) {
             this.taskQueue = taskQueue;
             this.taskHandler = taskHandler;
             this.running = running;
             this.pendingTasks = pendingTasks;
-            this.priorityQueue = new ArrayDeque<>();
         }
 
         @Override
@@ -96,38 +104,10 @@ public class WorkerThreadPool<T extends WorkerTask> {
 
             try {
                 while (!Thread.currentThread().isInterrupted() && running.get()) {
-                    int priorityBudget = 8;
-                    while (!priorityQueue.isEmpty() && priorityBudget-- > 0) {
-                        V task = priorityQueue.remove();
-                        pendingTasks.remove(task);
-                        List<V> moreTasks = taskHandler.apply(task, priorityQueue.size() + taskQueue.size());
-                        if (moreTasks != null) {
-                            moreTasks.forEach(t -> {
-                                if (pendingTasks.add(t)) {
-                                    priorityQueue.add(t);
-                                } else {
-                                    t.reject();
-                                }
-                            });
-                        }
-                    }
-
-                    V task = priorityQueue.isEmpty()
-                            ? taskQueue.poll(100, TimeUnit.MILLISECONDS)
-                            : taskQueue.poll();
+                    V task = taskQueue.poll(100, TimeUnit.MILLISECONDS);
 
                     if (task != null) {
-                        List<V> moreTasks = taskHandler.apply(task, priorityQueue.size() + taskQueue.size());
-                        pendingTasks.remove(task);
-                        if (moreTasks != null) {
-                            moreTasks.forEach(t -> {
-                                if (pendingTasks.add(t)) {
-                                    priorityQueue.add(t);
-                                } else {
-                                    t.reject();
-                                }
-                            });
-                        }
+                        handleTask(task);
                     }
                 }
             } catch (InterruptedException e) {
@@ -135,8 +115,22 @@ public class WorkerThreadPool<T extends WorkerTask> {
             }
         }
 
+        private void handleTask(V task) {
+            pendingTasks.remove(task);
+            Collection<V> moreTasks = taskHandler.apply(task, size());
+            if (moreTasks != null) {
+                moreTasks.forEach(t -> {
+                    if (pendingTasks.add(t)) {
+                        taskQueue.add(t);
+                    } else {
+                        t.reject();
+                    }
+                });
+            }
+        }
+
         public int size() {
-            return priorityQueue.size() + taskQueue.size();
+            return taskQueue.size();
         }
 
         public BlockingDeque<V> taskQueue() {

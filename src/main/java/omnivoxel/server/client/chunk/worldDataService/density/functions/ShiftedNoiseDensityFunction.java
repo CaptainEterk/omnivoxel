@@ -1,7 +1,7 @@
 package omnivoxel.server.client.chunk.worldDataService.density.functions;
 
 import omnivoxel.server.client.chunk.worldDataService.Function;
-import omnivoxel.server.client.chunk.worldDataService.ServerWorldDataService;
+import omnivoxel.server.client.chunk.worldDataService.WorldGenerator;
 import omnivoxel.server.client.chunk.worldDataService.density.DensityFunction;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3D;
 import omnivoxel.server.client.chunk.worldDataService.noise.Noise3DProvider;
@@ -34,9 +34,9 @@ public class ShiftedNoiseDensityFunction extends DensityFunction {
         DoubleGameNode yScaleNode = Game.checkGameNodeType(object.object().get("y_scale"), DoubleGameNode.class);
         this.yScale = yScaleNode.value();
 
-        this.shiftX = ServerWorldDataService.getDensityFunction(object.object().get("shift_x"), seed);
-        this.shiftY = ServerWorldDataService.getDensityFunction(object.object().get("shift_y"), seed);
-        this.shiftZ = ServerWorldDataService.getDensityFunction(object.object().get("shift_z"), seed);
+        this.shiftX = WorldGenerator.getDensityFunction(object.object().get("shift_x"), seed);
+        this.shiftY = WorldGenerator.getDensityFunction(object.object().get("shift_y"), seed);
+        this.shiftZ = WorldGenerator.getDensityFunction(object.object().get("shift_z"), seed);
     }
 
     @Override

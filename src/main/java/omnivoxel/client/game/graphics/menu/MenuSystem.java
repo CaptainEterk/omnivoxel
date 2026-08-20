@@ -3,7 +3,6 @@ package omnivoxel.client.game.graphics.menu;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
 import omnivoxel.client.game.graphics.api.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.api.opengl.text.font.Font;
-import omnivoxel.client.game.graphics.menu.components.LayoutComponent;
 import omnivoxel.client.game.graphics.menu.components.TextComponent;
 import omnivoxel.client.game.graphics.menu.position.ComponentPosition;
 import omnivoxel.client.game.graphics.menu.position.ComponentPositionOrigin;
@@ -20,10 +19,11 @@ public class MenuSystem {
     public MenuSystem(MenuRenderer menuRenderer, TextRenderer textRenderer) {
         this.menuRenderer = menuRenderer;
         this.textRenderer = textRenderer;
-        LayoutComponent debugScreen = new LayoutComponent(ComponentPositionOrigin.TOP_LEFT);
-        debugScreen.addComponent("left", new TextComponent("Hello World!", new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT), 0.6f, Alignment.LEFT));
-        debugScreen.addComponent("right", new TextComponent("Hello World!", new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_RIGHT), 0.6f, Alignment.RIGHT));
-        menuRenderer.addComponent("omnivoxel:debug_screen", debugScreen);
+//        ComponentGroup debugScreen = new ComponentGroup(ComponentPositionOrigin.TOP_LEFT);
+////        debugScreen.addComponent("left", new LayoutComponent(new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT)));
+//        debugScreen.addComponent("left", new TextComponent("Hello World!", new ComponentPosition(0, 0, ComponentPositionOrigin.TOP_LEFT), 0.6f, Alignment.LEFT));
+//        debugScreen.addComponent("right", new TextComponent("Hello World!", new ComponentPosition(100, 0, ComponentPositionOrigin.TOP_RIGHT), 0.6f, Alignment.RIGHT));
+//        menuRenderer.addComponent("omnivoxel:debug_screen", debugScreen);
     }
 
     public void tick() {

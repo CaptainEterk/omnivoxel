@@ -1,74 +1,132 @@
 package omnivoxel.common.settings;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Consumer;
 
-// TODO: Make static
+// TODO: Make settings hot-reload
 public final class Settings {
-    private final List<Setting> settings;
 
-    public Settings() {
-        settings = new ArrayList<>();
-    }
+    private final Map<String, Setting> settings = new HashMap<>();
 
     public void load(String configLocation) throws IOException {
-        Files.createDirectories(Path.of(configLocation));
-        boolean newSettings = new File(configLocation + "/settings").createNewFile();
-        if (newSettings) {
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(configLocation + "/settings"));
-            bufferedOutputStream.write(ConstantClientSettings.DEFAULT_SETTING_CONTENTS.getBytes());
-            bufferedOutputStream.flush();
+        Path directory = Path.of(configLocation);
+        Files.createDirectories(directory);
+
+        Path file = directory.resolve("settings");
+
+        if (Files.notExists(file)) {
+            Files.writeString(file, ConstantClientSettings.DEFAULT_SETTING_CONTENTS);
         }
-        BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(configLocation + "/settings"));
-        byte[] settingBytes = bufferedInputStream.readAllBytes();
-        StringBuilder settingFileContents = new StringBuilder();
-        for (byte b : settingBytes) {
-            settingFileContents.append((char) b);
+
+        String content = Files.readString(file);
+
+        for (String line : content.split("\\R")) {
+            line = line.trim();
+
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+
+            int equals = line.indexOf('=');
+            if (equals < 0) {
+                continue;
+            }
+
+            String key = line.substring(0, equals).trim();
+            String value = line.substring(equals + 1).trim();
+
+            settings.computeIfAbsent(key, k -> new Setting())
+                    .setValue(value);
         }
-        String[] settings = settingFileContents.toString().split("[\n\r]");
-        this.settings.clear();
-        for (String setting : settings) {
-            if (setting.contains("=")) {
-                String[] keyValue = setting.split("=");
-                this.settings.add(new Setting(keyValue[0], keyValue[1]));
+    }
+
+    public String getSetting(String name, String defaultValue) {
+        return settings.computeIfAbsent(name, k -> new Setting(defaultValue))
+                .getValue();
+    }
+
+    public int getIntSetting(String name, int defaultValue) {
+        return settings.computeIfAbsent(name,
+                        k -> new Setting(String.valueOf(defaultValue)))
+                .getInt(defaultValue);
+    }
+
+    public float getFloatSetting(String name, float defaultValue) {
+        return settings.computeIfAbsent(name,
+                        k -> new Setting(String.valueOf(defaultValue)))
+                .getFloat(defaultValue);
+    }
+
+    public boolean getBooleanSetting(String name, boolean defaultValue) {
+        return settings.computeIfAbsent(name,
+                        k -> new Setting(String.valueOf(defaultValue)))
+                .getBoolean();
+    }
+
+    public void addSettingListener(String name, Consumer<String> listener) {
+        settings.computeIfAbsent(name, k -> new Setting())
+                .addListener(listener);
+    }
+
+    public void setSetting(String name, String value) {
+        settings.computeIfAbsent(name, k -> new Setting())
+                .setValue(value);
+    }
+
+    private static final class Setting {
+
+        private String value;
+        private final Set<Consumer<String>> listeners = new HashSet<>();
+
+        private Setting() {
+            this("");
+        }
+
+        private Setting(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public int getInt(int defaultValue) {
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                return defaultValue;
             }
         }
-    }
 
-    public String getSetting(String settingName) {
-        for (Setting setting : settings) {
-            if (Objects.equals(setting.key(), settingName)) {
-                return setting.value();
+        public float getFloat(float defaultValue) {
+            try {
+                return Float.parseFloat(value);
+            } catch (NumberFormatException e) {
+                return defaultValue;
             }
         }
-        return null;
-    }
 
-    public String getSetting(String settingName, String defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
-            return defaultValue;
+        public boolean getBoolean() {
+            return Boolean.parseBoolean(value);
         }
-        return setting;
-    }
 
-    public int getIntSetting(String settingName, int defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
-            return defaultValue;
+        public void addListener(Consumer<String> listener) {
+            listeners.add(listener);
         }
-        return Integer.parseInt(setting);
-    }
 
-    public float getFloatSetting(String settingName, float defaultValue) {
-        String setting = getSetting(settingName);
-        if (setting == null) {
-            return defaultValue;
+        public void setValue(String value) {
+            if (Objects.equals(this.value, value)) {
+                return;
+            }
+
+            this.value = value;
+
+            for (Consumer<String> listener : listeners) {
+                listener.accept(value);
+            }
         }
-        return Float.parseFloat(setting);
     }
 }
