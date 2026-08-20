@@ -120,8 +120,6 @@ public class ChunkService {
                 );
             }
 
-            System.out.println(queueSize + " " + (System.nanoTime() - startTime) + "ns");
-
             return null;
         } catch (IOException e) {
             throw new RuntimeException(e);
