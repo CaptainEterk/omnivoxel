@@ -44,10 +44,10 @@ max_lighting_generator_threads=12
 bufferize_chunks_per_frame=10
 ```
 
-**FPS (loading):** 60-240<br>
+**FPS (loading):** 120-240<br>
 **FPS (loaded):** 240<br>
-**Memory Usage (client):** 1.2 Gb<br>
+**Memory Usage (client):** 700 Mb<br>
 **Memory Usage (server):** 20 Mb<br>
 **Memory Usage (GPU):** 400 Mb<br>
-**Total loading time (pre-generated):** 1m 54s<br>
-**Total loading time (runtime-generated):** 3m 9s<br>
+**Total loading time (pre-generated):** 45s<br>
+**Total loading time (runtime-generated):** 54s<br>
