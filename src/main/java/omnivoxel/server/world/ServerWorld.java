@@ -3,7 +3,6 @@ package omnivoxel.server.world;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.server.client.block.ServerBlock;
 import omnivoxel.server.io.chunk.ChunkIO;
-import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
@@ -56,10 +55,6 @@ public class ServerWorld {
 
             if (chunk2D == null) {
                 chunk2D = ChunkIO.decodeChunk2D(ChunkIO.getChunk2D(position2D));
-            }
-
-            if (chunk2D == null) {
-                Logger.warn("Chunk heights are null at " + position2D + ".");
             }
 
             return chunk2D;

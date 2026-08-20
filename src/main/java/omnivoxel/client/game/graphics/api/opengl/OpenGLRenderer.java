@@ -6,6 +6,7 @@ import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
+import omnivoxel.client.game.graphics.api.opengl.mesh.wireframe.WireframeMesh;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.text.Alignment;
@@ -26,8 +27,6 @@ import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
 import omnivoxel.client.network.Client;
 import omnivoxel.common.block.shape.BlockShape;
-import omnivoxel.common.block.shape.BlockVertex;
-import omnivoxel.common.face.BlockFace;
 import omnivoxel.common.settings.ConstantClientSettings;
 import omnivoxel.common.settings.ConstantCommonSettings;
 import omnivoxel.common.settings.ConstantNetworkSettings;
@@ -66,7 +65,7 @@ public class OpenGLRenderer implements Renderer {
     private final Queue<Consumer<Window>> contextTasks;
     private final MenuSystem menuSystem;
     private final CameraCullingService cameraCullingService;
-    private final Map<String, WireframeShapeMesh> wireframeShapeMeshes = new HashMap<>();
+    private final Map<String, WireframeMesh> wireframeShapeMeshes = new HashMap<>();
     private final RenderedChunkProvider renderedChunkProvider;
     // TODO: Remove all TEMP
     // Window
@@ -617,7 +616,7 @@ public class OpenGLRenderer implements Renderer {
             return;
         }
 
-        WireframeShapeMesh wireframeMesh = wireframeShapeMeshes.computeIfAbsent(blockMesh.getShape().id(), ignored -> createWireframeShapeMesh(blockMesh.getShape()));
+        WireframeMesh wireframeMesh = wireframeShapeMeshes.computeIfAbsent(blockMesh.getShape().id(), ignored -> WireframeMesh.create(blockMesh.getShape()));
         if (wireframeMesh.indexCount() == 0) {
             return;
         }
@@ -647,91 +646,6 @@ public class OpenGLRenderer implements Renderer {
 
         GL11C.glLineWidth(1.0f);
         GL11C.glDepthMask(true);
-    }
-
-    private WireframeShapeMesh createWireframeShapeMesh(BlockShape shape) {
-        List<Float> vertices = new ArrayList<>();
-        List<Integer> indices = new ArrayList<>();
-        Map<BlockVertex, Integer> vertexIndices = new HashMap<>();
-        Set<Long> edges = new HashSet<>();
-
-        for (BlockFace face : BlockFace.values()) {
-            if (face == BlockFace.NONE) {
-                continue;
-            }
-
-            BlockVertex[] faceVertices = shape.vertices()[face.ordinal()];
-            for (int i = 0; i < faceVertices.length; i++) {
-                int a = getWireframeVertexIndex(faceVertices[i], vertices, vertexIndices);
-                int b = getWireframeVertexIndex(faceVertices[(i + 1) % faceVertices.length], vertices, vertexIndices);
-                addWireframeEdge(a, b, edges, indices);
-            }
-        }
-
-        if (vertices.isEmpty() || indices.isEmpty()) {
-            return new WireframeShapeMesh(0, 0, 0, 0);
-        }
-
-        int vao = GL30C.glGenVertexArrays();
-        GL30C.glBindVertexArray(vao);
-
-        int vbo = GL15C.glGenBuffers();
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vbo);
-        GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, toFloatArray(vertices), GL15C.GL_STATIC_DRAW);
-
-        int ebo = GL15C.glGenBuffers();
-        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GL15C.glBufferData(GL15C.GL_ELEMENT_ARRAY_BUFFER, toIntArray(indices), GL15C.GL_STATIC_DRAW);
-
-        GL20C.glEnableVertexAttribArray(3);
-        GL20C.glVertexAttribPointer(3, 3, GL11C.GL_FLOAT, false, 3 * Float.BYTES, 0L);
-
-        GL30C.glBindVertexArray(0);
-        GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0);
-        GL15C.glBindBuffer(GL15C.GL_ELEMENT_ARRAY_BUFFER, 0);
-
-        OpenGLChecks.checkError("bufferize block highlight wireframe");
-        return new WireframeShapeMesh(vao, vbo, ebo, indices.size());
-    }
-
-    private int getWireframeVertexIndex(BlockVertex vertex, List<Float> vertices, Map<BlockVertex, Integer> vertexIndices) {
-        Integer index = vertexIndices.get(vertex);
-        if (index != null) {
-            return index;
-        }
-
-        int newIndex = vertexIndices.size();
-        vertexIndices.put(vertex, newIndex);
-        vertices.add(vertex.px());
-        vertices.add(vertex.py());
-        vertices.add(vertex.pz());
-        return newIndex;
-    }
-
-    private void addWireframeEdge(int a, int b, Set<Long> edges, List<Integer> indices) {
-        int min = Math.min(a, b);
-        int max = Math.max(a, b);
-        long edge = ((long) min << 32) | (max & 0xFFFFFFFFL);
-        if (edges.add(edge)) {
-            indices.add(min);
-            indices.add(max);
-        }
-    }
-
-    private float[] toFloatArray(List<Float> list) {
-        float[] out = new float[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            out[i] = list.get(i);
-        }
-        return out;
-    }
-
-    private int[] toIntArray(List<Integer> list) {
-        int[] out = new int[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            out[i] = list.get(i);
-        }
-        return out;
     }
 
     private void bufferizeChunks() {
@@ -995,17 +909,6 @@ public class OpenGLRenderer implements Renderer {
             fullscreenQuad.cleanup();
         }
 
-        for (WireframeShapeMesh wireframeShapeMesh : wireframeShapeMeshes.values()) {
-            if (wireframeShapeMesh.vao() > 0) {
-                GL30C.glDeleteVertexArrays(wireframeShapeMesh.vao());
-            }
-            if (wireframeShapeMesh.vbo() > 0) {
-                GL15C.glDeleteBuffers(wireframeShapeMesh.vbo());
-            }
-            if (wireframeShapeMesh.ebo() > 0) {
-                GL15C.glDeleteBuffers(wireframeShapeMesh.ebo());
-            }
-        }
         wireframeShapeMeshes.clear();
 
         if (renderFramebuffer != null) {
@@ -1027,8 +930,5 @@ public class OpenGLRenderer implements Renderer {
     @Override
     public Window getWindow() {
         return window;
-    }
-
-    private record WireframeShapeMesh(int vao, int vbo, int ebo, int indexCount) {
     }
 }
