@@ -329,7 +329,7 @@ public class OpenGLRenderer implements Renderer {
             GL11C.glViewport(0, 0, renderFramebuffer.width(), renderFramebuffer.height());
         }
 
-        GL11.glClear(GL11C.GL_COLOR_BUFFER_BIT | GL11C.GL_DEPTH_BUFFER_BIT);
+        GL11.glClear(GL11C.GL_DEPTH_BUFFER_BIT);
 
         GL13C.glActiveTexture(GL13C.GL_TEXTURE0);
     }
