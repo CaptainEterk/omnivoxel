@@ -31,6 +31,7 @@ public class WorldGenerator {
     private static final Map<String, Class<? extends BlockFunction>> blockFunctionCache = new HashMap<>();
     private final DensityFunction densityFunction;
     private final BlockFunction blockFunction;
+    private final BlockFunction negDensityBlockFunction;
     private final DensityFunction heightFunction;
     private final Integer chunkMinX;
     private final Integer chunkMinY;
@@ -125,7 +126,8 @@ public class WorldGenerator {
         this.depthSections = depthSectionsNode == null ? null : (int) depthSectionsNode.value();
 
         densityFunction = getDensityFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("density"), ObjectGameNode.class), seed);
-        blockFunction = getBlockFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("surface"), ObjectGameNode.class), seed);
+        blockFunction = getBlockFunction(Game.checkGameNodeType(Game.checkGameNodeType(worldGeneratorNode.object().get("surface"), ObjectGameNode.class).object().get("block"), ObjectGameNode.class), seed);
+        negDensityBlockFunction = getBlockFunction(Game.checkGameNodeType(Game.checkGameNodeType(worldGeneratorNode.object().get("surface"), ObjectGameNode.class).object().get("neg_density"), ObjectGameNode.class), seed);
         if (worldGeneratorNode.object().containsKey("heights")) {
             heightFunction = getDensityFunction(Game.checkGameNodeType(worldGeneratorNode.object().get("heights"), ObjectGameNode.class), seed);
             heightIsDensityFunction = false;
@@ -238,6 +240,10 @@ public class WorldGenerator {
 
     public BlockFunction getBlockFunction() {
         return blockFunction;
+    }
+
+    public BlockFunction getNegDensityBlockFunction() {
+        return negDensityBlockFunction;
     }
 
     public DensityFunction getHeightFunction() {

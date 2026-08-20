@@ -58,7 +58,7 @@ public final class ServerWorldDataService {
         boolean isFloor = ncFloor > 0;
         boolean isCeiling = ncCeiling > 0;
 
-        String result = worldGenerator.getBlockFunction().evaluate(
+        String result = (density >= 0 ? worldGenerator.getBlockFunction() : worldGenerator.getNegDensityBlockFunction()).evaluate(
                 density, null,
                 isFloor, isCeiling,
                 chunkInfo.heights()[IndexCalculator.calculateBlockIndexPadded2D(x, z)] - worldY,
