@@ -1,5 +1,6 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.chunk;
 
+import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EmptyMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 
@@ -7,67 +8,26 @@ public class EmptyChunkMesh implements ChunkMesh {
     private static final MeshData meshData = new EmptyMeshData();
 
     @Override
-    public int solidVAO() {
-        return 0;
+    public RenderMesh solid() {
+        return RenderMesh.EMPTY;
     }
 
     @Override
-    public int solidVBO() {
-        return 0;
+    public RenderMesh transparent() {
+        return RenderMesh.EMPTY;
     }
 
     @Override
-    public int solidEBO() {
-        return 0;
-    }
-
-    @Override
-    public int solidIndexCount() {
-        return 0;
-    }
-
-    @Override
-    public int transparentVAO() {
-        return 0;
-    }
-
-    @Override
-    public int transparentVBO() {
-        return 0;
-    }
-
-    @Override
-    public int transparentEBO() {
-        return 0;
-    }
-
-    @Override
-    public int transparentIndexCount() {
-        return 0;
-    }
-
-    @Override
-    public int decorationVAO() {
-        return 0;
-    }
-
-    @Override
-    public int decorationVBO() {
-        return 0;
-    }
-
-    @Override
-    public int decorationEBO() {
-        return 0;
-    }
-
-    @Override
-    public int decorationIndexCount() {
-        return 0;
+    public RenderMesh decoration() {
+        return RenderMesh.EMPTY;
     }
 
     @Override
     public MeshData meshData() {
         return meshData;
+    }
+
+    @Override
+    public void cleanup() {
     }
 }

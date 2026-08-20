@@ -300,13 +300,7 @@ public class ClientWorld {
 
     private void freeChunk(ChunkMesh mesh) {
         if (mesh != null) {
-            GL30C.glDeleteVertexArrays(mesh.solidVAO());
-            GL30C.glDeleteBuffers(mesh.solidVBO());
-            GL30C.glDeleteBuffers(mesh.solidEBO());
-
-            GL30C.glDeleteVertexArrays(mesh.transparentVAO());
-            GL30C.glDeleteBuffers(mesh.transparentVBO());
-            GL30C.glDeleteBuffers(mesh.transparentEBO());
+            mesh.cleanup();
 
             mesh.meshData().cleanup();
             OpenGLChecks.checkError("delete chunk mesh");

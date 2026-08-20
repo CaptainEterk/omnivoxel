@@ -2,6 +2,7 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.util;
 
 import omnivoxel.client.game.graphics.api.opengl.OpenGLChecks;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.EmptyChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.GeneralChunkMesh;
@@ -22,18 +23,9 @@ public class MeshGenerator {
             return new EmptyChunkMesh();
         } else {
             return new GeneralChunkMesh(
-                    solid == null ? 0 : solid[0],
-                    solid == null ? 0 : solid[1],
-                    solid == null ? 0 : solid[2],
-                    solid == null ? 0 : mesh.solidIndices().capacity() / Integer.BYTES,
-                    transparent == null ? 0 : transparent[0],
-                    transparent == null ? 0 : transparent[1],
-                    transparent == null ? 0 : transparent[2],
-                    transparent == null ? 0 : mesh.transparentIndices().capacity() / Integer.BYTES,
-                    decoration == null ? 0 : decoration[0],
-                    decoration == null ? 0 : decoration[1],
-                    decoration == null ? 0 : decoration[2],
-                    decoration == null ? 0 : mesh.decorationIndices().capacity() / Integer.BYTES,
+                    solid == null ? RenderMesh.EMPTY : new RenderMesh(solid[0], solid[1], solid[2], mesh.solidIndices().capacity() / Integer.BYTES),
+                    transparent == null ? RenderMesh.EMPTY : new RenderMesh(transparent[0], transparent[1], transparent[2], mesh.transparentIndices().capacity() / Integer.BYTES),
+                    decoration == null ? RenderMesh.EMPTY : new RenderMesh(decoration[0], decoration[1], decoration[2], mesh.decorationIndices().capacity() / Integer.BYTES),
                     mesh
             );
         }

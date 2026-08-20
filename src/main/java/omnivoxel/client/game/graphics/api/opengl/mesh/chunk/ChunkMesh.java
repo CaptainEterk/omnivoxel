@@ -1,32 +1,18 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh.chunk;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.Mesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
 
+// TODO: Split into three meshes: solid, transparent, decoration
 public interface ChunkMesh extends Mesh {
-    int solidVAO();
+    RenderMesh solid();
 
-    int solidVBO();
+    RenderMesh transparent();
 
-    int solidEBO();
-
-    int solidIndexCount();
-
-    int transparentVAO();
-
-    int transparentVBO();
-
-    int transparentEBO();
-
-    int transparentIndexCount();
-
-    int decorationVAO();
-
-    int decorationVBO();
-
-    int decorationEBO();
-
-    int decorationIndexCount();
+    RenderMesh decoration();
 
     MeshData meshData();
+
+    void cleanup();
 }

@@ -381,7 +381,7 @@ public class PlayerController {
 
                         boolean isColliding = false;
                         for (BlockHitbox bh : blockHitbox) {
-                            if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
+                            if (!bh.volumeProperties().isVolume() && bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
                                 isColliding = true;
                                 break;
                             }

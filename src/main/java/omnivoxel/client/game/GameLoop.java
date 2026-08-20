@@ -1,15 +1,17 @@
 package omnivoxel.client.game;
 
-import omnivoxel.client.game.graphics.Renderer;
-import omnivoxel.client.game.graphics.api.opengl.OpenGLRenderer;
+import omnivoxel.client.game.graphics.RendererAPI;
+import omnivoxel.client.game.graphics.api.opengl.OpenGLRendererAPI;
 import omnivoxel.client.game.graphics.api.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.api.opengl.window.Window;
 import omnivoxel.client.game.graphics.camera.Camera;
 import omnivoxel.client.game.graphics.camera.CameraCullingService;
+import omnivoxel.client.game.graphics.chunk.RenderedChunkProvider;
 import omnivoxel.client.game.graphics.menu.MenuRenderer;
 import omnivoxel.client.game.graphics.menu.MenuSystem;
 import omnivoxel.client.game.graphics.menu.components.LayoutComponent;
 import omnivoxel.client.game.graphics.menu.position.ComponentPositionOrigin;
+import omnivoxel.client.game.graphics.renderer.ChunkRenderer;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.network.Client;
@@ -21,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public final class GameLoop {
-    private final Renderer renderer;
+    private final RendererAPI rendererAPI;
     private final Camera camera;
     private final ClientWorld world;
     private final AtomicBoolean gameRunning;
@@ -30,6 +32,7 @@ public final class GameLoop {
     private final State state;
     private final Settings settings;
     private final LayoutComponent mainComponent;
+    private final ChunkRenderer chunkRenderer;
 
     public GameLoop(Camera camera, ClientWorld world, AtomicBoolean gameRunning, BlockingQueue<Consumer<Window>> contextTasks, Client client, State state, Settings settings) {
         this.camera = camera;
@@ -41,7 +44,7 @@ public final class GameLoop {
         this.settings = settings;
         this.mainComponent = new LayoutComponent(ComponentPositionOrigin.TOP_LEFT);
         TextRenderer textRenderer = new TextRenderer();
-        this.renderer = new OpenGLRenderer(
+        this.rendererAPI = new OpenGLRendererAPI(
                 state,
                 settings,
                 textRenderer,
@@ -53,20 +56,24 @@ public final class GameLoop {
                 new MenuSystem(new MenuRenderer(mainComponent), textRenderer),
                 new CameraCullingService(camera)
         );
+        chunkRenderer = new ChunkRenderer(rendererAPI, state, settings, camera, world, new RenderedChunkProvider());
     }
 
     public void init() throws IOException {
-        this.renderer.init();
+        rendererAPI.init();
+        chunkRenderer.initResources();
     }
 
-    public Renderer getRenderer() {
-        return renderer;
+    public RendererAPI getRenderer() {
+        return rendererAPI;
     }
 
     public void run() {
-        while (!renderer.shouldClose() && gameRunning.get() && client.isClientRunning()) {
-            renderer.renderFrame();
+        while (!rendererAPI.shouldClose() && gameRunning.get() && client.isClientRunning()) {
+            rendererAPI.beginFrame();
+            chunkRenderer.render();
+            rendererAPI.endFrame();
         }
-        renderer.cleanup();
+        rendererAPI.cleanup();
     }
 }

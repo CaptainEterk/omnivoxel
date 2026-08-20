@@ -1,10 +1,13 @@
 package omnivoxel.client.game.graphics.api.opengl;
 
 import omnivoxel.client.game.entity.EntityMeshWrapper;
-import omnivoxel.client.game.graphics.Renderer;
+import omnivoxel.client.game.graphics.RenderType;
+import omnivoxel.client.game.graphics.RendererAPI;
 import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
+import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.wireframe.WireframeMesh;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
@@ -18,10 +21,7 @@ import omnivoxel.client.game.graphics.block.BlockMesh;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.camera.Camera;
 import omnivoxel.client.game.graphics.camera.CameraCullingService;
-import omnivoxel.client.game.graphics.chunk.RenderedChunkProvider;
 import omnivoxel.client.game.graphics.menu.MenuSystem;
-import omnivoxel.client.game.position.DistanceChunk;
-import omnivoxel.client.game.position.PositionedChunk;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.client.game.world.ClientWorldChunk;
@@ -42,16 +42,15 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.*;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-public class OpenGLRenderer implements Renderer {
+public class OpenGLRendererAPI implements RendererAPI {
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f().identity();
     private static final int FPS_SAMPLES = 60;
-    private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
-    private final List<PositionedChunk> decorationRenderedChunksInFrustum = new ArrayList<>();
-    private final List<PositionedChunk> transparentRenderedChunksInFrustum = new ArrayList<>();
     // Client
     private final Client client;
     // State
@@ -66,7 +65,6 @@ public class OpenGLRenderer implements Renderer {
     private final MenuSystem menuSystem;
     private final CameraCullingService cameraCullingService;
     private final Map<String, WireframeMesh> wireframeShapeMeshes = new HashMap<>();
-    private final RenderedChunkProvider renderedChunkProvider;
     // TODO: Remove all TEMP
     // Window
     private Window window;
@@ -76,7 +74,6 @@ public class OpenGLRenderer implements Renderer {
     private ExecutorCollection<PeriodicTimeExecutor> periodicTimeExecutorCollection;
     // Resources
     private MeshGenerator meshGenerator;
-    private int texture;
     private int TEMP_texture;
     private RenderFramebuffer renderFramebuffer;
     private RenderFramebuffer skyFramebuffer;
@@ -84,13 +81,10 @@ public class OpenGLRenderer implements Renderer {
     private int renderHeight;
     private boolean renderTracksWindowSize;
     private int renderFilter;
-    private List<DistanceChunk> solidRenderedChunks;
-    private List<DistanceChunk> decorationRenderedChunks;
-    private List<DistanceChunk> transparentRenderedChunks;
     private Timer timer;
     private FullscreenQuad fullscreenQuad;
 
-    public OpenGLRenderer(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
+    public OpenGLRendererAPI(State state, Settings settings, TextRenderer textRenderer, ClientWorld world, Camera camera, Client client, AtomicBoolean gameRunning, Queue<Consumer<Window>> contextTasks, MenuSystem menuSystem, CameraCullingService cameraCullingService) {
         this.state = state;
         this.settings = settings;
         this.textRenderer = textRenderer;
@@ -101,7 +95,6 @@ public class OpenGLRenderer implements Renderer {
         this.contextTasks = contextTasks;
         this.menuSystem = menuSystem;
         this.cameraCullingService = cameraCullingService;
-        this.renderedChunkProvider = new RenderedChunkProvider();
     }
 
     @Override
@@ -194,10 +187,6 @@ public class OpenGLRenderer implements Renderer {
 
         state.setItem("total_rendered_chunks", 1);
 
-        solidRenderedChunks = new ArrayList<>();
-        decorationRenderedChunks = new ArrayList<>();
-        transparentRenderedChunks = new ArrayList<>();
-
         periodicTimeExecutorCollection = new ExecutorCollection<>();
         periodicTimeExecutorCollection.add(new PeriodicTimeExecutor(() -> state.setItem("attemptFreeChunksTime", true), 2.0));
 //        periodicTimeExecutorCollection.add(new PeriodicTimeExecutor(() -> System.out.println(state.getItem("fps", Integer.class)), 0.25));
@@ -209,7 +198,6 @@ public class OpenGLRenderer implements Renderer {
         // TODO: Make this stitch textures together and save texture coordinates in a string->(x, y) map.
         // TODO: Make the user be able to use texture packs instead (by loading it and stitching it together)
         // TODO: Make this also be able to use texture arrays instead of texture atlases depending on OpenGL version (keep atlases around for older hardware).
-        this.texture = TextureLoader.loadTexture("texture_atlas.png");
         this.TEMP_texture = TextureLoader.loadTexture("player_texture.png");
 
         this.timer = new Timer(FPS_SAMPLES);
@@ -233,43 +221,6 @@ public class OpenGLRenderer implements Renderer {
         skyFramebuffer = new RenderFramebuffer();
         skyFramebuffer.init(renderWidth, renderHeight, renderFilter);
         OpenGLChecks.checkError("initialize render targets");
-    }
-
-    private void frame() {
-        periodicTimeExecutorCollection.execute();
-
-        updateTime();
-        clearSkyFramebuffer();
-        renderSky();
-
-        update();
-
-        renderEntities();
-
-        calculateFrustumChunks();
-
-        renderSolidChunks();
-        renderDecorationChunks();
-        renderTransparentChunks();
-        renderBlockHighlight();
-
-        bufferizeChunks();
-
-        blitToWindowFramebuffer();
-
-//        prepareGuiRendering();
-//        menuSystem.tick();
-//        resetGuiRendering();
-        renderDebugText();
-        openGLStateReset();
-
-        cleanupOpenGL();
-        OpenGLChecks.checkError("finish frame");
-
-        updateState();
-
-        client.tick();
-        world.tick();
     }
 
     private void updateTime() {
@@ -383,44 +334,6 @@ public class OpenGLRenderer implements Renderer {
             attemptFreeChunks();
         }
 
-        if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
-            solidRenderedChunks.clear();
-            decorationRenderedChunks.clear();
-            transparentRenderedChunks.clear();
-
-            int renderDistance = settings.getIntSetting("render_distance", 100);
-
-            renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
-            List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
-
-            int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
-            int squaredRenderDistance = rdChunks * rdChunks;
-
-            // TODO: This is an expensive operation, optimize it
-            for (DistanceChunk chunk : chunks) {
-                int lod = 0;
-
-                ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false, lod);
-                if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
-                    if (clientWorldChunk.getMesh().solidIndexCount() > 0) {
-                        solidRenderedChunks.add(chunk);
-                    }
-                    if (clientWorldChunk.getMesh().decorationIndexCount() > 0) {
-                        decorationRenderedChunks.add(chunk);
-                    }
-                    if (clientWorldChunk.getMesh().transparentIndexCount() > 0) {
-                        transparentRenderedChunks.add(chunk);
-                    }
-                }
-            }
-
-            transparentRenderedChunks.sort(Comparator.comparingInt(DistanceChunk::distance));
-
-            state.setItem("total_rendered_chunks", chunks.size());
-
-            state.setItem("shouldUpdateVisibleMeshes", false);
-        }
-
         if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
             window.toggleFullscreen();
             state.setItem("shouldToggleWindowFullscreen", false);
@@ -446,123 +359,6 @@ public class OpenGLRenderer implements Renderer {
             renderEntityMesh(entityMeshWrapper.entityMeshReference().getEntityMesh(), IDENTITY_MATRIX);
 //            }
         });
-    }
-
-    private void calculateFrustumChunks() {
-        solidRenderedChunksInFrustum.clear();
-        for (DistanceChunk solidRenderedChunk : solidRenderedChunks) {
-            if (camera.getFrustum().isChunkInFrustum(solidRenderedChunk.pos())) {
-                solidRenderedChunksInFrustum.add(new PositionedChunk(solidRenderedChunk.pos(), world.get(solidRenderedChunk.pos(), false, false)));
-            }
-        }
-
-        decorationRenderedChunksInFrustum.clear();
-        for (DistanceChunk decorationRenderedChunk : decorationRenderedChunks) {
-            if (camera.getFrustum().isChunkInFrustum(decorationRenderedChunk.pos())) {
-                decorationRenderedChunksInFrustum.add(new PositionedChunk(decorationRenderedChunk.pos(), world.get(decorationRenderedChunk.pos(), false, false)));
-            }
-        }
-
-        transparentRenderedChunksInFrustum.clear();
-        for (DistanceChunk transparentRenderedChunk : transparentRenderedChunks) {
-            if (camera.getFrustum().isChunkInFrustum(transparentRenderedChunk.pos())) {
-                transparentRenderedChunksInFrustum.add(new PositionedChunk(transparentRenderedChunk.pos(), world.get(transparentRenderedChunk.pos(), false, false)));
-            }
-        }
-    }
-
-    private void renderSolidChunks() {
-        shaderProgram.setUniformUnsigned("meshType", 0);
-        shaderProgram.setUniform("model", IDENTITY_MATRIX);
-
-        GL11C.glEnable(GL11C.GL_DEPTH_TEST);
-        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
-        GL11C.glDepthMask(true);
-
-        GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
-        int occluded = 0;
-
-        for (PositionedChunk positionedChunk : solidRenderedChunksInFrustum) {
-            if (positionedChunk.chunk().getMesh().solidVAO() > 0 && positionedChunk.chunk().getMesh().solidIndexCount() > 0) {
-                Position3D position3D = positionedChunk.pos();
-                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
-                renderVAO(positionedChunk.chunk().getMesh().solidVAO(), positionedChunk.chunk().getMesh().solidIndexCount());
-            } else {
-                occluded++;
-            }
-        }
-
-        state.setItem("geometry_culled_chunks", occluded);
-    }
-
-    private void setMipmapping(boolean mipmapped) {
-        if (mipmapped) {
-            // Enable mipmaps
-            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
-                    GL11C.GL_TEXTURE_MIN_FILTER,
-                    GL11C.GL_NEAREST_MIPMAP_LINEAR);
-
-            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
-                    GL11C.GL_TEXTURE_MAG_FILTER,
-                    GL11C.GL_NEAREST);
-
-            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
-                    GL12C.GL_TEXTURE_MAX_LEVEL,
-                    1000);
-        } else {
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MIN_FILTER,
-                    GL11.GL_NEAREST);
-
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
-                    GL11.GL_TEXTURE_MAG_FILTER,
-                    GL11.GL_NEAREST);
-
-            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
-                    GL12C.GL_TEXTURE_BASE_LEVEL,
-                    0);
-
-            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
-                    GL12C.GL_TEXTURE_MAX_LEVEL,
-                    0);
-        }
-    }
-
-    private void renderDecorationChunks() {
-        GL11C.glBindTexture(GL11C.GL_TEXTURE_2D, texture);
-        setMipmapping(false);
-        GL11C.glDepthFunc(GL11C.GL_LEQUAL);
-        GL11C.glDisable(GL11C.GL_CULL_FACE);
-        for (PositionedChunk positionedChunk : decorationRenderedChunksInFrustum) {
-            Position3D position3D = positionedChunk.pos();
-            if (positionedChunk.chunk().getMesh().decorationVAO() > 0 && positionedChunk.chunk().getMesh().decorationIndexCount() > 0) {
-                shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
-                renderVAO(positionedChunk.chunk().getMesh().decorationVAO(), positionedChunk.chunk().getMesh().decorationIndexCount());
-            }
-        }
-        setMipmapping(true);
-    }
-
-    private void renderTransparentChunks() {
-        GL11C.glDepthFunc(GL11C.GL_LESS);
-        GL11C.glDepthMask(false);
-        GL11C.glEnable(GL11C.GL_BLEND);
-        GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
-        int occluded = 0;
-        for (int i = transparentRenderedChunksInFrustum.size() - 1; i >= 0; i--) {
-            PositionedChunk positionedChunk = transparentRenderedChunksInFrustum.get(i);
-            Position3D position3D = positionedChunk.pos();
-            shaderProgram.setUniform("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-            shaderProgram.setUniform("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
-            if (positionedChunk.chunk().getMesh().transparentVAO() > 0 && positionedChunk.chunk().getMesh().transparentIndexCount() > 0) {
-                renderVAO(positionedChunk.chunk().getMesh().transparentVAO(), positionedChunk.chunk().getMesh().transparentIndexCount());
-            } else {
-                occluded++;
-            }
-        }
-        state.setItem("geometry_culled_chunks", state.getItem("geometry_culled_chunks", Integer.class) + occluded);
     }
 
     private void renderBlockHighlight() {
@@ -779,10 +575,11 @@ public class OpenGLRenderer implements Renderer {
                     camera.getY(),
                     camera.getZ(),
                     state.getItem("deltaTime", Double.class),
-                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size() + decorationRenderedChunksInFrustum.size(),
-                    solidRenderedChunksInFrustum.size(),
-                    decorationRenderedChunksInFrustum.size(),
-                    transparentRenderedChunksInFrustum.size(),
+//                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size() + decorationRenderedChunksInFrustum.size(),
+//                    solidRenderedChunksInFrustum.size(),
+//                    decorationRenderedChunksInFrustum.size(),
+//                    transparentRenderedChunksInFrustum.size(),
+                    0, 0, 0, 0,
                     world.size(),
                     state.getItem("total_rendered_chunks", Integer.class),
                     state.getItem("bufferizing_chunk_count", Integer.class),
@@ -873,13 +670,45 @@ public class OpenGLRenderer implements Renderer {
     }
 
     @Override
-    public void renderFrame() {
+    public void beginFrame() {
         Consumer<Window> task;
         while ((task = contextTasks.poll()) != null) {
             task.accept(window);
         }
 
-        frame();
+        periodicTimeExecutorCollection.execute();
+
+        updateTime();
+        clearSkyFramebuffer();
+        renderSky();
+
+        update();
+
+        renderEntities();
+
+    }
+
+    @Override
+    public void endFrame() {
+        renderBlockHighlight();
+
+        bufferizeChunks();
+
+        blitToWindowFramebuffer();
+
+//        prepareGuiRendering();
+//        menuSystem.tick();
+//        resetGuiRendering();
+        renderDebugText();
+        openGLStateReset();
+
+        cleanupOpenGL();
+        OpenGLChecks.checkError("finish frame");
+
+        updateState();
+
+        client.tick();
+        world.tick();
 
         GLFW.glfwSwapBuffers(window.window());
 
@@ -914,7 +743,60 @@ public class OpenGLRenderer implements Renderer {
     }
 
     @Override
+    public void setMipmapping(boolean mipmapped) {
+        if (mipmapped) {
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MIN_FILTER,
+                    GL11C.GL_NEAREST_MIPMAP_LINEAR);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL11C.GL_TEXTURE_MAG_FILTER,
+                    GL11C.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    1000);
+        } else {
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MIN_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D,
+                    GL11.GL_TEXTURE_MAG_FILTER,
+                    GL11.GL_NEAREST);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_BASE_LEVEL,
+                    0);
+
+            GL11C.glTexParameteri(GL11C.GL_TEXTURE_2D,
+                    GL12C.GL_TEXTURE_MAX_LEVEL,
+                    0);
+        }
+    }
+
+    @Override
     public Window getWindow() {
         return window;
+    }
+
+    @Override
+    public void setRenderType(RenderType renderType) {
+        shaderProgram.setUniformUnsigned("meshType", renderType.ordinal());
+    }
+
+    @Override
+    public void setShaderIVec3(String id, int x, int y, int z) {
+        shaderProgram.setUniform(id, x, y, z);
+    }
+
+    @Override
+    public void setShaderInt(String id, int i) {
+        shaderProgram.setUniform(id, i);
+    }
+
+    @Override
+    public void render(RenderMesh mesh) {
+        renderVAO(mesh.vao(), mesh.indexCount());
     }
 }
