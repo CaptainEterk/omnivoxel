@@ -11,10 +11,7 @@ import omnivoxel.util.IndexCalculator;
 import omnivoxel.util.bytes.ByteUtils;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
-import omnivoxel.world.chunk.BiBlockChunk;
-import omnivoxel.world.chunk.Chunk;
-import omnivoxel.world.chunk.ShortPaletteChunk;
-import omnivoxel.world.chunk.SingleBlockChunk;
+import omnivoxel.world.chunk.*;
 import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 
@@ -105,7 +102,7 @@ public final class ChunkIO {
                 if (palette.length == 2) {
                     result = new BiBlockChunk<>(palette[0], lod);
                 } else {
-                    result = new ShortPaletteChunk<>(lod);
+                    result = new BytePaletteChunk<>(lod);
                 }
                 chunk = result;
 

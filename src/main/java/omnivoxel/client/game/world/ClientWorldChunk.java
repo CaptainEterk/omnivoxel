@@ -10,10 +10,10 @@ import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk.ChunkLODSampler;
 import omnivoxel.world.chunk.ChunkShell;
 
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientWorldChunk {
+    private static final short[] EMPTY_OVERFLOW = new short[0];
     // TODO: Move to ChunkLightingData?
     private final short[][] neighborLightOverflow;
     private final AtomicBoolean[] cleanLighting;
@@ -30,7 +30,7 @@ public class ClientWorldChunk {
         this.chunkLightingData = chunkLightingData;
         this.neighborLightOverflow = new short[Direction.VALUES.length * LightChannels.values().length][];
         for (int i = 0; i < neighborLightOverflow.length; i++) {
-            this.neighborLightOverflow[i] = new short[0];
+            this.neighborLightOverflow[i] = EMPTY_OVERFLOW;
         }
         this.cleanLighting = new AtomicBoolean[LightChannels.values().length];
         for (int i = 0; i < cleanLighting.length; i++) {

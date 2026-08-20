@@ -277,19 +277,23 @@ public class ChunkMeshDataLightingGenerator {
     ) {
         clearQueues();
 
-        byte[] lightChannel = new byte[ConstantCommonSettings.BLOCKS_IN_CHUNK];
+        int[] lightChannel =
+                new int[ConstantCommonSettings.BLOCKS_IN_CHUNK >> 3];
 
         loadChunkLights(channel, chunkPos, chunk);
 
         for (Direction dir : Direction.VALUES) {
-            short[] neighbor = clientWorldChunk.getNeighborLightOverflow(channel, dir);
+            short[] neighbor =
+                    clientWorldChunk.getNeighborLightOverflow(channel, dir);
 
             for (short overflowNode : neighbor) {
-                int a = (overflowNode) & 0b11111;
+                int a = overflowNode & 0b11111;
                 int b = (overflowNode >> 5) & 0b11111;
-                byte light = (byte) ((overflowNode >> 10) & 0xF);
+                int light = (overflowNode >> 10) & 0xF;
 
-                int x = 0, y = 0, z = 0;
+                int x = 0;
+                int y = 0;
+                int z = 0;
 
                 switch (dir) {
                     case UP -> {
@@ -326,11 +330,28 @@ public class ChunkMeshDataLightingGenerator {
                     }
                 }
 
-                int idx = IndexCalculator.calculateBlockIndex(x, y, z);
+                int blockIndex =
+                        IndexCalculator.calculateBlockIndex(x, y, z);
 
-                if (light > lightChannel[idx]) {
-                    lightChannel[idx] = light;
-                    chunkLights.add(x, y, z, light);
+                int arrayIndex = blockIndex >> 3;
+                int shift = (blockIndex & 7) << 2;
+
+                int oldLight =
+                        (lightChannel[arrayIndex] >>> shift) & 0xF;
+
+                if (light > oldLight) {
+                    int mask = 0xF << shift;
+
+                    lightChannel[arrayIndex] =
+                            (lightChannel[arrayIndex] & ~mask)
+                                    | (light << shift);
+
+                    chunkLights.add(
+                            x,
+                            y,
+                            z,
+                            (byte) light
+                    );
                 }
             }
         }
@@ -404,23 +425,33 @@ public class ChunkMeshDataLightingGenerator {
         }
     }
 
-    private void floodFill(byte[] lightChannel, Chunk<BlockWithMesh> chunk, LightChannels channel) {
+    private void floodFill(int[] lightChannel, Chunk<BlockWithMesh> chunk, LightChannels channel) {
         while (!chunkLights.isEmpty()) {
             chunkLights.poll();
+
             int x = chunkLights.x();
             int y = chunkLights.y();
             int z = chunkLights.z();
-            byte light = chunkLights.lightLevel();
+            int light = chunkLights.lightLevel() & 0xF;
 
-            int idx = IndexCalculator.calculateBlockIndex(x, y, z);
+            int blockIndex = IndexCalculator.calculateBlockIndex(x, y, z);
+            int arrayIndex = blockIndex >> 3;
+            int shift = (blockIndex & 7) << 2;
 
-            if (light < lightChannel[idx]) {
+            int oldLight = (lightChannel[arrayIndex] >>> shift) & 0xF;
+
+            if (light < oldLight) {
                 continue;
             }
 
-            lightChannel[idx] = light;
+            // Store the light level in the 4-bit slot.
+            int mask = 0xF << shift;
+            lightChannel[arrayIndex] =
+                    (lightChannel[arrayIndex] & ~mask) | (light << shift);
 
-            if (light < 1) continue;
+            if (light < 1) {
+                continue;
+            }
 
             BlockMesh mesh = chunk.getBlock(x, y, z).blockMesh();
 
@@ -429,30 +460,65 @@ public class ChunkMeshDataLightingGenerator {
                 int ny = y + direction.dy;
                 int nz = z + direction.dz;
 
-                int diffuse = mesh == null ? 1 : mesh.getLightDiffuse(direction.opposite().getBlockFace(), channel);
+                int diffuse = mesh == null
+                        ? 1
+                        : mesh.getLightDiffuse(
+                        direction.opposite().getBlockFace(),
+                        channel
+                );
 
                 int attenuated = light - diffuse;
-                if (attenuated <= 0) continue;
+
+                if (attenuated <= 0) {
+                    continue;
+                }
 
                 if (IndexCalculator.checkBounds(nx, ny, nz)) {
-                    int nIdx = IndexCalculator.calculateBlockIndex(nx, ny, nz);
+                    int neighborBlockIndex =
+                            IndexCalculator.calculateBlockIndex(nx, ny, nz);
 
-                    if ((byte) attenuated > lightChannel[nIdx]) {
-                        lightChannel[nIdx] = (byte) attenuated;
-                        chunkLights.add(nx, ny, nz, (byte) attenuated);
+                    int neighborArrayIndex = neighborBlockIndex >> 3;
+                    int neighborShift = (neighborBlockIndex & 7) << 2;
+
+                    int neighborLight =
+                            (lightChannel[neighborArrayIndex] >>> neighborShift) & 0xF;
+
+                    if (attenuated > neighborLight) {
+                        int neighborMask = 0xF << neighborShift;
+
+                        lightChannel[neighborArrayIndex] =
+                                (lightChannel[neighborArrayIndex] & ~neighborMask)
+                                        | (attenuated << neighborShift);
+
+                        chunkLights.add(
+                                nx,
+                                ny,
+                                nz,
+                                (byte) attenuated
+                        );
                     }
 
                 } else {
-                    int ox = nx < 0 ? nx + ConstantCommonSettings.CHUNK_WIDTH :
-                            (nx >= ConstantCommonSettings.CHUNK_WIDTH ? nx - ConstantCommonSettings.CHUNK_WIDTH : nx);
+                    int ox = nx < 0
+                            ? nx + ConstantCommonSettings.CHUNK_WIDTH
+                            : (nx >= ConstantCommonSettings.CHUNK_WIDTH
+                            ? nx - ConstantCommonSettings.CHUNK_WIDTH
+                            : nx);
 
-                    int oy = ny < 0 ? ny + ConstantCommonSettings.CHUNK_HEIGHT :
-                            (ny >= ConstantCommonSettings.CHUNK_HEIGHT ? ny - ConstantCommonSettings.CHUNK_HEIGHT : ny);
+                    int oy = ny < 0
+                            ? ny + ConstantCommonSettings.CHUNK_HEIGHT
+                            : (ny >= ConstantCommonSettings.CHUNK_HEIGHT
+                            ? ny - ConstantCommonSettings.CHUNK_HEIGHT
+                            : ny);
 
-                    int oz = nz < 0 ? nz + ConstantCommonSettings.CHUNK_LENGTH :
-                            (nz >= ConstantCommonSettings.CHUNK_LENGTH ? nz - ConstantCommonSettings.CHUNK_LENGTH : nz);
+                    int oz = nz < 0
+                            ? nz + ConstantCommonSettings.CHUNK_LENGTH
+                            : (nz >= ConstantCommonSettings.CHUNK_LENGTH
+                            ? nz - ConstantCommonSettings.CHUNK_LENGTH
+                            : nz);
 
-                    borderLightQueues.get(direction).add(ox, oy, oz, (byte) attenuated);
+                    borderLightQueues.get(direction)
+                            .add(ox, oy, oz, (byte) attenuated);
                 }
             }
         }
