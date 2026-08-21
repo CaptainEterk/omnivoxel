@@ -64,7 +64,21 @@ public class ChunkRenderer {
 
             // TODO: This is an expensive operation, optimize it
             for (DistanceChunk chunk : chunks) {
-                int lod = 0;
+                int lod;
+
+                if (chunk.distance() < squaredRenderDistance / 32) {
+                    lod = 0;
+                } else if (chunk.distance() < squaredRenderDistance / 16) {
+                    lod = 1;
+                } else if (chunk.distance() < squaredRenderDistance / 8) {
+                    lod = 2;
+                } else if (chunk.distance() < squaredRenderDistance / 4) {
+                    lod = 3;
+                } else if (chunk.distance() < squaredRenderDistance / 2) {
+                    lod = 4;
+                } else {
+                    lod = 5;
+                }
 
                 ClientWorldChunk clientWorldChunk = world.get(chunk.pos(), true, false, lod);
                 if (clientWorldChunk != null && clientWorldChunk.getMesh() != null) {
@@ -133,7 +147,7 @@ public class ChunkRenderer {
             if (positionedChunk.chunk().getMesh().solid().vao() > 0 && positionedChunk.chunk().getMesh().solid().indexCount() > 0) {
                 Position3D position3D = positionedChunk.pos();
                 rendererAPI.setShaderIVec3("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
+                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getMesh().lod());
                 rendererAPI.render(positionedChunk.chunk().getMesh().solid());
             } else {
                 occluded++;
@@ -151,7 +165,7 @@ public class ChunkRenderer {
             Position3D position3D = positionedChunk.pos();
             if (positionedChunk.chunk().getMesh().decoration().vao() > 0 && positionedChunk.chunk().getMesh().decoration().indexCount() > 0) {
                 rendererAPI.setShaderIVec3("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
+                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getMesh().lod());
                 rendererAPI.render(positionedChunk.chunk().getMesh().decoration());
             }
         }
@@ -168,7 +182,7 @@ public class ChunkRenderer {
             if (positionedChunk.chunk().getMesh().transparent().vao() > 0 && positionedChunk.chunk().getMesh().transparent().indexCount() > 0) {
                 Position3D position3D = positionedChunk.pos();
                 rendererAPI.setShaderIVec3("chunkPosition", position3D.x(), position3D.y(), position3D.z());
-                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getChunkData(-1).getLOD());
+                rendererAPI.setShaderInt("chunkScale", 1 << positionedChunk.chunk().getMesh().lod());
                 rendererAPI.render(positionedChunk.chunk().getMesh().transparent());
             }
         }

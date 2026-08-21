@@ -29,6 +29,14 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import java.util.*;
 
 public class ChunkMeshDataLightingGenerator {
+    private static final Position3D[] DIRECT_NEIGHBOR_OFFSETS = {
+            new Position3D(-1, 0, 0),
+            new Position3D(1, 0, 0),
+            new Position3D(0, -1, 0),
+            new Position3D(0, 1, 0),
+            new Position3D(0, 0, -1),
+            new Position3D(0, 0, 1)
+    };
     private final Map<Direction, LightNodeQueue> borderLightQueues = new EnumMap<>(Direction.class);
     private final LightNodeQueue chunkLights;
     private final ClientWorld world;
@@ -129,9 +137,29 @@ public class ChunkMeshDataLightingGenerator {
     public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
-            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), lightingChunkMeshDataTask.position3D(), blockService, world);
+            Position3D position = lightingChunkMeshDataTask.position3D();
+            int previousLod = getNativeLod(position);
+            ChunkUnpacker.unpackChunkPadded(lightingChunkMeshDataTask.blocks(), position, blockService, world);
+            if (previousLod != -1 && previousLod != getNativeLod(position)) {
+                remeshDirectNeighbors(position);
+            }
         }
         return generateChunkMeshDataLighting(lightingChunkMeshDataTask.position3D(), lightingChunkMeshDataTask.channel());
+    }
+
+    private int getNativeLod(Position3D position) {
+        ClientWorldChunk chunk = world.get(position, false, false);
+        return chunk == null || chunk.getChunkData(-1) == null ? -1 : chunk.getChunkData(-1).getLOD();
+    }
+
+    private void remeshDirectNeighbors(Position3D position) {
+        for (Position3D offset : DIRECT_NEIGHBOR_OFFSETS) {
+            Position3D neighborPosition = position.add(offset.x(), offset.y(), offset.z());
+            ClientWorldChunk neighbor = world.get(neighborPosition, false, false);
+            if (neighbor != null && neighbor.getLightingData() != null && neighbor.isCleanLighting()) {
+                meshDataGenerators.submit(new ChunkMeshDataTask(neighborPosition));
+            }
+        }
     }
 
     private void checkCompleteDirtyNeighbor(Position3D position3D, ClientWorldChunk clientWorldChunk) {

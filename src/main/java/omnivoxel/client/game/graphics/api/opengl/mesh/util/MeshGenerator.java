@@ -26,6 +26,7 @@ public class MeshGenerator {
                     solid == null ? RenderMesh.EMPTY : new RenderMesh(solid[0], solid[1], solid[2], mesh.solidIndices().capacity() / Integer.BYTES),
                     transparent == null ? RenderMesh.EMPTY : new RenderMesh(transparent[0], transparent[1], transparent[2], mesh.transparentIndices().capacity() / Integer.BYTES),
                     decoration == null ? RenderMesh.EMPTY : new RenderMesh(decoration[0], decoration[1], decoration[2], mesh.decorationIndices().capacity() / Integer.BYTES),
+                    mesh.lod(),
                     mesh
             );
         }

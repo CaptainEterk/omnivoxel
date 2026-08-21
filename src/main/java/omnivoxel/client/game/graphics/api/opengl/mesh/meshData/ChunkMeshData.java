@@ -12,6 +12,7 @@ public record ChunkMeshData(
         ByteBuffer transparentIndices,
         ByteBuffer decorationVertices,
         ByteBuffer decorationIndices,
+        int lod,
         Position3D chunkPosition
 ) implements MeshData {
     @Override

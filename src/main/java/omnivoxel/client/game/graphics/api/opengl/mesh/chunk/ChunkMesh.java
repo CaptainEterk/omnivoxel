@@ -12,6 +12,8 @@ public interface ChunkMesh extends Mesh {
 
     RenderMesh decoration();
 
+    int lod();
+
     MeshData meshData();
 
     void cleanup();

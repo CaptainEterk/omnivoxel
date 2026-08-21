@@ -74,11 +74,11 @@ public final class ChunkLODSampler {
         );
 
         for (int x = 0; x < width; x++) {
+            int sourceX = x / scale;
             for (int z = 0; z < length; z++) {
+                int sourceZ = z / scale;
                 for (int y = 0; y < height; y++) {
-                    int sourceX = x / scale;
                     int sourceY = y / scale;
-                    int sourceZ = z / scale;
 
                     result = result.setBlock(
                             x,

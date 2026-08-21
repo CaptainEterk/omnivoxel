@@ -7,6 +7,7 @@ public record GeneralChunkMesh(
         RenderMesh solid,
         RenderMesh transparent,
         RenderMesh decoration,
+        int lod,
         MeshData meshData
 ) implements ChunkMesh {
     @Override

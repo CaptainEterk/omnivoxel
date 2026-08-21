@@ -71,7 +71,7 @@ public class PlayerController {
     @NotNull
     private MovementMode movementMode = MovementMode.FALL_COLLIDE;
     private double x;
-    private double y;
+    private double y=200;
     private double z;
     private double velocityX;
     private double velocityY;
@@ -482,7 +482,7 @@ public class PlayerController {
             int localZ = IndexCalculator.localZ(z);
 
             ClientWorldChunk clientWorldChunk = world.get(new Position3D(chunkX, chunkY, chunkZ), false, false);
-            if (clientWorldChunk == null) return null;
+            if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > 0) return null;
 
             Block block = clientWorldChunk.getChunkData(-1).getBlock(localX, localY, localZ);
 

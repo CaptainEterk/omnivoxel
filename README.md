@@ -38,7 +38,6 @@ ambient_occlusion=false
 smooth_lighting=false
 vsync=false
 free_chunk_max=1000
-lod_block_limit=128
 max_mesh_generator_threads=12
 max_lighting_generator_threads=12
 bufferize_chunks_per_frame=10

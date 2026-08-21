@@ -20,10 +20,7 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ChunkMeshDataGenerator {
     private static final BlockFace[] UNROTATE = {
@@ -64,6 +61,8 @@ public class ChunkMeshDataGenerator {
     private final Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
     private final Map<UniqueVertex, Integer> decorationVertexIndexMap = new HashMap<>();
     private final int[] vertexData = new int[3];
+    private final int[] neighborLOD = new int[6];
+    private final int[] neighborExposed = new int[BlockFace.NORMAL_VALUES.length * ConstantCommonSettings.CHUNK_SIZE];
     private BlockMesh[] blockMeshes;
     private byte[] rotations;
     private boolean unpackingFailed = false;
@@ -129,12 +128,70 @@ public class ChunkMeshDataGenerator {
         transparentVertexIndexMap.clear();
         decorationVertexIndexMap.clear();
 
+        int currentLOD = clientWorldChunk.getChunkData(-1).getLOD();
+
         for (int x = 0; x < chunkWidth; x++) {
             for (int z = 0; z < chunkLength; z++) {
                 for (int y = 0; y < chunkHeight; y++) {
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
                     BlockMesh blockMesh = blockMeshes[index];
                     if (blockMesh != null) {
+                        int lodTransitionFaces = 0;
+
+                        if (x == 0) {
+                            int face = BlockFace.WEST.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | y] & (1 << z)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
+                        if (x == chunkWidth - 1) {
+                            int face = BlockFace.EAST.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | y] & (1 << z)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
+                        if (y == 0) {
+                            int face = BlockFace.BOTTOM.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | x] & (1 << z)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
+                        if (y == chunkHeight - 1) {
+                            int face = BlockFace.TOP.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | x] & (1 << z)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
+                        if (z == 0) {
+                            int face = BlockFace.SOUTH.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | y] & (1 << x)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
+                        if (z == chunkLength - 1) {
+                            int face = BlockFace.NORTH.ordinal();
+
+                            if (neighborLOD[face] < currentLOD &&
+                                    (neighborExposed[(face << 5) | y] & (1 << x)) != 0) {
+                                lodTransitionFaces |= 1 << face;
+                            }
+                        }
+
                         if (blockMesh.shouldRenderTransparentMesh()) {
                             generateBlockMeshData(
                                     x,
@@ -153,7 +210,8 @@ public class ChunkMeshDataGenerator {
                                     chunkLightingData,
                                     blockMeshes,
                                     rotations,
-                                    position3D
+                                    position3D,
+                                    lodTransitionFaces
                             );
                         } else if (blockMesh.shouldRenderDecorationMesh()) {
                             generateBlockMeshData(
@@ -173,7 +231,8 @@ public class ChunkMeshDataGenerator {
                                     chunkLightingData,
                                     blockMeshes,
                                     rotations,
-                                    position3D
+                                    position3D,
+                                    lodTransitionFaces
                             );
                         } else {
                             generateBlockMeshData(
@@ -193,7 +252,8 @@ public class ChunkMeshDataGenerator {
                                     chunkLightingData,
                                     blockMeshes,
                                     rotations,
-                                    position3D
+                                    position3D,
+                                    lodTransitionFaces
                             );
                         }
                     }
@@ -208,7 +268,7 @@ public class ChunkMeshDataGenerator {
         ByteBuffer decorationVertexBuffer = MeshDataGenerator.createIntBuffer(decorationVertices);
         ByteBuffer decorationIndexBuffer = MeshDataGenerator.createIntBuffer(decorationIndices);
 
-        return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, decorationVertexBuffer, decorationIndexBuffer, position3D);
+        return new ChunkMeshData(vertexBuffer, indexBuffer, transparentVertexBuffer, transparentIndexBuffer, decorationVertexBuffer, decorationIndexBuffer, lod, position3D);
     }
 
     private void generateBlockMeshData(
@@ -217,18 +277,19 @@ public class ChunkMeshDataGenerator {
             List<Integer> vertices, List<Integer> indices, Map<UniqueVertex, Integer> vertexIndexMap, ChunkLightingData chunkLightingData,
             BlockMesh[] blockMeshes,
             byte[] rotations,
-            Position3D chunkPosition) {
+            Position3D chunkPosition,
+            int lodTransitionFaces) {
         BlockShape shape = blockMesh.getShape();
         int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
         byte rotation = blockMesh.isRotatable() ? rotations[index] : 0;
         byte rotationOffset = (byte) ((rotation & 3) * 6);
 
-        addFaceIfVisible(x, y, z, blockMesh, shape, 0, rotationOffset, blockMeshes[topIndex], getRotation(blockMeshes[topIndex], rotations, topIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, 1, rotationOffset, blockMeshes[bottomIndex], getRotation(blockMeshes[bottomIndex], rotations, bottomIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, 2, rotationOffset, blockMeshes[northIndex], getRotation(blockMeshes[northIndex], rotations, northIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, 3, rotationOffset, blockMeshes[southIndex], getRotation(blockMeshes[southIndex], rotations, southIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, 4, rotationOffset, blockMeshes[eastIndex], getRotation(blockMeshes[eastIndex], rotations, eastIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
-        addFaceIfVisible(x, y, z, blockMesh, shape, 5, rotationOffset, blockMeshes[westIndex], getRotation(blockMeshes[westIndex], rotations, westIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 0, rotationOffset, blockMeshes[topIndex], getRotation(blockMeshes[topIndex], rotations, topIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 1, rotationOffset, blockMeshes[bottomIndex], getRotation(blockMeshes[bottomIndex], rotations, bottomIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 2, rotationOffset, blockMeshes[northIndex], getRotation(blockMeshes[northIndex], rotations, northIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 3, rotationOffset, blockMeshes[southIndex], getRotation(blockMeshes[southIndex], rotations, southIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 4, rotationOffset, blockMeshes[eastIndex], getRotation(blockMeshes[eastIndex], rotations, eastIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
+        addFaceIfVisible(x, y, z, blockMesh, shape, 5, rotationOffset, blockMeshes[westIndex], getRotation(blockMeshes[westIndex], rotations, westIndex), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition, lodTransitionFaces);
     }
 
     private byte getRotation(BlockMesh blockMesh, byte[] rotations, int index) {
@@ -248,10 +309,11 @@ public class ChunkMeshDataGenerator {
             Map<UniqueVertex, Integer> vertexIndexMap,
             ChunkLightingData chunkLightingData,
             BlockMesh[] blockMeshes,
-            Position3D chunkPosition) {
+            Position3D chunkPosition,
+            int lodTransitionFaces) {
         BlockFace sourceFace = UNROTATE[rotationOffset + worldFace];
         BlockFace face = BlockFace.NORMAL_VALUES[worldFace];
-        if (shouldRenderFaceCached(blockMesh, shape, adjacent, sourceFace.ordinal(), worldFace, adjacentRotation)) {
+        if ((lodTransitionFaces & (1 << worldFace)) != 0 || shouldRenderFaceCached(blockMesh, shape, adjacent, sourceFace.ordinal(), worldFace, adjacentRotation)) {
             addFacePrecomputedShape(x, y, z, blockMesh, shape, sourceFace, face, (byte) (rotationOffset / 6), vertices, indices, vertexIndexMap, chunkLightingData, blockMeshes, chunkPosition);
         }
     }
@@ -504,22 +566,6 @@ public class ChunkMeshDataGenerator {
         return coordinate < 0.5f ? -1 : 1;
     }
 
-    private void setupLOD(Chunk<?> chunk) {
-        lod = chunk.getLOD();
-
-        chunkWidth = ConstantCommonSettings.CHUNK_WIDTH >> lod;
-        chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
-        chunkLength = ConstantCommonSettings.CHUNK_LENGTH >> lod;
-
-        int paddedSize =
-                (chunkWidth + 2) *
-                        (chunkHeight + 2) *
-                        (chunkLength + 2);
-
-        blockMeshes = new BlockMesh[paddedSize];
-        rotations = new byte[paddedSize];
-    }
-
     private boolean isAmbientOccluder(BlockMesh[] blockMeshes, int x, int y, int z, BlockFace face) {
         if (x < -1 || x > ConstantCommonSettings.CHUNK_WIDTH ||
                 y < -1 || y > ConstantCommonSettings.CHUNK_HEIGHT ||
@@ -539,6 +585,22 @@ public class ChunkMeshDataGenerator {
         return (byte) Math.round((light & 0xFF) * (ambientOcclusion / 4.0f));
     }
 
+    private void setupLOD(Chunk<?> chunk) {
+        lod = chunk.getLOD();
+
+        chunkWidth = ConstantCommonSettings.CHUNK_WIDTH >> lod;
+        chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
+        chunkLength = ConstantCommonSettings.CHUNK_LENGTH >> lod;
+
+        int paddedSize =
+                (chunkWidth + 2) *
+                        (chunkHeight + 2) *
+                        (chunkLength + 2);
+
+        blockMeshes = new BlockMesh[paddedSize];
+        rotations = new byte[paddedSize];
+    }
+
     private void unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
         Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData(-1);
 
@@ -550,12 +612,12 @@ public class ChunkMeshDataGenerator {
 
         setupLOD(center);
 
-        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true, lod);
-        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true, lod);
-        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true, lod);
-        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true, lod);
-        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true, lod);
-        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true, lod);
+        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true, -1);
+        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true, -1);
+        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true, -1);
+        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true, -1);
+        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true, -1);
+        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true, -1);
 
         if (negXChunk == null || posXChunk == null ||
                 negYChunk == null || posYChunk == null ||
@@ -579,6 +641,12 @@ public class ChunkMeshDataGenerator {
             unpackingFailed = true;
             return;
         }
+
+        populateNeighborExposed(
+                negXChunk.getChunkData(-1), posXChunk.getChunkData(-1),
+                negYChunk.getChunkData(-1), posYChunk.getChunkData(-1),
+                negZChunk.getChunkData(-1), posZChunk.getChunkData(-1)
+        );
 
         for (int x = -1; x <= chunkWidth; x++) {
             for (int y = -1; y <= chunkHeight; y++) {
@@ -628,6 +696,158 @@ public class ChunkMeshDataGenerator {
         }
 
         unpackingFailed = false;
+    }
+
+    private void populateNeighborExposed(
+            Chunk<BlockWithMesh> negX,
+            Chunk<BlockWithMesh> posX,
+            Chunk<BlockWithMesh> negY,
+            Chunk<BlockWithMesh> posY,
+            Chunk<BlockWithMesh> negZ,
+            Chunk<BlockWithMesh> posZ
+    ) {
+        Arrays.fill(neighborExposed, 0);
+
+        populateNeighborExposedFace(BlockFace.TOP, posY);
+        populateNeighborExposedFace(BlockFace.BOTTOM, negY);
+        populateNeighborExposedFace(BlockFace.NORTH, posZ);
+        populateNeighborExposedFace(BlockFace.SOUTH, negZ);
+        populateNeighborExposedFace(BlockFace.EAST, posX);
+        populateNeighborExposedFace(BlockFace.WEST, negX);
+    }
+
+    private void populateNeighborExposedFace(
+            BlockFace face,
+            Chunk<BlockWithMesh> neighbor
+    ) {
+        int neighborLod = neighbor.getLOD();
+        int faceIndex = face.ordinal();
+        neighborLOD[faceIndex] = neighborLod;
+        if (neighborLod >= lod) {
+            return;
+        }
+
+        int scale = 1 << (lod - neighborLod);
+
+        int neighborWidth = ConstantCommonSettings.CHUNK_WIDTH >> neighborLod;
+        int neighborHeight = ConstantCommonSettings.CHUNK_HEIGHT >> neighborLod;
+        int neighborLength = ConstantCommonSettings.CHUNK_LENGTH >> neighborLod;
+
+        switch (face) {
+            case WEST, EAST -> {
+                int neighborX = face == BlockFace.WEST ? neighborWidth - 1 : 0;
+
+                for (int y = 0; y < chunkHeight; y++) {
+                    int yStart = y * scale;
+
+                    for (int z = 0; z < chunkLength; z++) {
+                        int zStart = z * scale;
+
+                        boolean exposed = false;
+
+                        for (int fy = yStart; fy < yStart + scale; fy++) {
+                            for (int fz = zStart; fz < zStart + scale; fz++) {
+                                BlockWithMesh block = neighbor.getBlock(neighborX, fy, fz);
+
+                                if (isNeighborBlockSeeThrough(block, neighbor.getBlockRotation(neighborX, fy, fz), face)) {
+                                    exposed = true;
+                                    break;
+                                }
+                            }
+
+                            if (exposed) {
+                                break;
+                            }
+                        }
+
+                        if (exposed) {
+                            neighborExposed[(faceIndex << 5) | y] |= 1 << z;
+                        }
+                    }
+                }
+            }
+
+            case BOTTOM, TOP -> {
+                int neighborY = face == BlockFace.BOTTOM ? neighborHeight - 1 : 0;
+
+                for (int x = 0; x < chunkWidth; x++) {
+                    int xStart = x * scale;
+
+                    for (int z = 0; z < chunkLength; z++) {
+                        int zStart = z * scale;
+
+                        boolean exposed = false;
+
+                        for (int fx = xStart; fx < xStart + scale; fx++) {
+                            for (int fz = zStart; fz < zStart + scale; fz++) {
+                                BlockWithMesh block = neighbor.getBlock(fx, neighborY, fz);
+
+                                if (isNeighborBlockSeeThrough(block, neighbor.getBlockRotation(fx, neighborY, fz), face)) {
+                                    exposed = true;
+                                    break;
+                                }
+                            }
+
+                            if (exposed) {
+                                break;
+                            }
+                        }
+
+                        if (exposed) {
+                            neighborExposed[(faceIndex << 5) | x] |= 1 << z;
+                        }
+                    }
+                }
+            }
+
+            case NORTH, SOUTH -> {
+                int neighborZ = face == BlockFace.SOUTH ? 0 : neighborLength - 1;
+
+                for (int x = 0; x < chunkWidth; x++) {
+                    int xStart = x * scale;
+
+                    for (int y = 0; y < chunkHeight; y++) {
+                        int yStart = y * scale;
+
+                        boolean exposed = false;
+
+                        for (int fx = xStart; fx < xStart + scale; fx++) {
+                            for (int fy = yStart; fy < yStart + scale; fy++) {
+                                BlockWithMesh block = neighbor.getBlock(fx, fy, neighborZ);
+
+                                if (isNeighborBlockSeeThrough(block, neighbor.getBlockRotation(fx, fy, neighborZ), face)) {
+                                    exposed = true;
+                                    break;
+                                }
+                            }
+
+                            if (exposed) {
+                                break;
+                            }
+                        }
+
+                        if (exposed) {
+                            neighborExposed[(faceIndex << 5) | y] |= 1 << x;
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    private boolean isNeighborBlockSeeThrough(
+            BlockWithMesh block,
+            byte rotation,
+            BlockFace face
+    ) {
+        BlockMesh mesh = block == null ? null : block.blockMesh();
+        if (mesh == null) {
+            return true;
+        }
+
+        BlockFace oppositeSourceFace = UNROTATE[((rotation & 3) * 6) + (face.ordinal() ^ 1)];
+        return !mesh.getShape().solid()[oppositeSourceFace.ordinal()];
     }
 
     public MeshData generateMeshData(Position3D position3D) {

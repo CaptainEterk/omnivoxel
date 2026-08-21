@@ -1,36 +1,13 @@
 package omnivoxel.common.face;
 
-import omnivoxel.common.settings.ConstantCommonSettings;
-
 public enum BlockFace {
-    TOP(1),
-    BOTTOM(-1),
-    NORTH(ConstantCommonSettings.PADDED_HEIGHT),
-    SOUTH(-ConstantCommonSettings.PADDED_HEIGHT),
-    EAST(ConstantCommonSettings.PADDED_LENGTH * ConstantCommonSettings.PADDED_HEIGHT),
-    WEST(-ConstantCommonSettings.PADDED_LENGTH * ConstantCommonSettings.PADDED_HEIGHT),
-    NONE(0);
+    TOP,
+    BOTTOM,
+    NORTH,
+    SOUTH,
+    EAST,
+    WEST,
+    NONE;
 
     public static final BlockFace[] NORMAL_VALUES = new BlockFace[]{TOP, BOTTOM, NORTH, SOUTH, EAST, WEST};
-    private final int paddedNeighborOffset;
-
-    BlockFace(int paddedNeighborOffset) {
-        this.paddedNeighborOffset = paddedNeighborOffset;
-    }
-
-    public int getPaddedNeighborOffset() {
-        return paddedNeighborOffset;
-    }
-
-    public BlockFace opposite() {
-        return switch (this) {
-            case TOP -> BOTTOM;
-            case BOTTOM -> TOP;
-            case NORTH -> SOUTH;
-            case SOUTH -> NORTH;
-            case EAST -> WEST;
-            case WEST -> EAST;
-            case NONE -> NONE;
-        };
-    }
 }

@@ -37,7 +37,7 @@ public class WorkerThreadPool<T extends WorkerTask> {
     public void submit(T task, boolean priority) {
         try {
             if (running.get() && task != null) {
-                if (pendingTasks.contains(task)) {
+                if (!pendingTasks.add(task)) {
                     task.reject();
                     return;
                 }

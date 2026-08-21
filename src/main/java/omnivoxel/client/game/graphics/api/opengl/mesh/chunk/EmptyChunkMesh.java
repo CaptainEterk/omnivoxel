@@ -23,6 +23,11 @@ public class EmptyChunkMesh implements ChunkMesh {
     }
 
     @Override
+    public int lod() {
+        return 0;
+    }
+
+    @Override
     public MeshData meshData() {
         return meshData;
     }
