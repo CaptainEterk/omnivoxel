@@ -18,6 +18,11 @@ public class ConstantClientSettings {
             max_lighting_generator_threads=12
             bufferize_chunks_per_frame=10
             free_chunk_max=100
+            distance_lod0=1.0
+            distance_lod1=1.0
+            distance_lod2=1.0
+            distance_lod3=1.0
+            distance_lod4=1.0
             """;
 
     public static final String DATA_LOCATION = "";

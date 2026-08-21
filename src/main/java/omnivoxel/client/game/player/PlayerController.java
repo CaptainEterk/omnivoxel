@@ -666,7 +666,7 @@ public class PlayerController {
             this.yaw = camera.getYaw();
         }
 
-        double speed = 4.317f * ConstantClientSettings.TARGET_TPS*10;
+        double speed = 4.317f * ConstantClientSettings.TARGET_TPS;
         if (!fly) {
             if (onGround && keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE)) {
                 velocityY = (float) (JUMP_VELOCITY * deltaTime);

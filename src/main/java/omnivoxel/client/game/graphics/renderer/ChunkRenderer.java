@@ -55,26 +55,32 @@ public class ChunkRenderer {
             transparentRenderedChunks.clear();
 
             int renderDistance = settings.getIntSetting("render_distance", 100);
+            float distanceLod0 = settings.getFloatSetting("distance_lod0", 1.0f);
+            float distanceLod1 = settings.getFloatSetting("distance_lod1", 1.0f);
+            float distanceLod2 = settings.getFloatSetting("distance_lod2", 1.0f);
+            float distanceLod3 = settings.getFloatSetting("distance_lod3", 1.0f);
+            float distanceLod4 = settings.getFloatSetting("distance_lod4", 1.0f);
 
             renderedChunkProvider.update(settings.getIntSetting("frustum_bias", 10), renderDistance, camera);
             List<DistanceChunk> chunks = renderedChunkProvider.getOutput();
 
             int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
-            int squaredRenderDistance = rdChunks * rdChunks;
+            float squaredRenderDistance = rdChunks * rdChunks;
 
             // TODO: This is an expensive operation, optimize it
             for (DistanceChunk chunk : chunks) {
                 int lod;
+                float d = chunk.distance() / squaredRenderDistance;
 
-                if (chunk.distance() < squaredRenderDistance / 32) {
+                if (d < distanceLod0) {
                     lod = 0;
-                } else if (chunk.distance() < squaredRenderDistance / 16) {
+                } else if (d < distanceLod1) {
                     lod = 1;
-                } else if (chunk.distance() < squaredRenderDistance / 8) {
+                } else if (d < distanceLod2) {
                     lod = 2;
-                } else if (chunk.distance() < squaredRenderDistance / 4) {
+                } else if (d < distanceLod3) {
                     lod = 3;
-                } else if (chunk.distance() < squaredRenderDistance / 2) {
+                } else if (d < distanceLod4) {
                     lod = 4;
                 } else {
                     lod = 5;

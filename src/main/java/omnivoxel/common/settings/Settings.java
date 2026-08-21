@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 
 // TODO: Make settings hot-reload
 public final class Settings {
-
     private final Map<String, Setting> settings = new HashMap<>();
 
     public void load(String configLocation) throws IOException {
