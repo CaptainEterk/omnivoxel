@@ -573,7 +573,7 @@ public class ChunkMeshDataGenerator {
             return false;
         }
 
-        BlockMesh blockMesh = blockMeshes[IndexCalculator.calculateBlockIndexPadded(x, y, z)];
+        BlockMesh blockMesh = blockMeshes[IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength)];
         return blockMesh != null && blockMesh.getShape().solid()[face.ordinal()] && blockMesh.getShape().coverable()[face.ordinal()];
     }
 
