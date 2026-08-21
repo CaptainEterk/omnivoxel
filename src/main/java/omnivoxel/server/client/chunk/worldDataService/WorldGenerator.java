@@ -213,7 +213,7 @@ public class WorldGenerator {
                     for (int localY = ConstantCommonSettings.CHUNK_HEIGHT - 1; localY >= 0; localY--) {
                         ServerBlock block = chunk.getBlock(x, localY, z);
 
-                        if (block != null) {
+                        if (block != null && block.partOfGround()) {
                             highestY = chunkY * ConstantCommonSettings.CHUNK_HEIGHT + localY;
                             found = true;
                             break;

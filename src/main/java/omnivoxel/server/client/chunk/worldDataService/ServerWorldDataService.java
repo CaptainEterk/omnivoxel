@@ -12,7 +12,7 @@ import omnivoxel.world.chunk2d.Chunk2D;
 import omnivoxel.world.chunk2d.SingleBlockChunk2D;
 
 public final class ServerWorldDataService {
-    private static final int COARSE_HEIGHT = 8;
+    private static final int HEIGHT_STEP = 8;
     private final ServerBlockService blockService;
     private final WorldGenerator worldGenerator;
 
@@ -69,42 +69,20 @@ public final class ServerWorldDataService {
     }
 
     public ChunkInfo getChunkInfo(ServerWorld world, Position3D position3D, int lod) {
-        int chunkMinWorldY =
-                position3D.y() * ConstantCommonSettings.CHUNK_HEIGHT;
-
         int chunkWidth = ConstantCommonSettings.CHUNK_WIDTH;
         int chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT;
         int chunkLength = ConstantCommonSettings.CHUNK_LENGTH;
 
         int scale = 1 << lod;
 
-        /*
-         * Density-function samples are taken every `step` blocks.
-         *
-         * LOD 0 -> 4
-         * LOD 1 -> 8
-         * LOD 2 -> 16
-         * ...
-         */
         int step = scale << 2;
 
-        /*
-         * Sparse grid covers:
-         *
-         * -1 ... chunkSize
-         *
-         * plus one additional sample so that the last interpolation
-         * cell always has all eight corners.
-         */
         int sx = Math.ceilDiv(chunkWidth + 2, step) + 1;
         int sy = Math.ceilDiv(chunkHeight + 2, step) + 1;
         int sz = Math.ceilDiv(chunkLength + 2, step) + 1;
 
         double[] sparse = new double[sx * sy * sz];
 
-        /*
-         * Evaluate the expensive density function only at sparse points.
-         */
         for (int ix = 0; ix < sx; ix++) {
             int x = ix * step - 1;
             int worldX =
@@ -112,75 +90,47 @@ public final class ServerWorldDataService {
 
             for (int iz = 0; iz < sz; iz++) {
                 int z = iz * step - 1;
-                int worldZ =
-                        position3D.z() * chunkLength + z;
+                int worldZ = position3D.z() * chunkLength + z;
 
                 for (int iy = 0; iy < sy; iy++) {
                     int y = iy * step - 1;
-                    int worldY =
-                            position3D.y() * chunkHeight + y;
+                    int worldY = position3D.y() * chunkHeight + y;
 
-                    int index =
-                            ix + sx * (iy + sy * iz);
+                    int index = ix + sx * (iy + sy * iz);
 
                     sparse[index] =
-                            worldGenerator
-                                    .getDensityFunction()
-                                    .evaluate(worldX, worldY, worldZ);
+                            worldGenerator.getDensityFunction().evaluate(worldX, worldY, worldZ);
                 }
             }
         }
 
-        /*
-         * Full-resolution density cache.
-         *
-         * Every block gets a value, even at higher LODs.
-         */
-        double[] densityCache =
-                new double[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
+        double[] densityCache = new double[ConstantCommonSettings.BLOCKS_IN_CHUNK_PADDED];
 
-        /*
-         * Interpolate every block from the sparse density grid.
-         */
         for (int x = -1; x <= chunkWidth; x++) {
             int xp = x + 1;
 
             int gx = Math.floorDiv(xp, step);
-            double fx =
-                    Math.floorMod(xp, step) / (double) step;
+            double fx = Math.floorMod(xp, step) / (double) step;
 
             for (int z = -1; z <= chunkLength; z++) {
                 int zp = z + 1;
 
                 int gz = Math.floorDiv(zp, step);
-                double fz =
-                        Math.floorMod(zp, step) / (double) step;
+                double fz = Math.floorMod(zp, step) / (double) step;
 
                 for (int y = -1; y <= chunkHeight; y++) {
                     int yp = y + 1;
 
                     int gy = Math.floorDiv(yp, step);
-                    double fy =
-                            Math.floorMod(yp, step) / (double) step;
+                    double fy = Math.floorMod(yp, step) / (double) step;
 
-                    /*
-                     * Base indices for the eight corners.
-                     *
-                     * Layout:
-                     *
-                     * index = x + sx * (y + sy * z)
-                     */
-                    int base000 =
-                            gx + sx * (gy + sy * gz);
+                    int base000 = gx + sx * (gy + sy * gz);
 
-                    int base010 =
-                            gx + sx * ((gy + 1) + sy * gz);
+                    int base010 = gx + sx * ((gy + 1) + sy * gz);
 
-                    int base001 =
-                            gx + sx * (gy + sy * (gz + 1));
+                    int base001 = gx + sx * (gy + sy * (gz + 1));
 
-                    int base011 =
-                            gx + sx * ((gy + 1) + sy * (gz + 1));
+                    int base011 = gx + sx * ((gy + 1) + sy * (gz + 1));
 
                     double c000 = sparse[base000];
                     double c100 = sparse[base000 + 1];
@@ -194,83 +144,44 @@ public final class ServerWorldDataService {
                     double c011 = sparse[base011];
                     double c111 = sparse[base011 + 1];
 
-                    /*
-                     * Interpolate X.
-                     */
-                    double x00 =
-                            c000 + fx * (c100 - c000);
+                    double x00 = c000 + fx * (c100 - c000);
 
-                    double x10 =
-                            c010 + fx * (c110 - c010);
+                    double x10 = c010 + fx * (c110 - c010);
 
-                    double x01 =
-                            c001 + fx * (c101 - c001);
+                    double x01 = c001 + fx * (c101 - c001);
 
-                    double x11 =
-                            c011 + fx * (c111 - c011);
+                    double x11 = c011 + fx * (c111 - c011);
 
-                    /*
-                     * Interpolate Y.
-                     */
-                    double y0 =
-                            x00 + fy * (x10 - x00);
+                    double y0 = x00 + fy * (x10 - x00);
 
-                    double y1 =
-                            x01 + fy * (x11 - x01);
+                    double y1 = x01 + fy * (x11 - x01);
 
-                    /*
-                     * Interpolate Z.
-                     */
-                    double value =
-                            y0 + fz * (y1 - y0);
+                    double value = y0 + fz * (y1 - y0);
 
-                    densityCache[
-                            IndexCalculator.calculateBlockIndexPadded(
-                                    x, y, z
-                            )
-                            ] = value;
+                    densityCache[IndexCalculator.calculateBlockIndexPadded(x, y, z)] = value;
                 }
             }
         }
 
-        /*
-         * Generate / retrieve height data.
-         */
-        Position2D position2D =
-                position3D.getPosition2D();
+        Position2D position2D = position3D.getPosition2D();
 
-        int[] heights =
-                new int[
-                        ConstantCommonSettings.PADDED_WIDTH
-                                * ConstantCommonSettings.PADDED_LENGTH
-                        ];
+        int[] heights = new int[ConstantCommonSettings.PADDED_WIDTH * ConstantCommonSettings.PADDED_LENGTH];
 
-        Chunk2D<Integer> chunkHeights =
-                world.getStoredChunkHeights(position2D);
+        Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(position2D);
 
-        boolean cachedHeights =
-                chunkHeights != null;
+        boolean cachedHeights = chunkHeights != null;
 
         if (!cachedHeights) {
-            chunkHeights =
-                    new SingleBlockChunk2D<>(0);
+            chunkHeights = new SingleBlockChunk2D<>(0);
         }
 
-        if (worldGenerator.getChunkMaxY() != null
-                && worldGenerator.getChunkMinY() != null) {
+        if (worldGenerator.getChunkMaxY() != null && worldGenerator.getChunkMinY() != null) {
 
-            /*
-             * Height cache also needs to be populated at full
-             * block resolution because getBlockAt() can request
-             * any x/z coordinate.
-             */
             for (int x = -1; x <= chunkWidth; x++) {
-                int worldX =
-                        position3D.x() * chunkWidth + x;
+                int worldX = position3D.x() * chunkWidth + x;
 
                 for (int z = -1; z <= chunkLength; z++) {
-                    int worldZ =
-                            position3D.z() * chunkLength + z;
+                    int worldZ = position3D.z() * chunkLength + z;
 
                     boolean insideChunk =
                             x >= 0
@@ -278,103 +189,57 @@ public final class ServerWorldDataService {
                                     && z >= 0
                                     && z < chunkLength;
 
-                    /*
-                     * Use cached height for actual chunk columns.
-                     */
+
                     if (cachedHeights && insideChunk) {
-                        heights[
-                                IndexCalculator
-                                        .calculateBlockIndexPadded2D(x, z)
-                                ] =
-                                chunkHeights.getBlock(x, z);
+                        heights[IndexCalculator.calculateBlockIndexPadded2D(x, z)] = chunkHeights.getBlock(x, z);
 
                         continue;
                     }
 
                     int height = worldGenerator.getBlockMinY();
 
-                    /*
-                     * If the height function is the density function,
-                     * use the already-generated density cache instead
-                     * of evaluating it again.
-                     */
-                    if (worldGenerator.isHeightIsDensityFunction()) {
+                    for (
+                            int worldY = worldGenerator.getBlockMaxY() - 1;
+                            worldY >= worldGenerator.getBlockMinY();
+                            worldY -= HEIGHT_STEP
+                    ) {
+                        double density =
+                                worldGenerator
+                                        .getHeightFunction()
+                                        .evaluate(
+                                                worldX,
+                                                worldY,
+                                                worldZ
+                                        );
 
-                        for (int y = chunkHeight - 1; y >= 0; y--) {
-                            int worldY =
-                                    chunkMinWorldY + y;
+                        if (density >= 0.0) {
+                            height = worldY;
 
-                            double density =
-                                    densityCache[
-                                            IndexCalculator
-                                                    .calculateBlockIndexPadded(
-                                                            x, y, z
-                                                    )
-                                            ];
-
-                            if (density > 0.0) {
-                                height = worldY;
-                                break;
+                            for (int i = HEIGHT_STEP - 1; i > 0; i--) {
+                                if (worldGenerator.getHeightFunction().evaluate(worldX, worldY + i, worldZ) >= 0.0) {
+                                    height = worldY + i;
+                                    break;
+                                }
                             }
-                        }
 
-                    } else {
-
-                        /*
-                         * Otherwise evaluate the separate height function.
-                         */
-                        for (
-                                int worldY = worldGenerator.getBlockMaxY();
-                                worldY > worldGenerator.getBlockMinY();
-                                worldY--
-                        ) {
-                            double density =
-                                    worldGenerator
-                                            .getHeightFunction()
-                                            .evaluate(
-                                                    worldX,
-                                                    worldY,
-                                                    worldZ
-                                            );
-
-                            if (density > 0.0) {
-                                height = worldY;
-                                break;
-                            }
+                            break;
                         }
                     }
 
-                    heights[
-                            IndexCalculator
-                                    .calculateBlockIndexPadded2D(x, z)
-                            ] = height;
+                    heights[IndexCalculator.calculateBlockIndexPadded2D(x, z)] = height;
 
-                    /*
-                     * Only store actual chunk columns.
-                     */
                     if (!cachedHeights && insideChunk) {
-                        chunkHeights =
-                                chunkHeights.setBlock(
-                                        x,
-                                        z,
-                                        height
-                                );
+                        chunkHeights = chunkHeights.setBlock(x, z, height);
                     }
                 }
             }
         }
 
         if (!cachedHeights) {
-            world.putChunkHeights(
-                    position2D,
-                    chunkHeights
-            );
+            world.putChunkHeights(position2D, chunkHeights);
         }
 
-        return new ChunkInfo(
-                heights,
-                densityCache
-        );
+        return new ChunkInfo(heights, densityCache);
     }
 
     public WorldGenerator getWorldGenerator() {

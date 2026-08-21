@@ -71,7 +71,7 @@ public class PlayerController {
     @NotNull
     private MovementMode movementMode = MovementMode.FALL_COLLIDE;
     private double x;
-    private double y=200;
+    private double y;
     private double z;
     private double velocityX;
     private double velocityY;
@@ -291,27 +291,30 @@ public class PlayerController {
                     if (observedPositionAndBlock != null) {
                         Position3D observedBlock = observedPositionAndBlock.position;
 
-                        BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
-                        BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
-                        BlockHitbox[] blockHitbox = blockMesh.getHitbox();
-                        byte rotation = blockMesh.isRotatable() ? rotationFromYaw() : 0;
+                        if (observedBlock != null) {
 
-                        float lx = (float) (x - observedBlock.x());
-                        float ly = (float) (y - observedBlock.y());
-                        float lz = (float) (z - observedBlock.z());
+                            BlockWithMesh selectedBlockWithMesh = blockService.getBlock(blocks[selectedBlock]);
+                            BlockMesh blockMesh = selectedBlockWithMesh.blockMesh();
+                            BlockHitbox[] blockHitbox = blockMesh.getHitbox();
+                            byte rotation = blockMesh.isRotatable() ? rotationFromYaw() : 0;
 
-                        boolean isColliding = false;
-                        for (BlockHitbox bh : blockHitbox) {
-                            if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
-                                isColliding = true;
-                                break;
+                            float lx = (float) (x - observedBlock.x());
+                            float ly = (float) (y - observedBlock.y());
+                            float lz = (float) (z - observedBlock.z());
+
+                            boolean isColliding = false;
+                            for (BlockHitbox bh : blockHitbox) {
+                                if (bh.rotateY(rotation).isColliding(hitbox, lx, ly, lz)) {
+                                    isColliding = true;
+                                    break;
+                                }
                             }
-                        }
 
-                        if (isColliding) {
-                            Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
-                        } else {
-                            client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, observedPositionAndBlock.block, rotation, observedPositionAndBlock.rotation));
+                            if (isColliding) {
+                                Logger.warn(Logger.Priority.NORMAL, "Cannot place block inside player!");
+                            } else {
+                                client.sendRequest(new BlockReplaceRequest(observedBlock, selectedBlockWithMesh, observedPositionAndBlock.block, rotation, observedPositionAndBlock.rotation));
+                            }
                         }
                     }
                 }
@@ -663,7 +666,7 @@ public class PlayerController {
             this.yaw = camera.getYaw();
         }
 
-        double speed = 4.317f * ConstantClientSettings.TARGET_TPS;
+        double speed = 4.317f * ConstantClientSettings.TARGET_TPS*10;
         if (!fly) {
             if (onGround && keyInput.isKeyPressed(GLFW.GLFW_KEY_SPACE)) {
                 velocityY = (float) (JUMP_VELOCITY * deltaTime);
