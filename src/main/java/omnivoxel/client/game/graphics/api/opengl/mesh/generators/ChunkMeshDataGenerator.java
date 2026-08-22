@@ -333,11 +333,12 @@ public class ChunkMeshDataGenerator {
             return false;
         }
 
-        if (originalShape.coversOppositeSelfFace()[sourceFaceOrdinal ^ 1]) {
+        if (originalBlockMesh.isSelfOccluded() && originalBlockMesh.getModID().equals(adjacentBlockMesh.getModID())) {
             return false;
         }
 
-        return !originalBlockMesh.isSelfOccluded() || !originalBlockMesh.getModID().equals(adjacentBlockMesh.getModID());
+        return !originalShape.coversOppositeSelfFace()[sourceFaceOrdinal ^ 1]
+                || !originalShape.id().equals(adjacentBlockMesh.getShape().id());
     }
 
     private void addFacePrecomputedShape(

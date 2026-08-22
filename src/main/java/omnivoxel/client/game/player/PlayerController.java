@@ -545,7 +545,11 @@ public class PlayerController {
         if (normalizedYaw < 0) {
             normalizedYaw += Math.PI * 2.0;
         }
-        return (byte) ((3 - Math.round(normalizedYaw / (Math.PI / 2.0))) & 3);
+        // BlockVertex.rotate uses the same positive-Y rotation as the camera yaw:
+        // yaw 0 looks toward -Z and each positive quarter turn looks toward the
+        // next clockwise horizontal direction.  Keep the stored block rotation in
+        // that convention so placement, hitboxes, and mesh generation agree.
+        return (byte) (Math.round(normalizedYaw / (Math.PI / 2.0)) & 3);
     }
 
     private void handleMovement(double deltaTime, boolean collide) {
