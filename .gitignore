@@ -36,3 +36,4 @@ bin/
 /assets/icons/favicon.xcf
 /.omnivoxel/
 /.renderdoc/
+/build/
