@@ -75,7 +75,7 @@ public class ChunkRenderer {
                 if (d < distanceLod0) {
                     lod = 0;
                 } else if (d < distanceLod1) {
-                    lod = 1;
+                lod = 1;
                 } else if (d < distanceLod2) {
                     lod = 2;
                 } else if (d < distanceLod3) {

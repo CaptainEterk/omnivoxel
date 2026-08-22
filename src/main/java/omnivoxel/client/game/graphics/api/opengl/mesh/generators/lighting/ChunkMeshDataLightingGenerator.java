@@ -200,7 +200,9 @@ public class ChunkMeshDataLightingGenerator {
 
         Set<LightingChunkMeshDataTask> meshDataTasks = new HashSet<>();
 
-        if (clientWorldChunk.getChunkData(-1).getLOD() > 0) {
+        Chunk<BlockWithMesh> chunkData = clientWorldChunk.getChunkData(-1);
+
+        if (chunkData.getLOD() > 0) {
             clientWorldChunk.setChunkLightingData(new ChunkLightingData(new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 0), new SingleLightChannel((byte) 15)));
             clientWorldChunk.setCleanLighting(true);
 
@@ -261,7 +263,7 @@ public class ChunkMeshDataLightingGenerator {
             }
         }
 
-        LightChannel lightChannel = generateLighting(clientWorldChunk, clientWorldChunk.getChunkData(-1), position3D, channel, meshDataTasks);
+        LightChannel lightChannel = generateLighting(clientWorldChunk, chunkData, position3D, channel, meshDataTasks);
         clientWorldChunk.getLightingData().setChannel(channel, lightChannel);
 
         clientWorldChunk.setCleanLighting(channel, !failed);
@@ -472,7 +474,6 @@ public class ChunkMeshDataLightingGenerator {
                 continue;
             }
 
-            // Store the light level in the 4-bit slot.
             int mask = 0xF << shift;
             lightChannel[arrayIndex] =
                     (lightChannel[arrayIndex] & ~mask) | (light << shift);

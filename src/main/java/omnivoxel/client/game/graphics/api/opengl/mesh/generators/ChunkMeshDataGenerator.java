@@ -586,8 +586,8 @@ public class ChunkMeshDataGenerator {
         return (byte) Math.round((light & 0xFF) * (ambientOcclusion / 4.0f));
     }
 
-    private void setupLOD(Chunk<?> chunk) {
-        lod = chunk.getLOD();
+    private void setupLOD(Chunk<BlockWithMesh> chunk, Chunk<BlockWithMesh> negXChunkData, Chunk<BlockWithMesh> posXChunkData, Chunk<BlockWithMesh> negYChunkData, Chunk<BlockWithMesh> posYChunkData, Chunk<BlockWithMesh> negZChunkData, Chunk<BlockWithMesh> posZChunkData) {
+        lod = Math.min(chunk.getLOD(), Math.min(negXChunkData.getLOD(), Math.min(posXChunkData.getLOD(), Math.min(negYChunkData.getLOD(), Math.min(posYChunkData.getLOD(), Math.min(negZChunkData.getLOD(), posZChunkData.getLOD()))))));
 
         chunkWidth = ConstantCommonSettings.CHUNK_WIDTH >> lod;
         chunkHeight = ConstantCommonSettings.CHUNK_HEIGHT >> lod;
@@ -603,15 +603,11 @@ public class ChunkMeshDataGenerator {
     }
 
     private void unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
-        Chunk<BlockWithMesh> center = centerChunk == null ? null : centerChunk.getChunkData(-1);
-
-        if (center == null) {
+        if (centerChunk == null) {
             Logger.warn(Logger.Priority.LOW, "The center chunk is null");
             unpackingFailed = true;
             return;
         }
-
-        setupLOD(center);
 
         ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true, -1);
         ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true, -1);
@@ -628,6 +624,11 @@ public class ChunkMeshDataGenerator {
             return;
         }
 
+        Chunk<BlockWithMesh> chunkData = centerChunk.getChunkData(-1);
+        setupLOD(chunkData, negXChunk.getChunkData(-1), posXChunk.getChunkData(-1), negYChunk.getChunkData(-1), posYChunk.getChunkData(-1), negZChunk.getChunkData(-1), posZChunk.getChunkData(-1));
+
+        Chunk<BlockWithMesh> center = centerChunk.getChunkData(lod);
+
         Chunk<BlockWithMesh> negX = negXChunk.getChunkData(lod);
         Chunk<BlockWithMesh> posX = posXChunk.getChunkData(lod);
         Chunk<BlockWithMesh> negY = negYChunk.getChunkData(lod);
@@ -642,12 +643,6 @@ public class ChunkMeshDataGenerator {
             unpackingFailed = true;
             return;
         }
-
-        populateNeighborExposed(
-                negXChunk.getChunkData(-1), posXChunk.getChunkData(-1),
-                negYChunk.getChunkData(-1), posYChunk.getChunkData(-1),
-                negZChunk.getChunkData(-1), posZChunk.getChunkData(-1)
-        );
 
         for (int x = -1; x <= chunkWidth; x++) {
             for (int y = -1; y <= chunkHeight; y++) {
@@ -688,10 +683,15 @@ public class ChunkMeshDataGenerator {
                         lz = 0;
                     }
 
-                    int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
+                    try {
+                        int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
-                    blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
-                    rotations[index] = chunk.getBlockRotation(lx, ly, lz);
+                        blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
+                        rotations[index] = chunk.getBlockRotation(lx, ly, lz);
+                    } catch (Exception e) {
+                        System.out.println(chunk + " " + chunk.getLOD() +" "+ lod + " " + x + " " + y + " " + z + " " + lx + " " + ly + " " + lz);
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         }
@@ -842,13 +842,11 @@ public class ChunkMeshDataGenerator {
             byte rotation,
             BlockFace face
     ) {
-        BlockMesh mesh = block == null ? null : block.blockMesh();
-        if (mesh == null) {
-            return true;
+        if (true) {
+            return false;
         }
-
         BlockFace oppositeSourceFace = UNROTATE[((rotation & 3) * 6) + (face.ordinal() ^ 1)];
-        return !mesh.getShape().solid()[oppositeSourceFace.ordinal()];
+        return !block.blockMesh().getShape().solid()[oppositeSourceFace.ordinal()];
     }
 
     public MeshData generateMeshData(Position3D position3D) {
