@@ -5,57 +5,55 @@ SRC_DIR="src"
 LIB_DIR="lib"
 BUILD_DIR="build"
 CLASS_DIR="$BUILD_DIR/classes"
-TEMP_DIR="$BUILD_DIR/temp"
+FAT_DIR="$BUILD_DIR/fat"
 JAR_FILE="$BUILD_DIR/omnivoxel-client.jar"
 MAIN_CLASS="omnivoxel.client.launcher.Launcher"
 
 rm -rf "$BUILD_DIR"
-mkdir -p "$CLASS_DIR"
-mkdir -p "$TEMP_DIR"
 
-# Build recursive compilation classpath.
-CLASSPATH=$(find "$LIB_DIR" -type f -name "*.jar" -printf '%p:')
+mkdir -p "$CLASS_DIR"
+mkdir -p "$FAT_DIR"
+
+# Build recursive dependency classpath.
+CLASSPATH=$(find "$LIB_DIR" -type f -name "*.jar" -print0 | \
+    xargs -0 printf '%s:')
+
 CLASSPATH="${CLASSPATH%:}"
 
-# Find all Java files.
+# Find all source files.
 find "$SRC_DIR" -name "*.java" > "$BUILD_DIR/sources.txt"
 
-# Compile project.
+# Compile.
 javac \
     -encoding UTF-8 \
     -cp "$CLASSPATH" \
     -d "$CLASS_DIR" \
     @"$BUILD_DIR/sources.txt"
 
-# Copy compiled classes into temporary fat-JAR directory.
-cp -r "$CLASS_DIR"/. "$TEMP_DIR"/
+# Copy our compiled classes.
+cp -R "$CLASS_DIR"/. "$FAT_DIR"/
 
-# Extract every dependency JAR recursively.
-while IFS= read -r -d '' jar; do
-    echo "Adding dependency: $jar"
+# Extract every dependency recursively.
+while IFS= read -r -d '' JAR; do
+    echo "Adding $JAR"
 
-    (
-        cd "$TEMP_DIR"
-        unzip -oq "../../$jar"
-    )
+    unzip -oq "$JAR" -d "$FAT_DIR"
+
 done < <(find "$LIB_DIR" -type f -name "*.jar" -print0)
 
 # Remove dependency signatures.
-find "$TEMP_DIR/META-INF" \
+find "$FAT_DIR/META-INF" \
     -type f \
-    \( \
-        -name "*.SF" \
-        -o -name "*.DSA" \
-        -o -name "*.RSA" \
-    \) \
+    \( -name "*.SF" -o -name "*.RSA" -o -name "*.DSA" \) \
     -delete 2>/dev/null || true
 
-# Create fat JAR.
+# Create the fat JAR.
 jar \
     --create \
     --file "$JAR_FILE" \
     --main-class "$MAIN_CLASS" \
-    -C "$TEMP_DIR" .
+    -C "$FAT_DIR" .
 
+echo
 echo "Build complete:"
 echo "$JAR_FILE"
