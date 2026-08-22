@@ -60,7 +60,7 @@ public class ShaderProgramHandler {
         }
 
         int vaoID = GL30C.glGenVertexArrays();
-        GL30C.glBindVertexArray(vaoID); // Bind a VAO before validating
+        GL30C.glBindVertexArray(vaoID);
 
         glValidateProgram(programID);
 
@@ -69,8 +69,8 @@ public class ShaderProgramHandler {
             throw new IOException("Program validation failed.");
         }
 
-        GL30C.glBindVertexArray(0); // Unbind after validation
-        GL30C.glDeleteVertexArrays(vaoID); // Cleanup
+        GL30C.glBindVertexArray(0);
+        GL30C.glDeleteVertexArrays(vaoID);
 
         shaderPrograms.put(name, new ShaderProgram(programID));
     }
