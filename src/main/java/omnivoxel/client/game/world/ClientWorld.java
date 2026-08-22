@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 // TODO: Make this only store world data, no queues, etc...
@@ -48,7 +49,7 @@ public class ClientWorld {
     private final Map<String, EntityMeshWrapper> entities;
     private final AtomicBoolean chunkKeysChanged = new AtomicBoolean(true);
     private final Set<Position3D> inPipelineChunks;
-    private final Set<Position3D> inflightRequests;
+    private final AtomicInteger inflightRequests;
     private final Map<Position2D, Chunk2D<Integer>> chunkHeights;
     private final Settings settings;
     private Position3D[] cachedKeys = null;
@@ -65,7 +66,7 @@ public class ClientWorld {
         newChunks = ConcurrentHashMap.newKeySet();
         entitiesMeshData = new ConcurrentHashMap<>();
         inPipelineChunks = ConcurrentHashMap.newKeySet();
-        inflightRequests = ConcurrentHashMap.newKeySet();
+        inflightRequests = new AtomicInteger(0);
         chunkHeights = new ConcurrentHashMap<>();
         entityMeshes = new HashMap<>();
         entities = new HashMap<>();
@@ -111,9 +112,9 @@ public class ClientWorld {
         }
         if (requesting && request) {
             if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod || clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>) {
-                if (inflightRequests.size() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
+                if (inflightRequests.get() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
                     inPipelineChunks.add(position3D);
-                    inflightRequests.add(position3D);
+                    inflightRequests.incrementAndGet();
                     client.sendRequest(new ChunkRequest(position3D, lod));
                 }
             }
@@ -144,14 +145,12 @@ public class ClientWorld {
         return count;
     }
 
-    public void receivedChunk(Position3D position3D) {
-        if (!inflightRequests.remove(position3D)) {
-            Logger.warn("Received chunk that wasn't requested...");
-        }
+    public void receivedChunk() {
+        inflightRequests.decrementAndGet();
     }
 
     public int inflightRequestCount() {
-        return inflightRequests.size();
+        return inflightRequests.get();
     }
 
     public boolean bufferize(MeshGenerator meshGenerator) {
@@ -265,7 +264,6 @@ public class ClientWorld {
 
             freeChunk(chunk.getMesh());
             chunks.remove(pos);
-            inflightRequests.remove(pos);
 
             changed = true;
         }

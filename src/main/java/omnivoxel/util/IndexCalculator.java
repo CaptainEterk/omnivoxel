@@ -58,6 +58,10 @@ public class IndexCalculator {
         return (x + 1) * ConstantCommonSettings.PADDED_WIDTH + z + 1;
     }
 
+    public static int calculateBlockIndexPadded2D(int x, int z, int paddedChunkWidth) {
+        return (x + 1) * paddedChunkWidth + z + 1;
+    }
+
     public static boolean checkBounds(int nx, int ny, int nz) {
         return nx >= 0 && nx < ConstantCommonSettings.CHUNK_WIDTH
                 && ny >= 0 && ny < ConstantCommonSettings.CHUNK_HEIGHT

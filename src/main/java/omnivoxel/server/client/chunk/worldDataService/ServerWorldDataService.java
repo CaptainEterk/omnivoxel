@@ -165,7 +165,7 @@ public final class ServerWorldDataService {
 
         Position2D position2D = position3D.getPosition2D();
 
-        int[] heights = new int[ConstantCommonSettings.PADDED_WIDTH * ConstantCommonSettings.PADDED_LENGTH];
+        int[] heights = new int[(chunkWidth + 2) * (chunkLength + 2)];
 
         Chunk2D<Integer> chunkHeights = world.getStoredChunkHeights(position2D);
 
@@ -176,7 +176,6 @@ public final class ServerWorldDataService {
         }
 
         if (worldGenerator.getChunkMaxY() != null && worldGenerator.getChunkMinY() != null) {
-
             for (int x = -1; x <= chunkWidth; x++) {
                 int worldX = position3D.x() * chunkWidth + x;
 
@@ -191,7 +190,7 @@ public final class ServerWorldDataService {
 
 
                     if (cachedHeights && insideChunk) {
-                        heights[IndexCalculator.calculateBlockIndexPadded2D(x, z)] = chunkHeights.getBlock(x, z);
+                        heights[IndexCalculator.calculateBlockIndexPadded2D(x, z, chunkWidth + 2)] = chunkHeights.getBlock(x, z);
 
                         continue;
                     }
@@ -226,7 +225,7 @@ public final class ServerWorldDataService {
                         }
                     }
 
-                    heights[IndexCalculator.calculateBlockIndexPadded2D(x, z)] = height;
+                    heights[IndexCalculator.calculateBlockIndexPadded2D(x, z, chunkWidth + 2)] = height;
 
                     if (!cachedHeights && insideChunk) {
                         chunkHeights = chunkHeights.setBlock(x, z, height);

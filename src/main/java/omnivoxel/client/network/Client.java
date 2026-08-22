@@ -422,7 +422,7 @@ public final class Client implements NetworkUser {
         int z = byteBuf.getInt(16);
         Position3D position3D = new Position3D(x, y, z);
 
-        world.receivedChunk(position3D);
+        world.receivedChunk();
 
         lightingGenerators.submit(new LightingChunkMeshDataTask(byteBuf, position3D, null));
     }
