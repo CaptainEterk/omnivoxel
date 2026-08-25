@@ -1,13 +1,14 @@
 package omnivoxel.client.game.graphics;
 
 import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
+import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgramHandler;
 import omnivoxel.client.game.graphics.api.opengl.window.Window;
 
 import java.io.IOException;
 
 public interface RendererAPI {
-    void init() throws IOException;
+    void init(MeshGenerator meshGenerator) throws IOException;
 
     boolean shouldClose();
 
@@ -28,4 +29,6 @@ public interface RendererAPI {
     void setShaderInt(String id, int i);
 
     void render(RenderMesh mesh);
+
+    ShaderProgramHandler getShaderProgramHandler();
 }

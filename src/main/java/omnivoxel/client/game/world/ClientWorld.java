@@ -115,7 +115,7 @@ public class ClientWorld {
                 if (inflightRequests.get() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
                     inPipelineChunks.add(position3D);
                     inflightRequests.incrementAndGet();
-                    client.sendRequest(new ChunkRequest(position3D, lod));
+                    client.sendRequest(new ChunkRequest(position3D, Math.clamp(lod, 0, 5)));
                 }
             }
         } else {

@@ -2,6 +2,9 @@ package omnivoxel.client.game;
 
 import omnivoxel.client.game.graphics.RendererAPI;
 import omnivoxel.client.game.graphics.api.opengl.OpenGLRendererAPI;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkIndirectBuffer;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.graphics.api.opengl.text.TextRenderer;
 import omnivoxel.client.game.graphics.api.opengl.window.Window;
 import omnivoxel.client.game.graphics.camera.Camera;
@@ -60,8 +63,20 @@ public final class GameLoop {
     }
 
     public void init() throws IOException {
-        rendererAPI.init();
-        chunkRenderer.initResources();
+        ChunkMeshBuffer chunkMeshBuffer = new ChunkMeshBuffer();
+
+        ChunkIndirectBuffer chunkIndirectBuffer = new ChunkIndirectBuffer();
+
+        rendererAPI.init(new MeshGenerator(chunkMeshBuffer));
+
+        chunkMeshBuffer.init(
+                1024L * 1024L * 1024L, // vertex buffer: 256 MB
+                256L * 1024L * 1024L  // index buffer: 256 MB
+        );
+
+        chunkIndirectBuffer.init(100_000);
+
+        chunkRenderer.initResources(chunkMeshBuffer, chunkIndirectBuffer);
     }
 
     public RendererAPI getRenderer() {

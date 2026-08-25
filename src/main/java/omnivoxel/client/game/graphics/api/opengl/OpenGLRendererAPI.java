@@ -7,7 +7,7 @@ import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
 import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.chunk.ChunkMesh;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.wireframe.WireframeMesh;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
@@ -65,6 +65,7 @@ public class OpenGLRendererAPI implements RendererAPI {
     private final MenuSystem menuSystem;
     private final CameraCullingService cameraCullingService;
     private final Map<String, WireframeMesh> wireframeShapeMeshes = new HashMap<>();
+    private final ShaderProgramHandler shaderProgramHandler = new ShaderProgramHandler();
     // TODO: Remove all TEMP
     // Window
     private Window window;
@@ -98,8 +99,8 @@ public class OpenGLRendererAPI implements RendererAPI {
     }
 
     @Override
-    public void init() throws IOException {
-        // Creates an OpenGL window
+    public void init(MeshGenerator meshGenerator) throws IOException {
+        this.meshGenerator = meshGenerator;
         this.window = WindowFactory.createWindow(settings.getIntSetting("width", 500), settings.getIntSetting("height", 500), ConstantClientSettings.DEFAULT_WINDOW_TITLE, contextTasks, settings.getBooleanSetting("vsync", true));
 
         initShader();
@@ -140,7 +141,6 @@ public class OpenGLRendererAPI implements RendererAPI {
 
     private void initShader() throws IOException {
         // TODO: Make the player able to use their shaders instead.
-        ShaderProgramHandler shaderProgramHandler = new ShaderProgramHandler();
         shaderProgramHandler.addShaderProgram("default", Map.of("assets/shaders/default.vert", GL20.GL_VERTEX_SHADER, "assets/shaders/default.frag", GL20.GL_FRAGMENT_SHADER));
         shaderProgramHandler.addShaderProgram("text", Map.of("assets/shaders/text.vert", GL20.GL_VERTEX_SHADER, "assets/shaders/text.frag", GL20.GL_FRAGMENT_SHADER));
         String shaderProgramID = settings.getSetting("shader", "default");
@@ -193,8 +193,6 @@ public class OpenGLRendererAPI implements RendererAPI {
     }
 
     private void initResources() {
-        this.meshGenerator = new MeshGenerator();
-
         // TODO: Make this stitch textures together and save texture coordinates in a string->(x, y) map.
         // TODO: Make the user be able to use texture packs instead (by loading it and stitching it together)
         // TODO: Make this also be able to use texture arrays instead of texture atlases depending on OpenGL version (keep atlases around for older hardware).
@@ -737,6 +735,10 @@ public class OpenGLRendererAPI implements RendererAPI {
 
         world.cleanup();
 
+        shaderProgram.cleanup();
+
+        textShaderProgram.cleanup();
+
         GLFW.glfwDestroyWindow(window.window());
 
         GLFW.glfwTerminate();
@@ -797,6 +799,11 @@ public class OpenGLRendererAPI implements RendererAPI {
 
     @Override
     public void render(RenderMesh mesh) {
-        renderVAO(mesh.vao(), mesh.indexCount());
+//        renderVAO(mesh.vao(), mesh.indexCount());
+    }
+
+    @Override
+    public ShaderProgramHandler getShaderProgramHandler() {
+        return shaderProgramHandler;
     }
 }

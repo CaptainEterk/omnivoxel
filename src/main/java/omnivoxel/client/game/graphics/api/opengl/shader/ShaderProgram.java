@@ -1,6 +1,7 @@
 package omnivoxel.client.game.graphics.api.opengl.shader;
 
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 
 import java.util.HashMap;
@@ -69,5 +70,9 @@ public class ShaderProgram {
 
     public void unbind() {
         glUseProgram(0);
+    }
+
+    public void cleanup() {
+        GL20C.glDeleteProgram(program);
     }
 }

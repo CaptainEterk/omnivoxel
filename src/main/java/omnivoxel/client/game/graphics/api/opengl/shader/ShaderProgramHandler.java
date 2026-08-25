@@ -23,7 +23,7 @@ public class ShaderProgramHandler {
         return shaderPrograms.get(name);
     }
 
-    public void addShaderProgram(String name, Map<String, Integer> shaderPaths) throws IOException {
+    public ShaderProgram addShaderProgram(String name, Map<String, Integer> shaderPaths) throws IOException {
         int programID = glCreateProgram();
         if (programID == 0) {
             throw new IOException("Error creating shader program.");
@@ -72,10 +72,8 @@ public class ShaderProgramHandler {
         GL30C.glBindVertexArray(0);
         GL30C.glDeleteVertexArrays(vaoID);
 
-        shaderPrograms.put(name, new ShaderProgram(programID));
-    }
-
-    public void unbind() {
-        glUseProgram(0);
+        ShaderProgram shaderProgram = new ShaderProgram(programID);
+        shaderPrograms.put(name, shaderProgram);
+        return shaderProgram;
     }
 }

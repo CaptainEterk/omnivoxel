@@ -1,13 +1,31 @@
 package omnivoxel.client.game.graphics.api.opengl.mesh;
 
-import org.lwjgl.opengl.GL30C;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshAllocation;
 
-public record RenderMesh(int vao, int vbo, int ebo, int indexCount) {
-    public static final RenderMesh EMPTY = new RenderMesh(0, 0, 0, 0);
+public record RenderMesh(
+        ChunkMeshAllocation allocation,
+        int indexCount
+) {
+    public static final RenderMesh EMPTY =
+            new RenderMesh(new ChunkMeshAllocation(0, 0, 0, 0), 0);
 
-    public void cleanup() {
-        GL30C.glDeleteVertexArrays(vao);
-        GL30C.glDeleteBuffers(vbo);
-        GL30C.glDeleteBuffers(ebo);
+    public boolean isEmpty() {
+        return allocation == null || indexCount <= 0;
+    }
+
+    public long indexOffset() {
+        return allocation.indexOffset();
+    }
+
+    public long vertexOffset() {
+        return allocation.vertexOffset();
+    }
+
+    public int firstIndex() {
+        return allocation.firstIndex();
+    }
+
+    public int baseVertex() {
+        return allocation.baseVertex();
     }
 }

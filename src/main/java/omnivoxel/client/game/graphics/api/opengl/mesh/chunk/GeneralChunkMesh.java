@@ -12,8 +12,8 @@ public record GeneralChunkMesh(
 ) implements ChunkMesh {
     @Override
     public void cleanup() {
-        solid.cleanup();
-        transparent.cleanup();
-        decoration.cleanup();
+//        solid.cleanup();
+//        transparent.cleanup();
+//        decoration.cleanup();
     }
 }

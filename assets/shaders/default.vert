@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 
 #define BITMASK_8 255u
 #define BITMASK_4 15u
@@ -8,6 +8,18 @@
 #define BITMASK_13 8191u
 #define BITMASK_6 0x3Fu
 #define CHUNK_SIZE vec3(32.0, 32.0, 32.0)
+
+struct Chunk {
+    ivec3 position;
+    uint lod;
+    uint indexCount;
+    uint firstIndex;
+    uint baseVertex;
+};
+
+layout(std430, binding = 0) readonly buffer Chunks {
+    Chunk chunks[];
+};
 
 const vec3 NORMALS[6] = vec3[6](
         vec3(0, 1, 0),
@@ -35,9 +47,6 @@ flat out uint blockType;
 out vec2 skyUV;
 
 uniform uint meshType;
-
-uniform ivec3 chunkPosition;
-uniform int chunkScale;
 
 uniform vec3 cameraPosition;
 
@@ -74,13 +83,28 @@ void decodeData(uint data1, uint data2, uint data3, out uint x, out uint y, out 
 
 void main() {
     if (meshType == 0u) {
-        uint x, y, z, normal, u, v, r, g, b, s;
-        decodeData(data1, data2, data3, x, y, z, normal, u, v, blockType, r, g, b, s);
+        uint chunkID = gl_BaseInstance;
+        Chunk chunk = chunks[chunkID];
 
-        // Position
+        uint x, y, z, normal, u, v, r, g, b, s;
+
+        decodeData(
+                data1,
+                data2,
+                data3,
+                x, y, z,
+                normal,
+                u, v,
+                blockType,
+                r, g, b, s
+        );
+
         vec3 xyz = vec3(x, y, z);
-        xyz *= 0.0625 * chunkScale;
-        xyz += chunkPosition * CHUNK_SIZE;
+
+        float scale = float(1 << chunk.lod);
+
+        xyz *= 0.0625 * scale;
+        xyz += chunk.position * CHUNK_SIZE;
 
         // Texture
         TexCoord = vec2(float(u), float(v));
