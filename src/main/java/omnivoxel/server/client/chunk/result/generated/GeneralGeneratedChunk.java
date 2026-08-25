@@ -55,6 +55,12 @@ public class GeneralGeneratedChunk extends GeneratedChunk {
     }
 
     private byte[] extractRotations(GeneratedChunk chunk) {
+        if (chunk instanceof ModifiedGeneratedChunk modifiedGeneratedChunk) {
+            byte[] rotations = extractRotations(modifiedGeneratedChunk.getChunk());
+            rotations[index(modifiedGeneratedChunk.getX(), modifiedGeneratedChunk.getY(), modifiedGeneratedChunk.getZ())] = modifiedGeneratedChunk.getRotation();
+            return rotations;
+        }
+
         byte[] rotations = new byte[paddedSize * paddedSize * paddedSize];
 
         for (int x = -1; x <= size; x++) {
