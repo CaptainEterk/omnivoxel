@@ -334,9 +334,7 @@ public class OpenGLRendererAPI implements RendererAPI {
             world.freeAllChunksNotInAndNotRecentlyAccessed((position3D) -> false, meshGenerator.getChunkMeshBuffer(), Integer.MAX_VALUE);
         }
 
-        if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
-            attemptFreeChunks();
-        }
+        attemptFreeChunks();
 
         if (state.getItem("shouldToggleWindowFullscreen", Boolean.class)) {
             window.toggleFullscreen();
@@ -637,6 +635,7 @@ public class OpenGLRendererAPI implements RendererAPI {
         GL30C.glDrawElements(GL11C.GL_TRIANGLES, indexCount, GL11C.GL_UNSIGNED_INT, 0);
     }
 
+    // TODO: Move to ChunkRenderer
     private void attemptFreeChunks() {
         int renderDistance = settings.getIntSetting("render_distance", 100);
         int rdChunks = renderDistance / ConstantCommonSettings.CHUNK_SIZE + 1;
