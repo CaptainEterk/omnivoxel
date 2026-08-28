@@ -3,6 +3,8 @@ package omnivoxel.client.game.graphics.api.opengl.mesh.chunk;
 import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EmptyMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkIndirectMemoryManager;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
 
 public class EmptyChunkMesh implements ChunkMesh {
     private static final MeshData meshData = new EmptyMeshData();
@@ -33,6 +35,6 @@ public class EmptyChunkMesh implements ChunkMesh {
     }
 
     @Override
-    public void cleanup() {
+    public void cleanup(ChunkMeshBuffer chunkMeshBuffer) {
     }
 }

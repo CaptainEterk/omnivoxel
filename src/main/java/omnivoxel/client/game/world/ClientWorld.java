@@ -8,6 +8,7 @@ import omnivoxel.client.game.graphics.api.opengl.mesh.definition.EntityMeshDefin
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.ChunkMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.EntityMeshData;
 import omnivoxel.client.game.graphics.api.opengl.mesh.meshData.MeshData;
+import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.graphics.block.BlockWithMesh;
 import omnivoxel.client.game.graphics.light.channel.LightChannels;
@@ -19,7 +20,6 @@ import omnivoxel.common.settings.ConstantNetworkSettings;
 import omnivoxel.common.settings.Settings;
 import omnivoxel.server.entity.Entity;
 import omnivoxel.util.data.Direction;
-import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
@@ -54,7 +54,6 @@ public class ClientWorld {
     private final Settings settings;
     private Position3D[] cachedKeys = null;
     private Client client;
-    private boolean requesting = true;
     private int tick = 0;
 
     public ClientWorld(State state, Settings settings) {
@@ -110,7 +109,7 @@ public class ClientWorld {
                 clientWorldChunk.touch(tick);
             }
         }
-        if (requesting && request) {
+        if (request) {
             if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod || clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>) {
                 if (inflightRequests.get() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
                     inPipelineChunks.add(position3D);
@@ -118,8 +117,6 @@ public class ClientWorld {
                     client.sendRequest(new ChunkRequest(position3D, Math.clamp(lod, 0, 5)));
                 }
             }
-        } else {
-            requesting = false;
         }
         return out;
     }
@@ -169,7 +166,7 @@ public class ClientWorld {
                     chunkKeysChanged.set(true);
                 } else {
                     if (clientWorldChunk.getMesh() != null) {
-                        freeChunk(clientWorldChunk.getMesh());
+                        freeChunk(clientWorldChunk.getMesh(), meshGenerator.getChunkMeshBuffer());
                     }
                     clientWorldChunk.setMesh(chunkMesh);
                 }
@@ -224,24 +221,23 @@ public class ClientWorld {
         }
     }
 
-    public void cleanup() {
+    public void cleanup(ChunkMeshBuffer chunkMeshBuffer) {
         for (Position3D position : getKeys()) {
-            freeChunk(chunks.get(position).getMesh());
+            freeChunk(chunks.get(position).getMesh(), chunkMeshBuffer);
         }
         chunks.clear();
     }
 
     public void tick() {
-        requesting = true;
         tick++;
     }
 
-    public void freeAllChunksNotInAndNotRecentlyAccessed(Predicate<Position3D> predicate, int maxChunksProcessed) {
+    public void freeAllChunksNotInAndNotRecentlyAccessed(Predicate<Position3D> predicate, ChunkMeshBuffer chunkMeshBuffer, int maxChunksProcessed) {
         Position3D[] positions = getKeys();
 
         if (maxChunksProcessed == 0 || maxChunksProcessed > positions.length) {
             if (maxChunksProcessed > 0) {
-                freeAllChunksNotInAndNotRecentlyAccessed(predicate, positions.length);
+                freeAllChunksNotInAndNotRecentlyAccessed(predicate, chunkMeshBuffer, positions.length);
             }
             return;
         }
@@ -262,7 +258,7 @@ public class ClientWorld {
 
             if (neighborRecentlyFetched(pos)) continue;
 
-            freeChunk(chunk.getMesh());
+            freeChunk(chunk.getMesh(), chunkMeshBuffer);
             chunks.remove(pos);
 
             changed = true;
@@ -296,9 +292,9 @@ public class ClientWorld {
         return neighbor != null && tick - neighbor.getLastFetchedTick() < (long) ConstantCommonSettings.CHUNK_TICK_TIMEOUT || inPipelineChunks.contains(pos);
     }
 
-    private void freeChunk(ChunkMesh mesh) {
+    private void freeChunk(ChunkMesh mesh, ChunkMeshBuffer chunkMeshBuffer) {
         if (mesh != null) {
-            mesh.cleanup();
+            mesh.cleanup(chunkMeshBuffer);
 
             mesh.meshData().cleanup();
             OpenGLChecks.checkError("delete chunk mesh");

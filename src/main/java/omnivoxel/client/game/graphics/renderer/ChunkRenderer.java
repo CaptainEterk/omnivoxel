@@ -2,6 +2,7 @@ package omnivoxel.client.game.graphics.renderer;
 
 import omnivoxel.client.game.graphics.RendererAPI;
 import omnivoxel.client.game.graphics.api.opengl.OpenGLChecks;
+import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkIndirectBuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
@@ -10,7 +11,6 @@ import omnivoxel.client.game.graphics.api.opengl.texture.TextureLoader;
 import omnivoxel.client.game.graphics.camera.Camera;
 import omnivoxel.client.game.graphics.chunk.RenderedChunkProvider;
 import omnivoxel.client.game.position.DistanceChunk;
-import omnivoxel.client.game.position.PositionedChunk;
 import omnivoxel.client.game.state.State;
 import omnivoxel.client.game.world.ClientWorld;
 import omnivoxel.common.settings.ConstantCommonSettings;
@@ -33,9 +33,6 @@ public class ChunkRenderer {
     private final RendererAPI rendererAPI;
     private final State state;
     private final Settings settings;
-    private final List<PositionedChunk> solidRenderedChunksInFrustum = new ArrayList<>();
-    private final List<PositionedChunk> decorationRenderedChunksInFrustum = new ArrayList<>();
-    private final List<PositionedChunk> transparentRenderedChunksInFrustum = new ArrayList<>();
     private final List<DistanceChunk> solidRenderedChunks = new ArrayList<>();
     private final List<DistanceChunk> decorationRenderedChunks = new ArrayList<>();
     private final List<DistanceChunk> transparentRenderedChunks = new ArrayList<>();
@@ -43,7 +40,6 @@ public class ChunkRenderer {
     private final ClientWorld world;
     private final RenderedChunkProvider renderedChunkProvider;
     private final ShaderProgramHandler shaderProgramHandler;
-    private final ChunkIndirectMemoryManager chunkIndirectMemoryManager;
     private int texture;
     private ShaderProgram chunkCullingComputeShaderProgram;
     private int chunkBuffer;
@@ -60,7 +56,6 @@ public class ChunkRenderer {
         this.world = world;
         this.renderedChunkProvider = renderedChunkProvider;
         this.shaderProgramHandler = rendererAPI.getShaderProgramHandler();
-        chunkIndirectMemoryManager = new ChunkIndirectMemoryManager();
     }
 
     public void initResources(ChunkMeshBuffer chunkMeshBuffer, ChunkIndirectBuffer chunkIndirectBuffer) throws IOException {
@@ -98,6 +93,8 @@ public class ChunkRenderer {
     }
 
     public void render() {
+        chunkMeshBuffer.collectFreedMemory();
+
         if (state.getItem("shouldUpdateVisibleMeshes", Boolean.class)) {
             solidRenderedChunks.clear();
             decorationRenderedChunks.clear();
@@ -143,7 +140,7 @@ public class ChunkRenderer {
 
                         Position3D position = chunk.pos();
 
-                        var clientChunk = world.get(position, true, false);
+                        var clientChunk = world.get(position, true, false, lod);
 
                         chunkData.putInt(position.x());
                         chunkData.putInt(position.y());
@@ -155,19 +152,14 @@ public class ChunkRenderer {
                             chunkData.putInt(0);
                             chunkData.putInt(0);
                         } else {
-                            var mesh = clientChunk.getMesh().solid();
-                            if (mesh != null) {
-                                chunkData.putInt(clientChunk.getMesh().lod());
-                                chunkData.putInt(mesh.indexCount());
-                                chunkData.putInt(mesh.firstIndex());
-                                chunkData.putInt(mesh.baseVertex());
-                            } else {
-                                chunkData.putInt(0);
-                                chunkData.putInt(0);
-                                chunkData.putInt(0);
-                                chunkData.putInt(0);
-                            }
+                            RenderMesh renderMesh = clientChunk.getMesh().solid();
+
+                            chunkData.putInt(clientChunk.getMesh().lod());
+                            chunkData.putInt(renderMesh.indexCount());
+                            chunkData.putInt(renderMesh.firstIndex());
+                            chunkData.putInt(renderMesh.baseVertex());
                         }
+
                         chunkData.putInt(0);
                     }
 
@@ -183,8 +175,6 @@ public class ChunkRenderer {
                 }
 
                 indirectDrawCount = chunks.size();
-
-//                System.out.println(indirectDrawCount);
 
                 chunkCullingComputeShaderProgram.bind();
 
@@ -224,8 +214,6 @@ public class ChunkRenderer {
             }
         }
 
-        System.out.println(indirectDrawCount);
-
         state.setItem("total_rendered_chunks", indirectDrawCount);
         state.setItem("shouldUpdateVisibleMeshes", false);
         shaderProgramHandler.getShaderProgram("default").bind();
@@ -262,6 +250,11 @@ public class ChunkRenderer {
                 indirectDrawCount,
                 0
         );
+
+        chunkMeshBuffer.endFrame();
+
+        state.setItem("indirect_buffer_size", chunkMeshBuffer.usedVertexBytes() + chunkMeshBuffer.remainingVertexBytes());
+        state.setItem("indirect_buffer_used_percentage", (double) chunkMeshBuffer.usedVertexBytes() / (chunkMeshBuffer.usedVertexBytes() + chunkMeshBuffer.remainingVertexBytes()) * 100.0);
 
         OpenGLChecks.checkError("chunks");
     }

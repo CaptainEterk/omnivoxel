@@ -7,7 +7,6 @@ import omnivoxel.client.game.graphics.api.opengl.framebuffer.RenderFramebuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.EntityMesh;
 import omnivoxel.client.game.graphics.api.opengl.mesh.FullscreenQuad;
 import omnivoxel.client.game.graphics.api.opengl.mesh.RenderMesh;
-import omnivoxel.client.game.graphics.api.opengl.mesh.util.ChunkMeshBuffer;
 import omnivoxel.client.game.graphics.api.opengl.mesh.util.MeshGenerator;
 import omnivoxel.client.game.graphics.api.opengl.mesh.wireframe.WireframeMesh;
 import omnivoxel.client.game.graphics.api.opengl.shader.ShaderProgram;
@@ -187,6 +186,13 @@ public class OpenGLRendererAPI implements RendererAPI {
 
         state.setItem("total_rendered_chunks", 1);
 
+        for (int i = 0; i < Math.max(settings.getIntSetting("max_mesh_generator_threads", Runtime.getRuntime().availableProcessors()), settings.getIntSetting("max_lighting_generator_threads", Runtime.getRuntime().availableProcessors())); i++) {
+            state.setItem("Worker-" + i + "_queue_size_cmdlg", 0);
+            state.setItem("Worker-" + i + "_queue_size_mdg", 0);
+        }
+        state.setItem("indirect_buffer_size", 0L);
+        state.setItem("indirect_buffer_used_percentage", 0);
+
         periodicTimeExecutorCollection = new ExecutorCollection<>();
         periodicTimeExecutorCollection.add(new PeriodicTimeExecutor(() -> state.setItem("attemptFreeChunksTime", true), 2.0));
 //        periodicTimeExecutorCollection.add(new PeriodicTimeExecutor(() -> System.out.println(state.getItem("fps", Integer.class)), 0.25));
@@ -325,7 +331,7 @@ public class OpenGLRendererAPI implements RendererAPI {
         }
 
         if (state.getItem("shouldFreeAll", Boolean.class)) {
-            world.freeAllChunksNotInAndNotRecentlyAccessed((position3D) -> false, Integer.MAX_VALUE);
+            world.freeAllChunksNotInAndNotRecentlyAccessed((position3D) -> false, meshGenerator.getChunkMeshBuffer(), Integer.MAX_VALUE);
         }
 
         if (state.getItem("shouldAttemptFreeChunks", Boolean.class)) {
@@ -518,11 +524,13 @@ public class OpenGLRendererAPI implements RendererAPI {
                             Position: %.2f %.2f %.2f
                             Delta Time: %.4f
                             Chunks:
-                            \t- Rendered: %d/%d/%d/%d
                             \t- Loaded: %d
                             \t- Should be loaded: %d
                             \t- Bufferized Chunks: %d
                             \t- Non-Bufferized Chunks: %d
+                            Rendering:
+                            \t- Indirect vertex buffer size: %d
+                            \t- Indirect vertex buffer usage: %.2f%%
                             Network:
                             \t- Inflight Requests: %d
                             \t- Chunk Requests Sent: %d
@@ -540,48 +548,21 @@ public class OpenGLRendererAPI implements RendererAPI {
                             \t- Observed Block: %s
                             \t- In Water: %b
                             Pipelines:
-                            \t- Queued Meshes: %d
-                            Lighting Worker Threads:
-                            \t- Thread 1: %d
-                            \t- Thread 2: %d
-                            \t- Thread 3: %d
-                            \t- Thread 4: %d
-                            \t- Thread 5: %d
-                            \t- Thread 6: %d
-                            \t- Thread 7: %d
-                            \t- Thread 8: %d
-                            \t- Thread 9: %d
-                            \t- Thread 10: %d
-                            \t- Thread 11: %d
-                            \t- Thread 12: %d
-                            Mesh Data Generator Worker Threads:
-                            \t- Thread 1: %d
-                            \t- Thread 2: %d
-                            \t- Thread 3: %d
-                            \t- Thread 4: %d
-                            \t- Thread 5: %d
-                            \t- Thread 6: %d
-                            \t- Thread 7: %d
-                            \t- Thread 8: %d
-                            \t- Thread 9: %d
-                            \t- Thread 10: %d
-                            \t- Thread 11: %d
-                            \t- Thread 12: %d
+                            \t- Total: %d
+                            \t- Lighting: %d
+                            \t- Meshing: %d
                             """,
                     state.getItem("fps", Integer.class),
                     camera.getX(),
                     camera.getY(),
                     camera.getZ(),
                     state.getItem("deltaTime", Double.class),
-//                    solidRenderedChunksInFrustum.size() + transparentRenderedChunksInFrustum.size() + decorationRenderedChunksInFrustum.size(),
-//                    solidRenderedChunksInFrustum.size(),
-//                    decorationRenderedChunksInFrustum.size(),
-//                    transparentRenderedChunksInFrustum.size(),
-                    0, 0, 0, 0,
                     world.size(),
                     state.getItem("total_rendered_chunks", Integer.class),
                     state.getItem("bufferizing_chunk_count", Integer.class),
                     state.getItem("bufferizing_queue_size", Integer.class),
+                    state.getItem("indirect_buffer_size", Long.class),
+                    state.getItem("indirect_buffer_used_percentage", Double.class),
                     world.inflightRequestCount(),
                     state.getItem("chunk_requests_sent", Integer.class),
                     state.getItem("chunk_requests_received", Integer.class),
@@ -597,36 +578,40 @@ public class OpenGLRendererAPI implements RendererAPI {
                     state.getItem("observed_block_id", String.class),
                     state.getItem("in_water", Boolean.class),
                     world.inPipelineChunkCount(),
-                    state.getItem("Worker-0_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-1_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-2_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-3_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-4_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-5_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-6_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-7_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-8_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-9_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-10_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-11_queue_size_cmdlg", Integer.class),
-                    state.getItem("Worker-0_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-1_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-2_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-3_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-4_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-5_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-6_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-7_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-8_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-9_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-10_queue_size_mdg", Integer.class),
-                    state.getItem("Worker-11_queue_size_mdg", Integer.class)
+                    state.getItem("Worker-0_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-1_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-2_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-3_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-4_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-5_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-6_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-7_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-8_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-9_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-10_queue_size_cmdlg", Integer.class) +
+                            state.getItem("Worker-11_queue_size_cmdlg", Integer.class),
+                    state.getItem("Worker-0_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-1_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-2_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-3_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-4_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-5_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-6_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-7_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-8_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-9_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-10_queue_size_mdg", Integer.class) +
+                            state.getItem("Worker-11_queue_size_mdg", Integer.class)
             );
 
             GL11C.glPolygonMode(GL11C.GL_FRONT_AND_BACK, GL11C.GL_FILL);
             textShaderProgram.bind();
 
             GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11C.glDepthMask(false);
+            GL11C.glDisable(GL11C.GL_CULL_FACE);
+            GL11C.glEnable(GL11C.GL_BLEND);
+            GL11C.glBlendFunc(GL11C.GL_SRC_ALPHA, GL11C.GL_ONE_MINUS_SRC_ALPHA);
 
             textRenderer.queueText(this.menuSystem.getFont(), leftDebugText, 4, 4, 0.6f, Alignment.LEFT);
             textRenderer.queueText(this.menuSystem.getFont(), "+", window.getWidth() / 2f, window.getHeight() / 2f, 0.6f, Alignment.CENTER);
@@ -658,7 +643,7 @@ public class OpenGLRendererAPI implements RendererAPI {
         int squaredRenderDistance = rdChunks * rdChunks;
 
         cameraCullingService.calculateChunkPosition();
-        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), settings.getIntSetting("free_chunk_max", 100));
+        world.freeAllChunksNotInAndNotRecentlyAccessed(position3D -> !cameraCullingService.shouldDistanceCullChunk(position3D, squaredRenderDistance), meshGenerator.getChunkMeshBuffer(), settings.getIntSetting("free_chunk_max", 100));
         state.setItem("shouldAttemptFreeChunks", false);
     }
 
@@ -733,7 +718,7 @@ public class OpenGLRendererAPI implements RendererAPI {
 
         client.close();
 
-        world.cleanup();
+        world.cleanup(meshGenerator.getChunkMeshBuffer());
 
         shaderProgram.cleanup();
 

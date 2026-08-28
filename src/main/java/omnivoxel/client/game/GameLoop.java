@@ -70,8 +70,8 @@ public final class GameLoop {
         rendererAPI.init(new MeshGenerator(chunkMeshBuffer));
 
         chunkMeshBuffer.init(
-                1024L * 1024L * 1024L, // vertex buffer: 256 MB
-                256L * 1024L * 1024L  // index buffer: 256 MB
+                256L * 1024L * 1024L,
+                1024L * 1024L * 1024L
         );
 
         chunkIndirectBuffer.init(100_000);

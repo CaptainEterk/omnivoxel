@@ -18,16 +18,14 @@ import static org.lwjgl.opengl.GL30C.*;
 
 public class MeshGenerator {
     private final ChunkMeshBuffer chunkMeshBuffer;
+    Map<Position3D, Integer> already = new HashMap<>();
 
     public MeshGenerator(ChunkMeshBuffer chunkMeshBuffer) {
         this.chunkMeshBuffer = chunkMeshBuffer;
     }
 
-    Map<Position3D, Integer> already = new HashMap<>();
-
     public ChunkMesh bufferizeChunkMesh(ChunkMeshData mesh) {
         if (already.containsKey(mesh.chunkPosition())) {
-            System.out.println("dsldkfj");
             already.put(mesh.chunkPosition(), already.get(mesh.chunkPosition()) + 1);
         } else {
             already.put(mesh.chunkPosition(), 1);
@@ -188,5 +186,9 @@ public class MeshGenerator {
         glBindVertexArray(0);
 
         return new int[]{vao, vbo, ebo};
+    }
+
+    public ChunkMeshBuffer getChunkMeshBuffer() {
+        return chunkMeshBuffer;
     }
 }

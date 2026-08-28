@@ -27,6 +27,6 @@ public class State {
         if (value == null) {
             return null;
         }
-        throw new IllegalArgumentException("Invalid type for key: " + key);
+        throw new IllegalArgumentException("Invalid type key=" + key + " type=" + valueType.getSimpleName() + " stored=" + value + " storedType=" + value.getClass().getSimpleName());
     }
 }
