@@ -102,9 +102,7 @@ public class ClientWorld {
         ClientWorldChunk clientWorldChunk = chunks.get(position3D);
         ClientWorldChunk out = null;
         if (clientWorldChunk != null) {
-            boolean isShell = clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>;
-
-            if (shell || !isShell) {
+            if (shell || !(clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>)) {
                 out = clientWorldChunk;
                 clientWorldChunk.touch(tick);
             }
