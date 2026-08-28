@@ -49,7 +49,7 @@ public class ClientWorld {
     private final Map<String, EntityMeshWrapper> entities;
     private final AtomicBoolean chunkKeysChanged = new AtomicBoolean(true);
     private final Set<Position3D> inPipelineChunks;
-    private final AtomicInteger inflightRequests;
+    private final Set<Position3D> inflightRequests;
     private final Map<Position2D, Chunk2D<Integer>> chunkHeights;
     private final Settings settings;
     private Position3D[] cachedKeys = null;
@@ -65,7 +65,7 @@ public class ClientWorld {
         newChunks = ConcurrentHashMap.newKeySet();
         entitiesMeshData = new ConcurrentHashMap<>();
         inPipelineChunks = ConcurrentHashMap.newKeySet();
-        inflightRequests = new AtomicInteger(0);
+        inflightRequests = ConcurrentHashMap.newKeySet();
         chunkHeights = new ConcurrentHashMap<>();
         entityMeshes = new HashMap<>();
         entities = new HashMap<>();
@@ -111,9 +111,9 @@ public class ClientWorld {
         }
         if (request) {
             if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1).getLOD() > lod || clientWorldChunk.getChunkData(-1) instanceof ChunkShell<BlockWithMesh>) {
-                if (inflightRequests.get() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
+                if (inflightRequests.size() < ConstantNetworkSettings.INFLIGHT_REQUESTS_MAXIMUM && !inPipelineChunks.contains(position3D)) {
                     inPipelineChunks.add(position3D);
-                    inflightRequests.incrementAndGet();
+                    inflightRequests.add(position3D);
                     client.sendRequest(new ChunkRequest(position3D, Math.clamp(lod, 0, 5)));
                 }
             }
@@ -142,12 +142,12 @@ public class ClientWorld {
         return count;
     }
 
-    public void receivedChunk() {
-        inflightRequests.decrementAndGet();
+    public void receivedChunk(Position3D position3D) {
+        inflightRequests.remove(position3D);
     }
 
     public int inflightRequestCount() {
-        return inflightRequests.get();
+        return inflightRequests.size();
     }
 
     public boolean bufferize(MeshGenerator meshGenerator) {
