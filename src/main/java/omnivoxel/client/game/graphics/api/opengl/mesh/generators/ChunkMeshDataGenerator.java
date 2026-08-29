@@ -20,7 +20,10 @@ import omnivoxel.util.math.Position3D;
 import omnivoxel.world.chunk.Chunk;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ChunkMeshDataGenerator {
     private static final BlockFace[] UNROTATE = {
@@ -609,12 +612,12 @@ public class ChunkMeshDataGenerator {
             return;
         }
 
-        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true, -1);
-        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true, -1);
-        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true, -1);
-        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true, -1);
-        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true, -1);
-        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true, -1);
+        ClientWorldChunk negXChunk = world.get(position3D.add(-1, 0, 0), false, true);
+        ClientWorldChunk posXChunk = world.get(position3D.add(1, 0, 0), false, true);
+        ClientWorldChunk negYChunk = world.get(position3D.add(0, -1, 0), false, true);
+        ClientWorldChunk posYChunk = world.get(position3D.add(0, 1, 0), false, true);
+        ClientWorldChunk negZChunk = world.get(position3D.add(0, 0, -1), false, true);
+        ClientWorldChunk posZChunk = world.get(position3D.add(0, 0, 1), false, true);
 
         if (negXChunk == null || posXChunk == null ||
                 negYChunk == null || posYChunk == null ||
