@@ -307,8 +307,7 @@ public class ChunkMeshDataLightingGenerator {
     ) {
         clearQueues();
 
-        int[] lightChannel =
-                new int[ConstantCommonSettings.BLOCKS_IN_CHUNK >> 3];
+        int[] lightChannel = new int[ConstantCommonSettings.BLOCKS_IN_CHUNK >> 3];
 
         loadChunkLights(channel, chunkPos, chunk);
 

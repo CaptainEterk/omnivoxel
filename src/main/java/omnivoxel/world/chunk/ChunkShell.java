@@ -227,6 +227,7 @@ public class ChunkShell<B> implements Chunk<B> {
         ChunkShell<B> result = new ChunkShell<>(this);
 
         if (newShell.lod < lod) {
+            // LODs are different
             int scale = 1 << (lod - newShell.lod);
 
             for (int z = 0; z < length; z++) {
@@ -288,56 +289,55 @@ public class ChunkShell<B> implements Chunk<B> {
                     }
                 }
             }
+        } else {
+            // LODs are the same
+            for (int z = 0; z < length; z++) {
+                for (int y = 0; y < height; y++) {
+                    B block = newShell.getBlock(0, y, z);
+                    if (block != null) {
+                        result.setBlock(0, y, z, block);
+                        result.setBlockRotation(0, y, z, newShell.getBlockRotation(0, y, z));
+                    }
 
-            return result;
-        }
+                    block = newShell.getBlock(width - 1, y, z);
+                    if (block != null) {
+                        result.setBlock(width - 1, y, z, block);
+                        result.setBlockRotation(width - 1, y, z,
+                                newShell.getBlockRotation(width - 1, y, z));
+                    }
+                }
+            }
 
-        for (int z = 0; z < length; z++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    B block = newShell.getBlock(x, 0, z);
+                    if (block != null) {
+                        result.setBlock(x, 0, z, block);
+                        result.setBlockRotation(x, 0, z, newShell.getBlockRotation(x, 0, z));
+                    }
+
+                    block = newShell.getBlock(x, height - 1, z);
+                    if (block != null) {
+                        result.setBlock(x, height - 1, z, block);
+                        result.setBlockRotation(x, height - 1, z, newShell.getBlockRotation(x, height - 1, z));
+                    }
+                }
+            }
+
             for (int y = 0; y < height; y++) {
-                B block = newShell.getBlock(0, y, z);
-                if (block != null) {
-                    result.setBlock(0, y, z, block);
-                    result.setBlockRotation(0, y, z, newShell.getBlockRotation(0, y, z));
-                }
+                for (int x = 0; x < width; x++) {
+                    B block = newShell.getBlock(x, y, 0);
+                    if (block != null) {
+                        result.setBlock(x, y, 0, block);
+                        result.setBlockRotation(x, y, 0, newShell.getBlockRotation(x, y, 0));
+                    }
 
-                block = newShell.getBlock(width - 1, y, z);
-                if (block != null) {
-                    result.setBlock(width - 1, y, z, block);
-                    result.setBlockRotation(width - 1, y, z,
-                            newShell.getBlockRotation(width - 1, y, z));
-                }
-            }
-        }
-
-        for (int z = 0; z < length; z++) {
-            for (int x = 0; x < width; x++) {
-                B block = newShell.getBlock(x, 0, z);
-                if (block != null) {
-                    result.setBlock(x, 0, z, block);
-                    result.setBlockRotation(x, 0, z, newShell.getBlockRotation(x, 0, z));
-                }
-
-                block = newShell.getBlock(x, height - 1, z);
-                if (block != null) {
-                    result.setBlock(x, height - 1, z, block);
-                    result.setBlockRotation(x, height - 1, z, newShell.getBlockRotation(x, height - 1, z));
-                }
-            }
-        }
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                B block = newShell.getBlock(x, y, 0);
-                if (block != null) {
-                    result.setBlock(x, y, 0, block);
-                    result.setBlockRotation(x, y, 0, newShell.getBlockRotation(x, y, 0));
-                }
-
-                block = newShell.getBlock(x, y, length - 1);
-                if (block != null) {
-                    result.setBlock(x, y, length - 1, block);
-                    result.setBlockRotation(x, y, length - 1,
-                            newShell.getBlockRotation(x, y, length - 1));
+                    block = newShell.getBlock(x, y, length - 1);
+                    if (block != null) {
+                        result.setBlock(x, y, length - 1, block);
+                        result.setBlockRotation(x, y, length - 1,
+                                newShell.getBlockRotation(x, y, length - 1));
+                    }
                 }
             }
         }
@@ -352,9 +352,7 @@ public class ChunkShell<B> implements Chunk<B> {
 
     public ChunkShell<B> mergeUp(ChunkShell<B> newShell) {
         if (newShell.lod >= lod) {
-            throw new IllegalArgumentException(
-                    "mergeUp requires a finer target LOD"
-            );
+            throw new IllegalArgumentException("mergeUp requires a finer target LOD");
         }
 
         ChunkShell<B> result = new ChunkShell<>(newShell);
