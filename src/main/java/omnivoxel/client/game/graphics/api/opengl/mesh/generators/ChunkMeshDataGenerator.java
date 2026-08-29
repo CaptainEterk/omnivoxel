@@ -53,7 +53,6 @@ public class ChunkMeshDataGenerator {
             BlockFace.NORTH
     };
     private final ClientWorld world;
-    private final boolean ambientOcclusion, smoothLighting;
     private final List<Integer> vertices = new ArrayList<>();
     private final List<Integer> indices = new ArrayList<>();
     private final List<Integer> transparentVertices = new ArrayList<>();
@@ -64,6 +63,8 @@ public class ChunkMeshDataGenerator {
     private final Map<UniqueVertex, Integer> transparentVertexIndexMap = new HashMap<>();
     private final Map<UniqueVertex, Integer> decorationVertexIndexMap = new HashMap<>();
     private final int[] vertexData = new int[3];
+    private boolean smoothLighting;
+    private boolean ambientOcclusion;
     private BlockMesh[] blockMeshes;
     private byte[] rotations;
     private int lod;
@@ -76,7 +77,10 @@ public class ChunkMeshDataGenerator {
         this.ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
         this.smoothLighting = settings.getBooleanSetting("smooth_lighting", false);
         settings.addSettingListener("ambient_occlusion", v -> {
-
+            ambientOcclusion = Boolean.parseBoolean(v);
+        });
+        settings.addSettingListener("smooth_lighting", v -> {
+            smoothLighting = Boolean.parseBoolean(v);
         });
     }
 
@@ -244,7 +248,7 @@ public class ChunkMeshDataGenerator {
             ChunkLightingData chunkLightingData,
             BlockMesh[] blockMeshes,
             Position3D chunkPosition
-            ) {
+    ) {
         BlockFace sourceFace = UNROTATE[rotationOffset + worldFace];
         BlockFace face = BlockFace.NORMAL_VALUES[worldFace];
         if (shouldRenderFaceCached(blockMesh, shape, adjacent, sourceFace.ordinal(), worldFace, adjacentRotation)) {
