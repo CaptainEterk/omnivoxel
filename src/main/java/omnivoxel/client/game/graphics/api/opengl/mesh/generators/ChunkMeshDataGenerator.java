@@ -123,8 +123,6 @@ public class ChunkMeshDataGenerator {
         transparentVertexIndexMap.clear();
         decorationVertexIndexMap.clear();
 
-        int currentLOD = clientWorldChunk.getChunkData(-1).getLOD();
-
         for (int x = 0; x < chunkWidth; x++) {
             for (int z = 0; z < chunkLength; z++) {
                 for (int y = 0; y < chunkHeight; y++) {
