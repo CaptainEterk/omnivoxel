@@ -616,11 +616,6 @@ public class ChunkMeshDataGenerator {
 
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
-                    if (chunk.getBlock(lx, ly, lz) == null) {
-                        System.out.println(chunk + " " + lx + " " + ly + " " + lz);
-                        continue;
-                    }
-
                     blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
                     rotations[index] = chunk.getBlockRotation(lx, ly, lz);
                 }
