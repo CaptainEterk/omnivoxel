@@ -76,12 +76,8 @@ public class ChunkMeshDataGenerator {
         this.world = world;
         this.ambientOcclusion = settings.getBooleanSetting("ambient_occlusion", true);
         this.smoothLighting = settings.getBooleanSetting("smooth_lighting", false);
-        settings.addSettingListener("ambient_occlusion", v -> {
-            ambientOcclusion = Boolean.parseBoolean(v);
-        });
-        settings.addSettingListener("smooth_lighting", v -> {
-            smoothLighting = Boolean.parseBoolean(v);
-        });
+        settings.addSettingListener("ambient_occlusion", v -> ambientOcclusion = Boolean.parseBoolean(v));
+        settings.addSettingListener("smooth_lighting", v -> smoothLighting = Boolean.parseBoolean(v));
     }
 
     private int getPaddedNeighborOffset(BlockFace face) {
