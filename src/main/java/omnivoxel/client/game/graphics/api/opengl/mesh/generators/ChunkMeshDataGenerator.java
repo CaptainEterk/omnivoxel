@@ -616,6 +616,7 @@ public class ChunkMeshDataGenerator {
 
                     int index = IndexCalculator.calculateBlockIndexPadded(x, y, z, chunkWidth, chunkHeight, chunkLength);
 
+                    // TODO: Fix a crash where chunk is a ChunkShell with uninitialized sides
                     blockMeshes[index] = chunk.getBlock(lx, ly, lz).blockMesh();
                     rotations[index] = chunk.getBlockRotation(lx, ly, lz);
                 }

@@ -130,10 +130,6 @@ public class ChunkMeshDataLightingGenerator {
         }
     }
 
-    private static boolean shouldCalculate(ClientWorldChunk clientWorldChunk) {
-        return clientWorldChunk != null && clientWorldChunk.getChunkData(-1) != null;
-    }
-
     public Set<LightingChunkMeshDataTask> generateLightingMeshData(LightingChunkMeshDataTask lightingChunkMeshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_cmdlg", queueSize);
         if (lightingChunkMeshDataTask.blocks() != null) {
@@ -194,7 +190,7 @@ public class ChunkMeshDataLightingGenerator {
     private Set<LightingChunkMeshDataTask> generateChunkMeshDataLighting(Position3D position3D, LightChannels channel) {
         ClientWorldChunk clientWorldChunk = world.get(position3D, false, false);
 
-        if (!shouldCalculate(clientWorldChunk)) {
+        if (clientWorldChunk == null || clientWorldChunk.getChunkData(-1) == null) {
             return null;
         }
 
