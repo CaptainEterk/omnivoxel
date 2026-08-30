@@ -536,7 +536,9 @@ public class ChunkMeshDataGenerator {
         rotations = new byte[paddedSize];
     }
 
-    private boolean unpackChunkPadded(Position3D position3D, ClientWorldChunk centerChunk) {
+    private boolean unpackChunkPadded(Position3D position3D) {
+        ClientWorldChunk centerChunk = world.get(position3D, false, false);
+
         if (centerChunk == null) {
             Logger.warn(Logger.Priority.LOW, "The center chunk is null");
             return true;
@@ -556,8 +558,7 @@ public class ChunkMeshDataGenerator {
             return true;
         }
 
-        Chunk<BlockWithMesh> chunkData = centerChunk.getChunkData(-1);
-        setupLOD(chunkData, negXChunk.getChunkData(-1), posXChunk.getChunkData(-1), negYChunk.getChunkData(-1), posYChunk.getChunkData(-1), negZChunk.getChunkData(-1), posZChunk.getChunkData(-1));
+        setupLOD(centerChunk.getChunkData(-1), negXChunk.getChunkData(-1), posXChunk.getChunkData(-1), negYChunk.getChunkData(-1), posYChunk.getChunkData(-1), negZChunk.getChunkData(-1), posZChunk.getChunkData(-1));
 
         Chunk<BlockWithMesh> center = centerChunk.getChunkData(lod);
 
@@ -627,7 +628,7 @@ public class ChunkMeshDataGenerator {
     }
 
     public MeshData generateMeshData(Position3D position3D) {
-        if (unpackChunkPadded(position3D, world.get(position3D, false, false))) {
+        if (unpackChunkPadded(position3D)) {
             return null;
         }
         return generateChunkMeshData(position3D);
