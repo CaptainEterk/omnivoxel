@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 // TODO: Make this only store world data, no queues, etc...
@@ -213,9 +212,12 @@ public class ClientWorld {
             return;
         }
 
-        if (existingData instanceof ChunkShell<BlockWithMesh> existingShell &&
-                chunk instanceof ChunkShell<BlockWithMesh> newShell) {
-            existing.setChunkData(existingShell.mergeDown(newShell), existingData);
+        if (existingData instanceof ChunkShell<BlockWithMesh> existingShell) {
+            if (chunk instanceof ChunkShell<BlockWithMesh> newShell) {
+                existing.setChunkData(existingShell.mergeDown(newShell), existingData);
+            } else {
+                existing.setChunkData(chunk, existingData);
+            }
         }
     }
 
