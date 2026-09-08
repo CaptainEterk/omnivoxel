@@ -34,7 +34,6 @@ import omnivoxel.util.log.Logger;
 import omnivoxel.util.math.Position2D;
 import omnivoxel.util.math.Position3D;
 import omnivoxel.util.thread.WorkerThreadPool;
-import omnivoxel.world.block.Block;
 import omnivoxel.world.block.BlockService;
 import omnivoxel.world.chunk.Chunk;
 import omnivoxel.world.chunk2d.Chunk2D;
@@ -56,7 +55,6 @@ public final class Client implements NetworkUser {
     private final ClientWorld world;
     private final BlockService<BlockWithMesh> blockService;
     private final Settings settings;
-    private final Map<Position3D, Block> pendingBlocks;
     private WorkerThreadPool<MeshDataTask> meshDataGenerators;
     private WorkerThreadPool<LightingChunkMeshDataTask> lightingGenerators;
     private EventLoopGroup group;
@@ -71,7 +69,6 @@ public final class Client implements NetworkUser {
         this.world = world;
         this.blockService = blockService;
         this.settings = settings;
-        pendingBlocks = new HashMap<>();
     }
 
     // TODO: Move these to the respective records
@@ -308,7 +305,7 @@ public final class Client implements NetworkUser {
                 clientWorldChunk.setCleanLighting(false);
                 BlockWithMesh block = blockService.getBlock(blockID);
                 if (chunkData.getBlock(x, y, z) != block || chunkData.getBlockRotation(x, y, z) != rotation) {
-                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation), chunkData);
+                    clientWorldChunk.setChunkData(chunkData.setBlock(x, y, z, block, rotation));
                     lightingGenerators.submit(new LightingChunkMeshDataTask(null, chunkPosition, null), true);
 
                     if (x == 0)
@@ -511,7 +508,6 @@ public final class Client implements NetworkUser {
                 NetworkService.sendBytes(channel, PackageID.REPLACE_BLOCK, clientID, channel::close, bytes);
 
                 // TODO: Calculate highestY
-                pendingBlocks.put(blockReplaceRequest.position3D(), blockReplaceRequest.oldBlock());
                 replaceBlock(blockReplaceRequest.position3D().x(), blockReplaceRequest.position3D().y(), blockReplaceRequest.position3D().z(), 0, blockReplaceRequest.newBlock().id(), blockReplaceRequest.rotation());
                 break;
             default:
@@ -539,7 +535,7 @@ public final class Client implements NetworkUser {
                 channel.close().sync();
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         } finally {
             if (group != null) {
                 group.shutdownGracefully();

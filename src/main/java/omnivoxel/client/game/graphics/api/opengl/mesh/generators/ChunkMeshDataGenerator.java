@@ -536,11 +536,11 @@ public class ChunkMeshDataGenerator {
         rotations = new byte[paddedSize];
     }
 
-    private boolean unpackChunkPadded(Position3D position3D) {
+    private boolean unpackChunkPadded(Position3D position3D, String root) {
         ClientWorldChunk centerChunk = world.get(position3D, false, false);
 
         if (centerChunk == null) {
-            Logger.warn(Logger.Priority.LOW, "The center chunk is null");
+            Logger.warn(Logger.Priority.LOW, "The center chunk is null: " + root + " " + world.get(position3D).getChunkData(-1) + " " + world.get(position3D).getChunks());
             return true;
         }
 
@@ -554,7 +554,7 @@ public class ChunkMeshDataGenerator {
         if (negXChunk == null || posXChunk == null ||
                 negYChunk == null || posYChunk == null ||
                 negZChunk == null || posZChunk == null) {
-            Logger.warn(Logger.Priority.LOW, "One or more shell chunks are null");
+            Logger.warn(Logger.Priority.LOW, "One or more shell chunks are null: " + root);
             return true;
         }
 
@@ -572,7 +572,7 @@ public class ChunkMeshDataGenerator {
         if (negX == null || posX == null ||
                 negY == null || posY == null ||
                 negZ == null || posZ == null) {
-            Logger.warn(Logger.Priority.LOW, "One or more shell chunk data are null");
+            Logger.warn(Logger.Priority.LOW, "One or more shell chunk data are null: " + root);
             return true;
         }
 
@@ -627,8 +627,8 @@ public class ChunkMeshDataGenerator {
         return false;
     }
 
-    public MeshData generateMeshData(Position3D position3D) {
-        if (unpackChunkPadded(position3D)) {
+    public MeshData generateMeshData(Position3D position3D, String root) {
+        if (unpackChunkPadded(position3D, root)) {
             return null;
         }
         return generateChunkMeshData(position3D);

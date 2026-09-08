@@ -118,6 +118,10 @@ public class ClientWorld {
         return out;
     }
 
+    public ClientWorldChunk get(Position3D position3D) {
+        return chunks.get(position3D);
+    }
+
     public Position3D[] getKeys() {
         if (chunkKeysChanged.get()) {
             chunkKeysChanged.set(false);
@@ -208,15 +212,15 @@ public class ClientWorld {
         Chunk<BlockWithMesh> existingData = existing.getChunkData(-1);
 
         if (!shell) {
-            existing.setChunkData(chunk, existingData);
+            existing.setChunkData(chunk);
             return;
         }
 
         if (existingData instanceof ChunkShell<BlockWithMesh> existingShell) {
             if (chunk instanceof ChunkShell<BlockWithMesh> newShell) {
-                existing.setChunkData(existingShell.mergeDown(newShell), existingData);
+                existing.setChunkData(existingShell.mergeDown(newShell));
             } else {
-                existing.setChunkData(chunk, existingData);
+                existing.setChunkData(chunk);
             }
         }
     }

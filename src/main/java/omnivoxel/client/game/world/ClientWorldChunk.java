@@ -11,22 +11,23 @@ import omnivoxel.world.chunk.ChunkLODSampler;
 import omnivoxel.world.chunk.ChunkShell;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ClientWorldChunk {
     private static final short[] EMPTY_OVERFLOW = new short[0];
     // TODO: Move to ChunkLightingData?
     private final short[][] neighborLightOverflow;
     private final AtomicBoolean[] cleanLighting;
+    private final AtomicReference<Chunk<BlockWithMesh>> chunkData;
     private MeshData meshData;
     private ChunkMesh mesh;
-    private Chunk<BlockWithMesh> chunkData;
     private int lastFetched;
     private ChunkLightingData chunkLightingData;
 
     private ClientWorldChunk(MeshData meshData, ChunkMesh mesh, Chunk<BlockWithMesh> chunkData, ChunkLightingData chunkLightingData) {
         this.meshData = meshData;
         this.mesh = mesh;
-        this.chunkData = chunkData;
+        this.chunkData = new AtomicReference<>(chunkData);
         this.chunkLightingData = chunkLightingData;
         this.neighborLightOverflow = new short[Direction.VALUES.length * LightChannels.values().length][];
         for (int i = 0; i < neighborLightOverflow.length; i++) {
@@ -76,14 +77,15 @@ public class ClientWorldChunk {
     }
 
     public Chunk<BlockWithMesh> getChunkData(int lod) {
-        return ChunkLODSampler.sample(chunkData, lod);
+        return ChunkLODSampler.sample(chunkData.get(), lod);
     }
 
-    public void setChunkData(Chunk<BlockWithMesh> chunkData, Chunk<BlockWithMesh> oldChunkData) {
-        if (chunkData instanceof ChunkShell<BlockWithMesh> newChunkData && this.chunkData instanceof ChunkShell<BlockWithMesh> && this.chunkData != oldChunkData) {
-            setChunkData(((ChunkShell<BlockWithMesh>) this.chunkData).merge(newChunkData), this.chunkData);
+    public void setChunkData(Chunk<BlockWithMesh> chunkData) {
+        Chunk<BlockWithMesh> chunk = this.chunkData.get();
+        if (chunkData instanceof ChunkShell<BlockWithMesh> newChunkData && chunk instanceof ChunkShell<BlockWithMesh> chunkShell) {
+            this.chunkData.compareAndSet(chunk, chunkShell.merge(newChunkData));
         } else {
-            this.chunkData = chunkData;
+            this.chunkData.set(chunkData);
         }
     }
 
@@ -124,10 +126,6 @@ public class ClientWorldChunk {
         for (AtomicBoolean atomicBoolean : this.cleanLighting) {
             atomicBoolean.set(cleanLighting);
         }
-    }
-
-    public boolean isCleanLighting(LightChannels channel) {
-        return cleanLighting[channel.ordinal()].get();
     }
 
     public void setCleanLighting(LightChannels channel, boolean cleanLighting) {

@@ -86,8 +86,8 @@ public final class MeshDataGenerator {
 
     public List<MeshDataTask> generateMeshData(MeshDataTask meshDataTask, int queueSize) {
         state.setItem(Thread.currentThread().getName() + "_queue_size_mdg", queueSize);
-        if (meshDataTask instanceof ChunkMeshDataTask(Position3D position3D)) {
-            MeshData meshData = chunkMeshDataGenerator.generateMeshData(position3D);
+        if (meshDataTask instanceof ChunkMeshDataTask(Position3D position3D, String root)) {
+            MeshData meshData = chunkMeshDataGenerator.generateMeshData(position3D, root);
             if (meshData != null) {
                 world.add(position3D, meshData);
             } else {
