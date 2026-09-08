@@ -540,7 +540,7 @@ public class ChunkMeshDataGenerator {
         ClientWorldChunk centerChunk = world.get(position3D, false, false);
 
         if (centerChunk == null) {
-            Logger.warn(Logger.Priority.LOW, "The center chunk is null: " + root + " " + world.get(position3D).getChunkData(-1) + " " + world.get(position3D).getChunks());
+            Logger.warn(Logger.Priority.LOW, "The center chunk is null: " + root);
             return true;
         }
 
